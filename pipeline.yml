@@ -9,6 +9,7 @@
 
 # genome ID
 genome: hg38
+genome_dir: /ifs/mirror/genomes/index/
 
 # Location of the single cell directory
 sc_dir: '/Users/annajames-bott/Documents/Dphil/Repositories/single-cell'
@@ -58,3 +59,19 @@ kallisto:
   # SCRBSeq
   # Note that 10Xv3 is not supported in version 0.44 of Kallisto
   sctechnology: 10Xv2
+
+
+salmon:
+
+  # Number of threads that can be used by alevin to perfrom the quantification
+  threads: 10
+
+  # Library type must be specified.
+  # ISR recommended for DropSeq and 10xV2 technology
+  librarytype: ISR
+
+  # Single cell technology/protocol to be specified
+  # Allowable sc technology:
+  # dropseq
+  # chromium
+  sctechnology: dropseq

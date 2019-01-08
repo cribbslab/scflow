@@ -129,7 +129,6 @@ def fastqc_post(infile, outfile):
 # Build indexes
 ############################################
 
-# Index for kallisto taken from rnaseqdiffexpression pipeline
 @mkdir('geneset.dir')
 @transform(PARAMS['geneset'],
            regex("(\S+).gtf.gz"),
@@ -168,6 +167,39 @@ def buildReferenceTranscriptome(infile, outfile):
 
 @transform(buildReferenceTranscriptome,
            suffix(".fa"),
+           ".salmon.index")
+def buildSalmonIndex(infile, outfile):
+    '''
+    Builds a salmon index for the reference transriptome
+    Parameters
+    ----------
+    infile: str
+       path to reference transcriptome - fasta file containing transcript
+       sequences
+    salmon_kmer: int
+       :term: `PARAMS` kmer size for sailfish.  Default is 31.
+       Salmon will ignores transcripts shorter than this.
+    salmon_index_options: str
+       :term: `PARAMS` string to append to the salmon index command to
+       provide specific options e.g. --force --threads N
+    outfile: str
+       path to output file
+    '''
+
+    job_memory = "unlimited"
+    # need to remove the index directory (if it exists) as ruffus uses
+    # the directory timestamp which wont change even when re-creating
+    # the index files
+    statement = '''
+    rm -rf %(outfile)s;
+    salmon index -k %(salmon_kmer)i %(salmon_index_options)s -t %(infile)s -i %(outfile)s
+    -k %(salmon_kmer)s
+    '''
+
+    P.run(statement)
+
+@transform(buildReferenceTranscriptome,
+           suffix(".fa"),
            ".kallisto.index")
 def buildKallistoIndex(infile, outfile):
     '''
@@ -195,6 +227,29 @@ def buildKallistoIndex(infile, outfile):
 # Input fastqc
 
 # Pseudoalignment
+
+# Alevin
+# Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
+@follows(mkdir("salmon.dir"))
+@collate(SEQUENCEFILES,
+         SEQUENCEFILES_REGEX,
+         add_inputs(buildSalmonIndex, getTranscript2GeneMap),
+         SEQUENCEFILES_SALMON_OUTPUT)
+def runSalmonAlevin(infiles, outfile):
+    '''
+    Alevin is integrated with salmon to quantify and analyse 3' tagged-end
+    single-cell sequencing data. Alevin supports 10Xv1, 10Xv2 and Drop-Seq
+    sc technology
+    '''
+
+    # Probably need to separate sequencing files
+    sequence_files, salmon_index, t2gmap = infiles
+    statement = '''
+    salmon alevin -l %(salmon_librarytype)s -1 CB_UMI_sequences?? -2  %(sequence_files)s
+    --%(salmon_sctechnology)s -i %(salmon_index)s -p %(salmon_threads)s -o salmon.dir
+    --tgMap %(t2gmap)s
+    '''
+
 # BUStools approach
 @follows(mkdir("kallisto.dir"))
 @collate(SEQUENCEFILES,
@@ -239,7 +294,6 @@ def busText(infile, outfile):
     bustools text -o %(outfile)s tmp_bus
     '''
 
-## Alevin
 
 # Count
 
