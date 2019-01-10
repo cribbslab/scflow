@@ -56,76 +56,27 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
-SEQUENCESUFFIXES = ("*.fastq.*.gz",
-		    "*.fastq.gz",
-		    "*.sra")
+# Determine the location of the input fastq files
+try:
+    PARAMS['data']
+except NameError:
+    DATADIR = "."
+else:
+    if PARAMS['data'] == 0:
+        DATADIR = "."
+    elif PARAMS['data'] == 1:
+        DATADIR = "data.dir"
+    else:
+        DATADIR = PARAMS['data']
+
+SEQUENCESUFFIXES = ("*.fastq.gz",
+		    "*.fastq.1.gz",
+		    "*.fastq.2.gz")
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
-# some files are fastq.2.gz etc, do we need * or just 1 like in rnaseqdiffexpression???
 SEQUENCEFILES_REGEX = regex(
-        "(\S+).(fastq.*.gz|fastq.gz|sra)")
-
-############################################
-# Quality control of the fastq files
-############################################
-
-@follows(mkdir("fastqc_pre.dir"))
-@transform(SEQUENCEFILES,
-           suffix(".fastq.gz"),
-           r"fastqc_pre.dir/\1.fastq")
-def fastqc_pre(infile, outfile):
-    """
-    Runs fastQC on each input file
-    """
-
-    statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
-
-    P.run(statement)
-
-@follows(fastqc_pre)
-@follows(mkdir("processed.dir"))
-@transform(SEQUENCEFILES,
-           suffix(".fastq.gz"),
-           r"processed.dir/\1_processed.fastq.gz")
-def process_reads(infile, outfile):
-    """
-    Runs trimmomatic quality related trimming
-    """
-
-    if PARAMS["trimmomatic_run"]:
-
-        trimmomatic_options = PARAMS["trimmomatic_options"]
-
-        trimmomatic_options = "ILLUMINACLIP:%s:%s:%s:%s" % (
-            PARAMS["trimmomatic_adapter"],
-            PARAMS["trimmomatic_mismatches"],
-            PARAMS["trimmomatic_p_thresh"],
-            PARAMS["trimmomatic_c_thresh"]) + "\t" + trimmomatic_options
-
-        phred = PARAMS["trimmomatic_phred"]
-
-        ModuleTrna.process_trimmomatic(infile, outfile, phred,
-                                   trimmomatic_options)
-    else:
-
-        statement = "cp %(infile)s %(outfile)s"
-
-        P.run(statement)
-
-@follows(mkdir("fastqc_post.dir"))
-@transform(process_reads,
-           regex("processed.dir/(\S+)_processed.fastq.gz"),
-           r"fastqc_post.dir/\1.fastq")
-def fastqc_post(infile, outfile):
-    """
-    Runs fastQC on each of the processed files
-    """
-
-    statement = """fastqc -q -o fastqc_post.dir/ %(infile)s
-                """
-
-    P.run(statement)
+        "(\S+).(fastq.[1-2].gz|fastq.gz)")
 
 ############################################
 # Build indexes
@@ -229,6 +180,39 @@ def buildKallistoIndex(infile, outfile):
 # Input fastqc
 
 # Pseudoalignment
+# Does this apply??? Alevin and bustools give generic output, change to
+if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
+    SEQUENCEFILES_REGEX = regex(
+        r"%s/%s.(fastq.gz|fastq.1.gz|fastq.2.gz)" % (
+            DATADIR, PARAMS["merge_pattern_input"].strip()))
+
+    SEQUENCEFILES_KALLISTO_OUTPUT = [
+        r"kallisto.dir/%s/transcripts.tsv.gz" % (
+            PARAMS["merge_pattern_output"].strip()),
+        r"kallisto.dir/%s/genes.tsv.gz" % (
+            PARAMS["merge_pattern_output"].strip())]
+
+    SEQUENCEFILES_SALMON_OUTPUT = [
+        r"salmon.dir/%s/transcripts.tsv.gz" % (
+            PARAMS["merge_pattern_output"].strip()),
+        r"salmon.dir/%s/genes.tsv.gz" % (
+            PARAMS["merge_pattern_output"].strip())]
+
+else:
+    SEQUENCEFILES_REGEX = regex(
+        "(\S+).(fastq.gz|fastq.1.gz|fastq.2.gz)")
+
+    # Need to run bustools to find exact output files
+    SEQUENCEFILES_KALLISTO_OUTPUT = [
+        r"kallisto.dir/\1/output.bus",
+        r"kallisto.dir/\1/matrix.mtx"]
+
+    SEQUENCEFILES_SALMON_OUTPUT = [
+        r"salmon.dir/\1/quants_mat.gz",
+        r"salmon.dir/\1/quants_mat_cols.txt",
+        r"salmon.dir/\1/quants_mat_rows.txt",
+        r"salmon.dir/\1/quants_tier_mat.gz",
+        r"salmon.dir/\1/quants_tier_mat.gz"]
 
 # Alevin
 # Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
@@ -250,7 +234,7 @@ def runSalmonAlevin(infiles, outfile):
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 CB_UMI_sequences?? -2  %(sequence_files)s
     --%(salmon_sctechnology)s -i %(salmon_index)s -p %(salmon_threads)s -o salmon.dir
-    --tgMap %(t2gmap)s
+    --tgMap %(t2gmap)s --dumpCsvCounts
     '''
 
 # BUStools approach
@@ -302,6 +286,68 @@ def busText(infile, outfile):
 # Count
 
 # Quality control
+
+############################################
+# Quality control of the fastq files
+############################################
+
+@follows(mkdir("fastqc_pre.dir"))
+@transform(SEQUENCEFILES,
+           suffix(".fastq.gz"),
+           r"fastqc_pre.dir/\1.fastq")
+def fastqc_pre(infile, outfile):
+    """
+    Runs fastQC on each input file
+    """
+
+    statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
+
+    P.run(statement)
+
+@follows(fastqc_pre)
+@follows(mkdir("processed.dir"))
+@transform(SEQUENCEFILES,
+           suffix(".fastq.gz"),
+           r"processed.dir/\1_processed.fastq.gz")
+def process_reads(infile, outfile):
+    """
+    Runs trimmomatic quality related trimming
+    """
+
+    if PARAMS["trimmomatic_run"]:
+
+        trimmomatic_options = PARAMS["trimmomatic_options"]
+
+        trimmomatic_options = "ILLUMINACLIP:%s:%s:%s:%s" % (
+            PARAMS["trimmomatic_adapter"],
+            PARAMS["trimmomatic_mismatches"],
+            PARAMS["trimmomatic_p_thresh"],
+            PARAMS["trimmomatic_c_thresh"]) + "\t" + trimmomatic_options
+
+        phred = PARAMS["trimmomatic_phred"]
+
+        ModuleTrna.process_trimmomatic(infile, outfile, phred,
+                                   trimmomatic_options)
+    else:
+
+        statement = "cp %(infile)s %(outfile)s"
+
+        P.run(statement)
+
+@follows(mkdir("fastqc_post.dir"))
+@transform(process_reads,
+           regex("processed.dir/(\S+)_processed.fastq.gz"),
+           r"fastqc_post.dir/\1.fastq")
+def fastqc_post(infile, outfile):
+    """
+    Runs fastQC on each of the processed files
+    """
+
+    statement = """fastqc -q -o fastqc_post.dir/ %(infile)s
+                """
+
+    P.run(statement)
+
 # Scater (levin swing???)
 
 ## Multi QC

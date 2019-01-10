@@ -20,6 +20,9 @@ projectname: proj025
 # Copyright statement
 copyright: Cribbs Group, Botnar Research Centre (2019)
 
+# Location of the data. 0 for current working directory, 1 for data.dir, other= defined path
+data: 0
+
 # Pseduoaligner
 # allowble quantifiers:
 # alevin
@@ -32,6 +35,33 @@ quantifiers: [kallisto, bustools]
 # Geneset should be located in working directory
 geneset: refgeneset.gtf.gz
 
+    ################################################################
+    ## merge options
+    ################################################################
+merge:
+  # input pattern
+  # For example, if your files are called:
+  #    CLLP80-S1-1-L001.fastq.1.gz
+  #    CLLP80-S1-1-L001.fastq.2.gz
+  #    CLLP80-S1-1-L002.fastq.1.gz
+  #    CLLP80-S1-1-L002.fastq.2.gz
+  # and you want to create the following files:
+  #    CLLP80-S1-1.quant
+  # choose the following input and output patterns:
+  #
+  # pattern_input=(.*)-(S\d)-(\d)-(L\d+)
+  # pattern_output=\1-\2-\3
+  # or
+  #    hgmm_1k_L001.fastq.1.gz
+  #    hgmm_1k_L001.fastq.2.gz
+  #    hgmm_1k_L002.fastq.1.gz
+  #    hgmm_1k_L002.fastq.2.gz
+  # pattern_input=(.*)_(\d\S)_(L\d+)
+  # pattern_ouput=\1_\2
+  # Note that the .quant etc will be added by the pipeline. The
+  # pattern must not include this.
+  pattern_input=(.*)_(\d\S)_(L\d+)
+  pattern_ouput=\1_\2
 
 ####################
 # kallisto options
@@ -72,7 +102,7 @@ salmon:
 
   # Whether to run alevin
   alevin: 1
-  
+
   # Single cell technology/protocol to be specified
   # Allowable sc technology:
   # dropseq
