@@ -56,7 +56,9 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
-
+SEQUENCESUFFIXES = ("*.fastq.*.gz",
+		    "*.fastq.gz",
+		    "*.sra")
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
