@@ -8,8 +8,8 @@ Overview
 ========
 
 This pipeline was developed to perform mapping of sequencing data obtained from single cell techniques
-including DropSeq, 10X and (...). Pseudoalignment is performed on the RNA reads, using kallisto or Alevin
-and the resulting data is quantitatvely and qualitatively analysed.
+including DropSeq, 10X, celseq and gemcode. Pseudoalignment is performed on the RNA reads,
+using kallisto or Alevin and the resulting data is quantitatvely and qualitatively analysed.
 
 
 
@@ -230,6 +230,7 @@ def buildKallistoIndex(infile, outfile):
 
 # Alevin
 # Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
+@active_if(salmon_alevin)
 @follows(mkdir("salmon.dir"))
 @collate(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
@@ -251,6 +252,7 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
 # BUStools approach
+@active_if(kallisto_bustools)
 @follows(mkdir("kallisto.dir"))
 @collate(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
@@ -278,7 +280,7 @@ def runKallistoBus(infiles, outfile):
 ######################
 
 # Must have bustools installed, see https://github.com/BUStools/bustools
-
+@active_if(kallisto_bustools)
 @transform(runKallistoBus,
            suffix(".bus"),
            r"kallisto.dir/\1_sorted.txt")

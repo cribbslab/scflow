@@ -47,7 +47,7 @@ kallisto:
   threads: 1
 
   # Whether to generate a BUStools file
-  bustools: 1
+  bustools: 0
   # Must specify single cell technology to generate bustools file
   # Allowable sc technology:
   # 10Xv1
@@ -70,8 +70,15 @@ salmon:
   # ISR recommended for DropSeq and 10xV2 technology
   librarytype: ISR
 
+  # Whether to run alevin
+  alevin: 1
+  
   # Single cell technology/protocol to be specified
   # Allowable sc technology:
   # dropseq
   # chromium
+  # chromiumV3
+  # gemcode
+  # celseq
+  # celseq2
   sctechnology: dropseq
