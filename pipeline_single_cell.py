@@ -15,10 +15,10 @@ using kallisto or Alevin and the resulting data is quantitatvely and qualitative
 
 Requires:
  * a fastq file (single/paired end??)
- * an indexed genome
- *
+ * a GTF geneset
 
-Kallisto is faster than Alevin, however Kallisto and BUStools is not yet supported for 10X V3 data.
+
+Kallisto is faster than Alevin, however Kallisto/BUStools is not yet supported for 10X V3 data.
 
 Pipeline output
 ===============
@@ -146,7 +146,6 @@ def buildSalmonIndex(infile, outfile):
     statement = '''
     rm -rf %(outfile)s;
     salmon index -k %(salmon_kmer)i %(salmon_index_options)s -t %(infile)s -i %(outfile)s
-    -k %(salmon_kmer)s
     '''
 
     P.run(statement)
@@ -177,48 +176,55 @@ def buildKallistoIndex(infile, outfile):
 
     P.run(statement)
 
+
+@originate("transcript2geneMap.tsv")
+def getTranscript2GeneMap(outfile):
+    ''' Extract a 1:1 map of transcript_id to gene_id from the geneset '''
+
+    iterator = GTF.iterator(iotools.open_file(PARAMS['geneset']))
+    transcript2gene_dict = {}
+
+    for entry in iterator:
+
+        # Check the same transcript_id is not mapped to multiple gene_ids!
+        if entry.transcript_id in transcript2gene_dict:
+            if not entry.gene_id == transcript2gene_dict[entry.transcript_id]:
+                raise ValueError('''multipe gene_ids associated with
+                the same transcript_id %s %s''' % (
+                    entry.gene_id,
+                    transcript2gene_dict[entry.transcript_id]))
+        else:
+            transcript2gene_dict[entry.transcript_id] = entry.gene_id
+
+    with iotools.open_file(outfile, "w") as outf:
+        outf.write("transcript_id\tgene_id\n")
+        for key, value in sorted(transcript2gene_dict.items()):
+            outf.write("%s\t%s\n" % (key, value))
+
 # Input fastqc
 
 # Pseudoalignment
-# Does this apply??? Alevin and bustools give generic output, change to
-if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
-    SEQUENCEFILES_REGEX = regex(
-        r"%s/%s.(fastq.gz|fastq.1.gz|fastq.2.gz)" % (
-            DATADIR, PARAMS["merge_pattern_input"].strip()))
 
-    SEQUENCEFILES_KALLISTO_OUTPUT = [
-        r"kallisto.dir/%s/transcripts.tsv.gz" % (
-            PARAMS["merge_pattern_output"].strip()),
-        r"kallisto.dir/%s/genes.tsv.gz" % (
-            PARAMS["merge_pattern_output"].strip())]
+SEQUENCEFILES_REGEX = regex(
+    "(\S+).(fastq.gz|fastq.1.gz|fastq.2.gz)")
 
-    SEQUENCEFILES_SALMON_OUTPUT = [
-        r"salmon.dir/%s/transcripts.tsv.gz" % (
-            PARAMS["merge_pattern_output"].strip()),
-        r"salmon.dir/%s/genes.tsv.gz" % (
-            PARAMS["merge_pattern_output"].strip())]
+# Need to run bustools to find exact output files
+SEQUENCEFILES_KALLISTO_OUTPUT = [
+    r"kallisto.dir/\1/output.bus",
+    r"kallisto.dir/\1/matrix.mtx"]
 
-else:
-    SEQUENCEFILES_REGEX = regex(
-        "(\S+).(fastq.gz|fastq.1.gz|fastq.2.gz)")
-
-    # Need to run bustools to find exact output files
-    SEQUENCEFILES_KALLISTO_OUTPUT = [
-        r"kallisto.dir/\1/output.bus",
-        r"kallisto.dir/\1/matrix.mtx"]
-
-    SEQUENCEFILES_SALMON_OUTPUT = [
-        r"salmon.dir/\1/quants_mat.gz",
-        r"salmon.dir/\1/quants_mat_cols.txt",
-        r"salmon.dir/\1/quants_mat_rows.txt",
-        r"salmon.dir/\1/quants_tier_mat.gz",
-        r"salmon.dir/\1/quants_tier_mat.gz"]
+SEQUENCEFILES_SALMON_OUTPUT = [
+    r"salmon.dir/\1/quants_mat.gz",
+    r"salmon.dir/\1/quants_mat_cols.txt",
+    r"salmon.dir/\1/quants_mat_rows.txt",
+    r"salmon.dir/\1/quants_tier_mat.gz",
+    r"salmon.dir/\1/quants_mat.csv",]
 
 # Alevin
 # Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
 @active_if(salmon_alevin)
 @follows(mkdir("salmon.dir"))
-@collate(SEQUENCEFILES,
+@transform(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
          add_inputs(buildSalmonIndex, getTranscript2GeneMap),
          SEQUENCEFILES_SALMON_OUTPUT)
@@ -226,16 +232,18 @@ def runSalmonAlevin(infiles, outfile):
     '''
     Alevin is integrated with salmon to quantify and analyse 3' tagged-end
     single-cell sequencing data. Alevin supports 10Xv1, 10Xv2 and Drop-Seq
-    sc technology
+    sc technology.
     '''
 
-    # Probably need to separate sequencing files
     sequence_files, salmon_index, t2gmap = infiles
+
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 CB_UMI_sequences?? -2  %(sequence_files)s
     --%(salmon_sctechnology)s -i %(salmon_index)s -p %(salmon_threads)s -o salmon.dir
     --tgMap %(t2gmap)s --dumpCsvCounts
     '''
+
+    P.run(statement)
 
 # BUStools approach
 @active_if(kallisto_bustools)
@@ -282,7 +290,6 @@ def busText(infile, outfile):
     bustools text -o %(outfile)s tmp_bus
     '''
 
-
 # Count
 
 # Quality control
@@ -291,6 +298,8 @@ def busText(infile, outfile):
 # Quality control of the fastq files
 ############################################
 
+# Is this needed????
+'''
 @follows(mkdir("fastqc_pre.dir"))
 @transform(SEQUENCEFILES,
            suffix(".fastq.gz"),
@@ -347,7 +356,7 @@ def fastqc_post(infile, outfile):
                 """
 
     P.run(statement)
-
+'''
 # Scater (levin swing???)
 
 ## Multi QC
@@ -359,3 +368,18 @@ def fastqc_post(infile, outfile):
 # Cell cycle (cyclone), blocking
 
 # Create R data object
+
+
+@follows(buildReferenceTranscriptome, buildSalmonIndex, buildKallistoIndex,
+         getTranscript2GeneMap, runSalmonAlevin, runKallistoBus)
+def full():
+    pass
+
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+    P.main(argv)
+
+
+if __name__ == "__main__":
+    sys.exit(P.main(sys.argv))
