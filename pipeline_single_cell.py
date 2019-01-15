@@ -222,7 +222,7 @@ SEQUENCEFILES_SALMON_OUTPUT = [
 
 # Alevin
 # Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
-@active_if(salmon_alevin)
+@active_if(PARAMS['salmon_alevin'])
 @follows(mkdir("salmon.dir"))
 @transform(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
@@ -236,17 +236,19 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
     sequence_files, salmon_index, t2gmap = infiles
+    name = os.path.basename(sequence_files)
+    outfolder = name.replace(".gz", "")
 
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 CB_UMI_sequences?? -2  %(sequence_files)s
-    --%(salmon_sctechnology)s -i %(salmon_index)s -p %(salmon_threads)s -o salmon.dir
+    --%(salmon_sctechnology)s -i %(salmon_index)s -p %(salmon_threads)s -o salmon.dir/%(outfolder)s
     --tgMap %(t2gmap)s --dumpCsvCounts
     '''
 
     P.run(statement)
 
 # BUStools approach
-@active_if(kallisto_bustools)
+@active_if(PARAMS['kallisto_bustools'])
 @follows(mkdir("kallisto.dir"))
 @collate(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
@@ -274,7 +276,7 @@ def runKallistoBus(infiles, outfile):
 ######################
 
 # Must have bustools installed, see https://github.com/BUStools/bustools
-@active_if(kallisto_bustools)
+@active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
            suffix(".bus"),
            r"kallisto.dir/\1_sorted.txt")
