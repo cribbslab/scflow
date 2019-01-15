@@ -15,7 +15,7 @@ genome_dir: /ifs/mirror/genomes/index/
 sc_dir: '/Users/annajames-bott/Documents/Dphil/Repositories/single-cell'
 
 # Project name
-projectname: proj025
+projectname: ''
 
 # Copyright statement
 copyright: Cribbs Group, Botnar Research Centre (2019)
@@ -75,6 +75,11 @@ salmon:
   # ISR recommended for DropSeq and 10xV2 technology
   librarytype: ISR
 
+  # Optional options
+  # see https://salmon.readthedocs.io/en/latest/salmon.html#description-of-important-options
+  # for a list of more salmon options
+  index_options: ''
+
   # Whether to run alevin
   alevin: 1
 
@@ -87,3 +92,7 @@ salmon:
   # celseq
   # celseq2
   sctechnology: dropseq
+
+  # Optional options for alevin
+  # https://salmon.readthedocs.io/en/latest/alevin.html#description-of-important-options
+  alevin_options: ''
