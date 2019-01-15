@@ -18,7 +18,8 @@ Requires:
  * a GTF geneset
 
 For chromium v2/ v3 CB and UMI barcodes are included in R1 files and R2 contains the raw sequencing reads.
-Reads of this form are expected in the format of <samplename>.fastq.1.qz and <samplename>.fastq.2.gz.
+The default file format assumes the following convention:
+<samplename>.fastq.gz (fastq.1.gz (and fastq.2.gz for second read of paired data) are also accepted for raw reads)
 
 Pipeline output
 ===============
@@ -74,9 +75,6 @@ SEQUENCESUFFIXES = ("*.fastq.gz",
 		    "*.fastq.2.gz")
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
-
-SEQUENCEFILES_REGEX = regex(
-        "(\S+).(fastq.[1-2].gz|fastq.gz)")
 
 ############################################
 # Build indexes
@@ -205,8 +203,9 @@ def getTranscript2GeneMap(outfile):
 
 # Pseudoalignment
 
+# Regex pick up single end reads and 1st read of pair end reads
 SEQUENCEFILES_REGEX = regex(
-    "(\S+).(fastq.gz|fastq.1.gz|fastq.2.gz)")
+    "(\S+).(fastq.gz|fastq.1.gz)")
 
 # Need to run bustools to find exact output files
 SEQUENCEFILES_KALLISTO_OUTPUT = [
@@ -231,15 +230,20 @@ def runSalmonAlevin(infiles, outfile):
     sc technology.
     '''
 
-    sequence_files, salmon_index, t2gmap = infiles
+    fastqfile, index, t2gmap = infiles
+    fastqfiles = check_paired_end(fastqfile)
+    if ifinstance(fastqfiles, list):
+        CB_UMI_fastq = fastqfiles[0]
+        reads_fastq = fastqfiles[1]
 
-    name = os.path.basename(sequence_files)
-    repl = ('.fastq.gz', ''), ('.fastq.1.gz', ''), ('.fastq.2.gz', '')
-    outfolder = reduce(lambda x, kv: x.replace(*kv), repl, os.path.basename(name))
+    name = os.path.basename(fastqfile)
+    repl = ('.fastq.gz', ''), ('.fastq.1.gz', '')
+    subfolder = reduce(lambda x, kv: x.replace(*kv), repl, os.path.basename(name))
+    outfolder = "salmon.dir/" + subfolder
 
     statement = '''
-    salmon alevin -l %(salmon_librarytype)s -1 CB_UMI_sequences?? -2  %(sequence_files)s
-    --%(salmon_sctechnology)s -i %(salmon_index)s -p %(salmon_threads)s -o salmon.dir/%(outfolder)s
+    salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
+    --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
     --tgMap %(t2gmap)s --dumpCsvCounts
     '''
 
