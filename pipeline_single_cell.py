@@ -231,7 +231,7 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
     fastqfile, index, t2gmap = infiles
-    fastqfiles = check_paired_end(fastqfile)
+    fastqfiles = ModuleSC.check_paired_end(fastqfile)
     if ifinstance(fastqfiles, list):
         CB_UMI_fastq = fastqfiles[0]
         reads_fastq = fastqfiles[1]
