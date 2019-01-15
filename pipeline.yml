@@ -87,8 +87,10 @@ salmon:
   # Allowable sc technology:
   # dropseq
   # chromium
+    # for 10x chromium v2 sc protocol
   # chromiumV3
   # gemcode
+    # for 10x gemocode v1 sc protocol
   # celseq
   # celseq2
   sctechnology: dropseq

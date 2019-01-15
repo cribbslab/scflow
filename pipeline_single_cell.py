@@ -17,13 +17,13 @@ Requires:
  * a fastq file (single/paired end??)
  * a GTF geneset
 
-
-Kallisto is faster than Alevin, however Kallisto/BUStools is not yet supported for 10X V3 data.
+For chromium v2/ v3 CB and UMI barcodes are included in R1 files and R2 contains the raw sequencing reads.
+Reads of this form are expected in the format of <samplename>.fastq.1.qz and <samplename>.fastq.2.gz.
 
 Pipeline output
 ===============
 
-The output of running this software is the generation of a html report.
+The output of running this software is the generation of a html report, count matrices of gene expression.
 
 Code
 ====
@@ -214,11 +214,7 @@ SEQUENCEFILES_KALLISTO_OUTPUT = [
     r"kallisto.dir/\1/matrix.mtx"]
 
 SEQUENCEFILES_SALMON_OUTPUT = [
-    r"salmon.dir/\1/quants_mat.gz",
-    r"salmon.dir/\1/quants_mat_cols.txt",
-    r"salmon.dir/\1/quants_mat_rows.txt",
-    r"salmon.dir/\1/quants_tier_mat.gz",
-    r"salmon.dir/\1/quants_mat.csv",]
+    r"salmon.dir/\1/*"]
 
 # Alevin
 # Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
@@ -236,8 +232,10 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
     sequence_files, salmon_index, t2gmap = infiles
+
     name = os.path.basename(sequence_files)
-    outfolder = name.replace(".gz", "")
+    repl = ('.fastq.gz', ''), ('.fastq.1.gz', ''), ('.fastq.2.gz', '')
+    outfolder = reduce(lambda x, kv: x.replace(*kv), repl, os.path.basename(name))
 
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 CB_UMI_sequences?? -2  %(sequence_files)s
