@@ -246,6 +246,8 @@ def runSalmonAlevin(infiles, outfile):
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
     --tgMap %(t2gmap)s --dumpCsvCounts
     '''
+    
+    job_memory = "12G"
 
     P.run(statement)
 
