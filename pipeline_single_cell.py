@@ -36,6 +36,7 @@ import sys
 import os
 import sqlite3
 import pandas as pd
+from functools import reduce
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
 import ModuleSC
@@ -212,8 +213,8 @@ SEQUENCEFILES_KALLISTO_OUTPUT = [
     r"kallisto.dir/\1/output.bus",
     r"kallisto.dir/\1/matrix.mtx"]
 
-SEQUENCEFILES_SALMON_OUTPUT = [
-    r"salmon.dir/\1/*"]
+#SEQUENCEFILES_SALMON_OUTPUT = [
+#    r"salmon.dir/\1/*]
 
 # Alevin
 # Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
@@ -222,7 +223,7 @@ SEQUENCEFILES_SALMON_OUTPUT = [
 @transform(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
          add_inputs(buildSalmonIndex, getTranscript2GeneMap),
-         SEQUENCEFILES_SALMON_OUTPUT)
+         r"salmon.dir/\1/quants_mat.csv")
 def runSalmonAlevin(infiles, outfile):
     '''
     Alevin is integrated with salmon to quantify and analyse 3' tagged-end
@@ -232,7 +233,7 @@ def runSalmonAlevin(infiles, outfile):
 
     fastqfile, index, t2gmap = infiles
     fastqfiles = ModuleSC.check_paired_end(fastqfile)
-    if ifinstance(fastqfiles, list):
+    if isinstance(fastqfiles, list):
         CB_UMI_fastq = fastqfiles[0]
         reads_fastq = fastqfiles[1]
 
