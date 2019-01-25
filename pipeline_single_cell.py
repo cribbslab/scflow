@@ -248,7 +248,7 @@ def runSalmonAlevin(infiles, outfile):
     --tgMap %(t2gmap)s --dumpCsvCounts
     '''
     
-    job_memory = "12G"
+    job_memory = "30G"
 
     P.run(statement)
 
