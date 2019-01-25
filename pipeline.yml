@@ -129,5 +129,6 @@ salmon:
   sctechnology: dropseq
 
   # Optional options for alevin
+  # String format, precede with --
   # https://salmon.readthedocs.io/en/latest/alevin.html#description-of-important-options
   alevin_options: ''
