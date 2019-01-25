@@ -36,6 +36,39 @@ quantifiers: [kallisto, bustools]
 # Geneset should be located in working directory
 geneset: refgeneset.gtf.gz
 
+################################################################
+## merge options
+################################################################
+merge:
+  # input pattern
+  # For example, if your files are called:
+  #    CLLP80-S1-1-L001.fastq.1.gz
+  #    CLLP80-S1-1-L001.fastq.2.gz
+  #    CLLP80-S1-1-L002.fastq.1.gz
+  #    CLLP80-S1-1-L002.fastq.2.gz
+  # and you want to create files/ folder starting with:
+  #    CLLP80-S1-1
+  #
+  # choose the following input and output patterns:
+  #
+  # pattern_input=(.*)-(S\d)-(\d)-(L\d+)
+  # pattern_output=\1-\2-\3
+  # Note that the file extension will be added by the pipeline. The
+  # pattern must not include this.
+
+  # hgmm_100_S1_L001_001.fastq.1.gz
+  # hgmm_100_S1_L001_001.fastq.2.gz
+  # hgmm_100_S1_L002_001.fastq.1.gz
+  # hgmm_100_S1_L002_001.fastq.2.gz
+
+  # pattern_input: (\S+)_(\d+)_(S\d)_(L\d+)_(\d+)
+  # pattern_output: \1_\2_\3_\5
+  # to create:
+  # hgmm_100_S1_001
+
+  pattern_input: (\S+)_(\d+)_(S\d)_(L\d+)_(\d+)
+  pattern_output: \1_\2_\3_\5
+
 ####################
 # kallisto options
 ####################

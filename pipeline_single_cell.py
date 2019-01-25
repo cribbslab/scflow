@@ -208,13 +208,17 @@ def getTranscript2GeneMap(outfile):
 SEQUENCEFILES_REGEX = regex(
     "(\S+).(fastq.gz|fastq.1.gz)")
 
-# Need to run bustools to find exact output files
-SEQUENCEFILES_KALLISTO_OUTPUT = [
-    r"kallisto.dir/\1/output.bus",
-    r"kallisto.dir/\1/matrix.mtx"]
+if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
+    SEQUENCEFILES_REGEX = regex(
+        r"%s/%s.(fastq.gz|fastq.1.gz)" % (
+            DATADIR, PARAMS["merge_pattern_input"].strip()))
 
-#SEQUENCEFILES_SALMON_OUTPUT = [
-#    r"salmon.dir/\1/*]
+# File to track to see when function is complete
+SEQUENCEFILES_KALLISTO_OUTPUT = [
+    r"kallisto.dir/\1/output.bus"]
+
+SEQUENCEFILES_SALMON_OUTPUT = [
+r"salmon.dir/\1/quants_mat.gz"]
 
 # Alevin
 # Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
@@ -223,7 +227,7 @@ SEQUENCEFILES_KALLISTO_OUTPUT = [
 @transform(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
          add_inputs(buildSalmonIndex, getTranscript2GeneMap),
-         r"salmon.dir/\1/quants_mat.csv")
+         SEQUENCEFILES_SALMON_OUTPUT)
 def runSalmonAlevin(infiles, outfile):
     '''
     Alevin is integrated with salmon to quantify and analyse 3' tagged-end
@@ -247,8 +251,8 @@ def runSalmonAlevin(infiles, outfile):
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
     --tgMap %(t2gmap)s --dumpCsvCounts
     '''
-    
-    job_memory = "30G"
+
+    job_memory = "12G"
 
     P.run(statement)
 
