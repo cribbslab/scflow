@@ -72,8 +72,7 @@ else:
         DATADIR = PARAMS['data']
 
 SEQUENCESUFFIXES = ("*.fastq.gz",
-		    "*.fastq.1.gz",
-		    "*.fastq.2.gz")
+		    "*.fastq.1.gz")
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
@@ -204,27 +203,45 @@ def getTranscript2GeneMap(outfile):
 
 # Pseudoalignment
 
-# Regex pick up single end reads and 1st read of pair end reads
-SEQUENCEFILES_REGEX = regex(
-    "(\S+).(fastq.gz|fastq.1.gz)")
 
 if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
     SEQUENCEFILES_REGEX = regex(
         r"%s/%s.(fastq.gz|fastq.1.gz)" % (
             DATADIR, PARAMS["merge_pattern_input"].strip()))
 
-# File to track to see when function is complete
-SEQUENCEFILES_KALLISTO_OUTPUT = [
-    r"kallisto.dir/\1/output.bus"]
+    SEQUENCEFILES_KALLISTO_OUTPUT = [
+        r"kallisto.dir/%s/output.bus" % (
+            PARAMS["merge_pattern_output"].strip())]
 
-SEQUENCEFILES_SALMON_OUTPUT = [
-r"salmon.dir/\1/quants_mat.gz"]
+    #SEQUENCEFILES_SALMON_OUTPUT = [
+     #   r"salmon.dir/%s/quants_mat_cols.txt" % (
+      #      PARAMS["merge_pattern_output"].strip()),
+       # r"salmon.dir/%s/quants_mat.gz" % (
+        #    PARAMS["merge_pattern_output"].strip()),
+        #r"salmon.dir/%s/quants_mat_rows.txt" % (
+         #   PARAMS["merge_pattern_output"].strip()),
+        #r"salmon.dir/%s/quants_mat_tier.gz" % (
+         #   PARAMS["merge_pattern_output"].strip())]
+
+    SEQUENCEFILES_SALMON_OUTPUT = (
+        r"salmon.dir/%s/quants_mat.gz" % (
+            PARAMS["merge_pattern_output"].strip()))
+
+else:
+    SEQUENCEFILES_REGEX = regex(
+        "(\S+).(fastq.gz|fastq.1.gz)")
+
+    SEQUENCEFILES_KALLISTO_OUTPUT = [
+        r"kallisto.dir/\1/output.bus"]
+
+    SEQUENCEFILES_SALMON_OUTPUT = (
+        r"salmon.dir/\1/quants_mat.gz")
 
 # Alevin
-# Count matrix, multiple samples? run seperately??? Gene by cell, so sample separate matrix?
+
 @active_if(PARAMS['salmon_alevin'])
 @follows(mkdir("salmon.dir"))
-@transform(SEQUENCEFILES,
+@collate(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
          add_inputs(buildSalmonIndex, getTranscript2GeneMap),
          SEQUENCEFILES_SALMON_OUTPUT)
@@ -235,21 +252,26 @@ def runSalmonAlevin(infiles, outfile):
     sc technology.
     '''
 
+    infiles = ModuleSC.check_multiple_read_files(infiles)
     fastqfile, index, t2gmap = infiles
     fastqfiles = ModuleSC.check_paired_end(fastqfile)
     if isinstance(fastqfiles, list):
-        CB_UMI_fastq = fastqfiles[0]
-        reads_fastq = fastqfiles[1]
+        CB_UMI_fastq = " ".join(fastqfiles[0])
+        reads_fastq = " ".join(fastqfiles[1]) 
 
-    name = os.path.basename(fastqfile)
-    repl = ('.fastq.gz', ''), ('.fastq.1.gz', '')
-    subfolder = reduce(lambda x, kv: x.replace(*kv), repl, os.path.basename(name))
+    #name = os.path.basename(fastqfiles[0][0])
+    #repl = ('.fastq.gz', ''), ('.fastq.1.gz', '')
+    #subfolder = reduce(lambda x, kv: x.replace(*kv), repl, os.path.basename(name))
+
+    path = outfile.split('/')
+    subfolder = path[-2]
     outfolder = "salmon.dir/" + subfolder
+    
 
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
-    --tgMap %(t2gmap)s --dumpCsvCounts %(alevin_options)s
+    --tgMap %(t2gmap)s --dumpCsvCounts
     '''
 
     job_memory = "12G"
