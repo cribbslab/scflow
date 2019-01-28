@@ -76,9 +76,11 @@ SEQUENCESUFFIXES = ("*.fastq.gz",
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
+
 ############################################
 # Build indexes
 ############################################
+
 
 @mkdir('geneset.dir')
 @transform(PARAMS['geneset'],
@@ -236,6 +238,30 @@ else:
 
     SEQUENCEFILES_SALMON_OUTPUT = (
         r"salmon.dir/\1/quants_mat.gz")
+
+############################################
+# Perform read quality steps
+############################################
+
+
+@follows(mkdir("fastqc_pre.dir"))
+@transform(SEQUENCEFILES,
+           formatter(r"(?P<track>[^/]+).(?P<suffix>fastq.1.gz|fastq.gz)"),
+           r"fastqc_pre.dir/{track[0]}.fastqc")
+def run_fastqc(infile, outfile):
+    '''
+    Fastqc is ran to determine the quality of the reads from the sequencer
+    '''
+    # paired end mode
+    if "fastq.1.gz" in infile:
+        second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
+        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s %(second_read)s"
+
+    else:
+        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
+
+    P.run(statement)
+
 
 # Alevin
 
