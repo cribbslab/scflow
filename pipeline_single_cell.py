@@ -211,19 +211,9 @@ if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
         r"%s/%s.(fastq.gz|fastq.1.gz)" % (
             DATADIR, PARAMS["merge_pattern_input"].strip()))
 
-    SEQUENCEFILES_KALLISTO_OUTPUT = [
+    SEQUENCEFILES_KALLISTO_OUTPUT = (
         r"kallisto.dir/%s/output.bus" % (
-            PARAMS["merge_pattern_output"].strip())]
-
-    #SEQUENCEFILES_SALMON_OUTPUT = [
-     #   r"salmon.dir/%s/quants_mat_cols.txt" % (
-      #      PARAMS["merge_pattern_output"].strip()),
-       # r"salmon.dir/%s/quants_mat.gz" % (
-        #    PARAMS["merge_pattern_output"].strip()),
-        #r"salmon.dir/%s/quants_mat_rows.txt" % (
-         #   PARAMS["merge_pattern_output"].strip()),
-        #r"salmon.dir/%s/quants_mat_tier.gz" % (
-         #   PARAMS["merge_pattern_output"].strip())]
+            PARAMS["merge_pattern_output"].strip()))
 
     SEQUENCEFILES_SALMON_OUTPUT = (
         r"salmon.dir/%s/quants_mat.gz" % (
@@ -233,8 +223,8 @@ else:
     SEQUENCEFILES_REGEX = regex(
         "(\S+).(fastq.gz|fastq.1.gz)")
 
-    SEQUENCEFILES_KALLISTO_OUTPUT = [
-        r"kallisto.dir/\1/output.bus"]
+    SEQUENCEFILES_KALLISTO_OUTPUT = (
+        r"kallisto.dir/\1/output.bus")
 
     SEQUENCEFILES_SALMON_OUTPUT = (
         r"salmon.dir/\1/quants_mat.gz")
@@ -300,7 +290,7 @@ def runSalmonAlevin(infiles, outfile):
     --tgMap %(t2gmap)s --dumpCsvCounts
     '''
 
-    job_memory = "12G"
+    job_memory = "30G"
 
     P.run(statement)
 
