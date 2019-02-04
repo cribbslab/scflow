@@ -216,7 +216,7 @@ if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
             PARAMS["merge_pattern_output"].strip()))
 
     SEQUENCEFILES_SALMON_OUTPUT = (
-        r"salmon.dir/%s/quants_mat.gz" % (
+        r"salmon.dir/%s/alevin/quants_mat.gz" % (
             PARAMS["merge_pattern_output"].strip()))
 
 else:
@@ -227,7 +227,7 @@ else:
         r"kallisto.dir/\1/output.bus")
 
     SEQUENCEFILES_SALMON_OUTPUT = (
-        r"salmon.dir/\1/quants_mat.gz")
+        r"salmon.dir/\1/alevin/quants_mat.gz")
 
 ############################################
 # Perform read quality steps
@@ -252,8 +252,9 @@ def run_fastqc(infile, outfile):
 
     P.run(statement)
 
-
+##################
 # Alevin
+##################
 
 @active_if(PARAMS['salmon_alevin'])
 @follows(mkdir("salmon.dir"))
@@ -280,7 +281,7 @@ def runSalmonAlevin(infiles, outfile):
     #subfolder = reduce(lambda x, kv: x.replace(*kv), repl, os.path.basename(name))
 
     path = outfile.split('/')
-    subfolder = path[-2]
+    subfolder = path[-3]
     outfolder = "salmon.dir/" + subfolder
     
 
@@ -319,7 +320,7 @@ def runKallistoBus(infiles, outfile):
     P.run(statement)
 
 ######################
-# Process bus file
+# Process bus file
 ######################
 
 # Must have bustools installed, see https://github.com/BUStools/bustools
@@ -339,7 +340,35 @@ def busText(infile, outfile):
     bustools text -o %(outfile)s tmp_bus
     '''
 
-# Count
+    P.run(statement)
+
+#########################
+# SCE object  
+#########################
+
+@follows(mkdir("R.dir"))
+@active_if(PARAMS['salmon_alevin'])
+@transform(runSalmonAlevin,
+           regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
+           r"R.dir/\1.rds")
+def readAlevinSCE(infile,outfile):
+    '''
+    Collates alevin count matrices for each sample
+    Creates a single cell experiment class in R and saves as and r object
+    '''
+
+    working_dir = os.getcwd()
+    sc_directory = PARAMS['sc_dir']
+    script_loc = sc_directory + "/sce.r"
+    
+    job_memory = "10G"
+
+    statement = '''
+    Rscript %(script_loc)s -w %(working_dir)s -i %(infile)s -o %(outfile)s
+    '''
+    
+    P.run(statement)
+
 
 # Quality control
 
