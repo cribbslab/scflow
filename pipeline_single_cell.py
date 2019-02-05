@@ -252,9 +252,9 @@ def run_fastqc(infile, outfile):
 
     P.run(statement)
 
-##################
-# Alevin
-##################
+#############################
+# Salmon- Alevin
+#############################
 
 @active_if(PARAMS['salmon_alevin'])
 @follows(mkdir("salmon.dir"))
@@ -269,22 +269,16 @@ def runSalmonAlevin(infiles, outfile):
     sc technology.
     '''
 
+    aligner = 'salmon_alevin'
     infiles = ModuleSC.check_multiple_read_files(infiles)
     fastqfile, index, t2gmap = infiles
-    fastqfiles = ModuleSC.check_paired_end(fastqfile)
+    fastqfiles = ModuleSC.check_paired_end(fastqfile, aligner)
     if isinstance(fastqfiles, list):
         CB_UMI_fastq = " ".join(fastqfiles[0])
         reads_fastq = " ".join(fastqfiles[1]) 
 
-    #name = os.path.basename(fastqfiles[0][0])
-    #repl = ('.fastq.gz', ''), ('.fastq.1.gz', '')
-    #subfolder = reduce(lambda x, kv: x.replace(*kv), repl, os.path.basename(name))
-
-    path = outfile.split('/')
-    subfolder = path[-3]
-    outfolder = "salmon.dir/" + subfolder
-    
-
+    outfolder = outfile.rsplit('/',2)[0]
+  
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
@@ -295,26 +289,34 @@ def runSalmonAlevin(infiles, outfile):
 
     P.run(statement)
 
-# BUStools approach
+#############################
+# Kallisto- Bus
+#############################
+
 @active_if(PARAMS['kallisto_bustools'])
 @follows(mkdir("kallisto.dir"))
 @collate(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
          add_inputs(buildKallistoIndex, getTranscript2GeneMap),
-         r"kallisto.dir/output.bus")
+         SEQUENCEFILES_KALLISTO_OUTPUT)
 def runKallistoBus(infiles, outfile):
     '''
     Generates BUS files for single-cell sequencing
 
-    infiles: raw sequencing fastq files, kallisto index, transcript2genemap
+    infiles: raw sequencing fastq files, kallisto index
 
-    # Probably need to separate sequencing files
     '''
-    sequence_files, kallisto_index, t2gmap = infiles
-    # Unsure what to call output
+    aligner = 'kallisto_bus'
+    infiles = ModuleSC.check_multiple_read_files(infiles)
+    fastqfile, index, t2gmap = infiles
+    fastqfiles = ModuleSC.check_paired_end(fastqfile, aligner)
+    fastqfiles = " ".join(fastqfiles)
+
+    outfolder = outfile.rsplit('/',1)[0]
+
     statement = '''
-    kallisto bus -i %(kallisto_index)s -o kallisto.dir -x %(kallisto_sctechnology)s
-    -t %(kallisto_threads)s %(sequence_files)
+    kallisto bus -i %(index)s -o %(outfolder)s -x %(kallisto_sctechnology)s
+    -t %(kallisto_threads)s %(fastqfiles)s
     '''
 
     P.run(statement)
@@ -323,7 +325,9 @@ def runKallistoBus(infiles, outfile):
 # Process bus file
 ######################
 
-# Must have bustools installed, see https://github.com/BUStools/bustools
+# Must have bustools installed
+# https://github.com/BUStools/bustools
+
 @active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
            suffix(".bus"),
