@@ -330,18 +330,19 @@ def runKallistoBus(infiles, outfile):
 
 @active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
-           suffix(".bus"),
-           r"kallisto.dir/\1_sorted.txt")
+           regex(r"kallisto.dir/(.*)/output.bus"),
+           r"kallisto.dir/\1/\1_sorted.txt")
 def busText(infile, outfile):
     '''
     Sort the bus file produced by kallisto and then convert it to a text file.
     '''
 
     tmp_bus  = P.get_temp_filename(".")
-
+    E.warn("====================================================")
+    E.warn(outfile)
     statement = '''
-    bustools sort -o %(tmp_bus)s %(infile)s |
-    bustools text -o %(outfile)s tmp_bus
+    bustools sort -o %(tmp_bus)s %(infile)s ;
+    bustools text -o %(outfile)s %(tmp_bus)s
     '''
 
     P.run(statement)
