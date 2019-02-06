@@ -425,7 +425,9 @@ def readAlevinSCE(infile,outfile):
 #########################
 
 @follows(mkdir("QC_report.dir"))
-@transform()
+@transform(readAlevinSCE,
+           suffix(".rds"),
+           "SCE.dir/pass.rds")
 def run_qc(infile, outfile):
     """
     Runs an Rmarkdown report that allows users to visualise and set their
@@ -444,19 +446,48 @@ def run_qc(infile, outfile):
     P.run(statement)
 
 
+#########################
+# Seurat analysis  
+#########################
+
+# create seurat object from single cell experiment
+# perform clustering on s seurat object - clustered using given number of PCA components
+# tSNE plotting on saved surat object - a range of perplexity choices
+# plot tSNE perplexity hyper parameters on tSNE layout
+# UMAP analysis
+# Diffusion map
+# find clusters (findMarkers i think the function is called)
+# differential expression of markers in clusters
 
 
+#########################
+# Velocity analysis  
+#########################
+
+# Rmarkdown maybe then users can play around with parameters?
 
 
-@follows(buildReferenceTranscriptome, buildSalmonIndex, buildKallistoIndex,
-         getTranscript2GeneMap, runSalmonAlevin, runKallistoBus, readAlevinSCE)
+#########################
+# Visulalisation of selected data  
+#########################
+
+# make violin plots from user selected genes
+# heatmap of lists of genes
+
+
+@follows(readAlevinSCE, busText)
 def quant():
     pass
 
-
+# what about adding a knee plot - how does alevin or kallisto handle the
+# expected number of cells? - check documentation
 @follows(run_qc)
 def qc():
     pass
+
+@follows()
+def seurat
+
 
 
 def main(argv=None):
