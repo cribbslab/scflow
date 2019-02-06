@@ -1,4 +1,29 @@
-#!/usr/bin/env python
+##############################################################################
+#
+#   Botnar Resaerch Centre
+#
+#   $Id$
+#
+#   Copyright (C) 2018 Adam Cribbs
+#
+#   This program is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU General Public License
+#   as published by the Free Software Foundation; either version 2
+#   of the License, or (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+###############################################################################
+
+
+# To do:
+# merger reads if over multiple lanes
 
 """===========================
 Pipeline single cell
@@ -7,14 +32,34 @@ Pipeline single cell
 Overview
 ========
 
-This pipeline was developed to perform mapping of sequencing data obtained from single cell techniques
-including DropSeq, 10X, celseq and gemcode. Pseudoalignment is performed on the RNA reads,
+
+This pipeline performs alignment free based quantification of drop-seq, 10X and smart-seq2
+single-cell seqeucning analysis. Pseudoalignment is performed on the RNA reads,
 using kallisto or Alevin and the resulting data is quantitatvely and qualitatively analysed.
 
+The pipeline performs the following analyses:
+* Alignment using kallisto or alevin (pert of salmon)
+* QC of reads using the scater package
 
 
-Requires:
- * a fastq file (single/paired end??)
+Usage
+=====
+
+Configuration
+-------------
+
+The pipeline uses CGAT-core and CGAT-apps throught the pipeline. Please see installation
+and setup and installation instructions at `cgat-core documentation <>`_
+
+
+Input files
+-----------
+
+The pipeline is ran using fastq files that follow the naming convention Read1: Name.fastq.1.gz
+and read2: Name.fastq.2.gz. 
+
+ * a fastq file (single /paired end?? - AC:require both (always paired end for drop seq methods and
+potentially single end or paired end for smartseq2)
  * a GTF geneset
 
 For chromium v2/ v3 CB and UMI barcodes are included in R1 files and R2 contains the raw sequencing reads.
@@ -36,19 +81,19 @@ import sys
 import os
 import sqlite3
 import pandas as pd
-from functools import reduce
+from functools import reduce #you dont seem to use this anywhere in the pipeline?
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
 import ModuleSC
-import cgat.IndexedFasta as IndexedFasta
+import cgat.IndexedFasta as IndexedFasta # Again, doesnt seem to be used
 
 import cgat.GTF as GTF
 import cgatcore.iotools as iotools
 
-import cgatpipelines.tasks.geneset as geneset
-import cgatpipelines.tasks.rnaseq as rnaseq
-import cgatpipelines.tasks.tracks as tracks
-from cgatpipelines.report import run_report
+import cgatpipelines.tasks.geneset as geneset # Doesnt seem to be used
+import cgatpipelines.tasks.rnaseq as rnaseq # not used
+import cgatpipelines.tasks.tracks as tracks # Not used
+from cgatpipelines.report import run_report # Again not used
 
 import cgatpipelines.tasks.expression as Expression
 
