@@ -351,3 +351,18 @@ draw(hm)
 #dev.off()
 ```
 
+
+# Remove cells that fail QC
+
+```{r pass, cache=FALSE, echo=FALSE}
+sce.pass <- sceset[,idx.pass]
+assay(sce.pass, "log2_counts") <- log2(counts(sceset[,idx.pass]) + 1)
+length(colnames(sce.pass))
+```
+
+```{r}
+saveRDS(sce.pass, file="pass.rds")
+```
+
+
+

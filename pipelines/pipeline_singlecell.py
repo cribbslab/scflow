@@ -420,10 +420,44 @@ def readAlevinSCE(infile,outfile):
     P.run(statement)
 
 
+#########################
+# QC step  
+#########################
+
+@follows(mkdir("QC_report.dir"))
+@transform()
+def run_qc(infile, outfile):
+    """
+    Runs an Rmarkdown report that allows users to visualise and set their
+    quality parameters according to the data. The aim is for the pipeline
+    to generate default thresholds then the user can open the Rmarkdown in
+    rstudio and re-run the report, modifying parameters changesto suit the
+    data
+    """
+
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+
+    #probably just need to knit one document not render_site
+    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC/Sample_QC.Rmd QC_report.dir &&
+                   cd QC_report.dir && R -e "rmarkdown::render_site(encoding = 'UTF-8')"'''
+
+    P.run(statement)
+
+
+
+
+
+
 @follows(buildReferenceTranscriptome, buildSalmonIndex, buildKallistoIndex,
-         getTranscript2GeneMap, runSalmonAlevin, runKallistoBus)
-def full():
+         getTranscript2GeneMap, runSalmonAlevin, runKallistoBus, readAlevinSCE)
+def quant():
     pass
+
+
+@follows(run_qc)
+def qc():
+    pass
+
 
 def main(argv=None):
     if argv is None:
