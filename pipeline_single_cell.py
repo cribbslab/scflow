@@ -95,7 +95,7 @@ import cgatpipelines.tasks.rnaseq as rnaseq # not used
 import cgatpipelines.tasks.tracks as tracks # Not used
 from cgatpipelines.report import run_report # Again not used
 
-import cgatpipelines.tasks.expression as Expression
+import cgatpipelines.tasks.expression as Expression # Not used
 
 # load options from the config file
 PARAMS = P.get_parameters(
@@ -184,7 +184,7 @@ def buildSalmonIndex(infile, outfile):
        path to output file
     '''
 
-    job_memory = "unlimited"
+    job_memory = "12G" # I wouldnt set job limit unlimited because this is bad practice - it could break cluster
     # need to remove the index directory (if it exists) as ruffus uses
     # the directory timestamp which wont change even when re-creating
     # the index files
@@ -418,84 +418,6 @@ def readAlevinSCE(infile,outfile):
     '''
     
     P.run(statement)
-
-
-# Quality control
-
-############################################
-# Quality control of the fastq files
-############################################
-
-# Is this needed????
-'''
-@follows(mkdir("fastqc_pre.dir"))
-@transform(SEQUENCEFILES,
-           suffix(".fastq.gz"),
-           r"fastqc_pre.dir/\1.fastq")
-def fastqc_pre(infile, outfile):
-    """
-    Runs fastQC on each input file
-    """
-
-    statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
-
-    P.run(statement)
-
-@follows(fastqc_pre)
-@follows(mkdir("processed.dir"))
-@transform(SEQUENCEFILES,
-           suffix(".fastq.gz"),
-           r"processed.dir/\1_processed.fastq.gz")
-def process_reads(infile, outfile):
-    """
-    Runs trimmomatic quality related trimming
-    """
-
-    if PARAMS["trimmomatic_run"]:
-
-        trimmomatic_options = PARAMS["trimmomatic_options"]
-
-        trimmomatic_options = "ILLUMINACLIP:%s:%s:%s:%s" % (
-            PARAMS["trimmomatic_adapter"],
-            PARAMS["trimmomatic_mismatches"],
-            PARAMS["trimmomatic_p_thresh"],
-            PARAMS["trimmomatic_c_thresh"]) + "\t" + trimmomatic_options
-
-        phred = PARAMS["trimmomatic_phred"]
-
-        ModuleTrna.process_trimmomatic(infile, outfile, phred,
-                                   trimmomatic_options)
-    else:
-
-        statement = "cp %(infile)s %(outfile)s"
-
-        P.run(statement)
-
-@follows(mkdir("fastqc_post.dir"))
-@transform(process_reads,
-           regex("processed.dir/(\S+)_processed.fastq.gz"),
-           r"fastqc_post.dir/\1.fastq")
-def fastqc_post(infile, outfile):
-    """
-    Runs fastQC on each of the processed files
-    """
-
-    statement = """fastqc -q -o fastqc_post.dir/ %(infile)s
-                """
-
-    P.run(statement)
-'''
-# Scater (levin swing???)
-
-## Multi QC
-## Generate our own multi QC report using R
-
-# Pseudotime
-# clustering
-# Velocyte
-# Cell cycle (cyclone), blocking
-
-# Create R data object
 
 
 @follows(buildReferenceTranscriptome, buildSalmonIndex, buildKallistoIndex,
