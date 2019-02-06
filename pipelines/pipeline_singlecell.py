@@ -396,11 +396,11 @@ def busText(infile, outfile):
 # SCE object  
 #########################
 
-@follows(mkdir("R.dir"))
+@follows(mkdir("SCE.dir"))
 @active_if(PARAMS['salmon_alevin'])
 @transform(runSalmonAlevin,
            regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"R.dir/\1.rds")
+           r"SCE.dir/\1.rds")
 def readAlevinSCE(infile,outfile):
     '''
     Collates alevin count matrices for each sample
