@@ -25,9 +25,10 @@
 # To do:
 # merger reads if over multiple lanes
 
-"""===========================
+"""
+====================
 Pipeline single cell
-===========================
+====================
 
 Overview
 ========
