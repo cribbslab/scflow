@@ -1,33 +1,30 @@
-#!/usr/bin/env python
-
 """===========================
 Pipeline single cell
-===========================
+==============================
 
 Overview
-========
+==================
 
 This pipeline was developed to perform mapping of sequencing data obtained from single cell techniques
 including DropSeq, 10X, celseq and gemcode. Pseudoalignment is performed on the RNA reads,
-using kallisto or Alevin and the resulting data is quantitatvely and qualitatively analysed.
-
+using kallisto/bus or salmon/alevin and the resulting data is quantitatvely and qualitatively analysed.
 
 
 Requires:
  * a fastq file (single/paired end??)
  * a GTF geneset
 
-For chromium v2/ v3 CB and UMI barcodes are included in R1 files and R2 contains the raw sequencing reads.
 The default file format assumes the following convention:
-<samplename>.fastq.gz (fastq.1.gz (and fastq.2.gz for second read of paired data) are also accepted for raw reads)
+fastq.1.gz and fastq.2.gz for paired data, where fastq.1.gz contains UMI/cellular barcode data and fastq.2.gz contains sequencing reads. 
+Chromium outputis of the format: samplename_R1.fastq.gz and samplename_R2.fastq.gz so will require conversion to the default file format above.
 
 Pipeline output
-===============
+==================
 
-The output of running this software is the generation of a html report, count matrices of gene expression.
+The output of running this software is the generation of a SingleCellExperiment object and further downstream analysis including: clustering, pseudotime analysis, velocity time graphs, quality control analysis. 
 
 Code
-====
+==================
 
 """
 from ruffus import *
@@ -35,24 +32,17 @@ from ruffus import *
 import sys
 import os
 import sqlite3
-import pandas as pd
-from functools import reduce
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
 import ModuleSC
-import cgat.IndexedFasta as IndexedFasta
 
 import cgat.GTF as GTF
 import cgatcore.iotools as iotools
 
 import cgatpipelines.tasks.geneset as geneset
-import cgatpipelines.tasks.rnaseq as rnaseq
-import cgatpipelines.tasks.tracks as tracks
 from cgatpipelines.report import run_report
 
-import cgatpipelines.tasks.expression as Expression
-
-# load options from the config file
+# Load options from the config file
 PARAMS = P.get_parameters(
     ["%s/pipeline.yml" % os.path.splitext(__file__)[0],
      "../pipeline.yml",
@@ -139,10 +129,8 @@ def buildSalmonIndex(infile, outfile):
        path to output file
     '''
 
-    job_memory = "unlimited"
-    # need to remove the index directory (if it exists) as ruffus uses
-    # the directory timestamp which wont change even when re-creating
-    # the index files
+    job_memory = "12G"
+
     statement = '''
     rm -rf %(outfile)s;
     salmon index -k %(salmon_kmer)i %(salmon_index_options)s -t %(infile)s -i %(outfile)s
@@ -201,10 +189,33 @@ def getTranscript2GeneMap(outfile):
         for key, value in sorted(transcript2gene_dict.items()):
             outf.write("%s\t%s\n" % (key, value))
 
-# Input fastqc
+############################################
+# Perform read quality steps
+############################################
 
+
+@follows(mkdir("fastqc_pre.dir"))
+@transform(SEQUENCEFILES,
+           formatter(r"(?P<track>[^/]+).(?P<suffix>fastq.1.gz|fastq.gz)"),
+           r"fastqc_pre.dir/{track[0]}.fastqc")
+def runFastQC(infile, outfile):
+    '''
+    Fastqc is ran to determine the quality of the reads from the sequencer
+    '''
+    # paired end mode
+    if "fastq.1.gz" in infile:
+        second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
+        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s %(second_read)s"
+
+    else:
+        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
+
+    P.run(statement)
+
+
+############################################
 # Pseudoalignment
-
+############################################
 
 if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
     SEQUENCEFILES_REGEX = regex(
@@ -228,29 +239,6 @@ else:
 
     SEQUENCEFILES_SALMON_OUTPUT = (
         r"salmon.dir/\1/alevin/quants_mat.gz")
-
-############################################
-# Perform read quality steps
-############################################
-
-
-@follows(mkdir("fastqc_pre.dir"))
-@transform(SEQUENCEFILES,
-           formatter(r"(?P<track>[^/]+).(?P<suffix>fastq.1.gz|fastq.gz)"),
-           r"fastqc_pre.dir/{track[0]}.fastqc")
-def run_fastqc(infile, outfile):
-    '''
-    Fastqc is ran to determine the quality of the reads from the sequencer
-    '''
-    # paired end mode
-    if "fastq.1.gz" in infile:
-        second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
-        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s %(second_read)s"
-
-    else:
-        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
-
-    P.run(statement)
 
 #############################
 # Salmon- Alevin
@@ -321,9 +309,9 @@ def runKallistoBus(infiles, outfile):
 
     P.run(statement)
 
-######################
+#########################
 # Process bus file
-######################
+#########################
 
 # Must have bustools installed
 # https://github.com/BUStools/bustools
@@ -338,8 +326,7 @@ def busText(infile, outfile):
     '''
 
     tmp_bus  = P.get_temp_filename(".")
-    E.warn("====================================================")
-    E.warn(outfile)
+
     statement = '''
     bustools sort -o %(tmp_bus)s %(infile)s ;
     bustools text -o %(outfile)s %(tmp_bus)s
@@ -440,7 +427,7 @@ def fastqc_post(infile, outfile):
 
     P.run(statement)
 '''
-# Scater (levin swing???)
+# Scater 
 
 ## Multi QC
 ## Generate our own multi QC report using R
@@ -450,13 +437,7 @@ def fastqc_post(infile, outfile):
 # Velocyte
 # Cell cycle (cyclone), blocking
 
-# Create R data object
 
-
-@follows(buildReferenceTranscriptome, buildSalmonIndex, buildKallistoIndex,
-         getTranscript2GeneMap, runSalmonAlevin, runKallistoBus)
-def full():
-    pass
 
 def main(argv=None):
     if argv is None:
