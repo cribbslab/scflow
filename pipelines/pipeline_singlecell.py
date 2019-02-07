@@ -398,12 +398,12 @@ def busText(infile, outfile):
 def readAlevinSCE(infile,outfile):
     '''
     Collates alevin count matrices for each sample
-    Creates a single cell experiment class in R and saves as and r object
+    Creates a single cell experiment class in R and saves as an r object
     '''
 
     working_dir = os.getcwd()
     sc_directory = PARAMS['sc_dir']
-    script_loc = sc_directory + "/sce.r"
+    script_loc = sc_directory + "/pipelines/R/sce.R"
     
     job_memory = "10G"
 
@@ -480,7 +480,8 @@ def qc():
 
 
 @follows()
-def seurat
+def seurat():
+    pass
 
 
 def main(argv=None):
