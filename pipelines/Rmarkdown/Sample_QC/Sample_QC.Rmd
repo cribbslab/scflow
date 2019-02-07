@@ -1,0 +1,368 @@
+---
+title: "Sample QC"
+output: html_document
+---
+
+This page sets out the quality control analysis for the single cells. It will be used to remove "Bad" cells before progressing for downstream analysis.
+
+```{r setup, include=FALSE}
+#source('functions.R')
+library(scran)
+library(ggplot2)
+library(RColorBrewer)
+library(scater)
+library(SummarizedExperiment)
+library(ComplexHeatmap)
+library(ggrepel)
+library(tidyverse)
+library(SingleCellExperiment)
+library(org.Hs.eg.db)
+library(limma)
+library(pheatmap)
+options(stringsAsFactors = FALSE)
+```
+
+# Load RDS data
+
+```{r}
+sce <- readRDS("R.dir/hgmm_100_S1.rds")
+
+```
+
+
+```{r outliers, include=FALSE}
+# Initiate a dataframe that will allow saving of the outliers.
+outlier <- data.frame(row.names = colnames(sce))
+```
+
+#### Need to run multiqc on the data and then use that to import the metrics for quality
+# will skip and move to using scater
+
+
+# **Scater**
+
+```{r, include=FALSE}
+
+
+# Need to parameterise this for human and mouse
+# also parameterise if ERCCs
+#isSpike(sceset, "ERCC") <- grepl("^ERCC-", rownames(sceset))
+isSpike(sce, "MT") <- rownames(sce) %in% 
+    c("ENSG00000198899", "ENSG00000198727", "ENSG00000198888",
+    "ENSG00000198886", "ENSG00000212907", "ENSG00000198786",
+    "ENSG00000198695", "ENSG00000198712", "ENSG00000198804",
+    "ENSG00000198763", "ENSG00000228253", "ENSG00000198938",
+    "ENSG00000198840")
+
+sce <- calculateQCMetrics(sce,
+                             feature_controls = list( 
+        MT = isSpike(sce, "MT")))
+
+colnames(colData(sce))
+```
+
+
+# Examining the most highly expressed genes
+
+We look at a plot that shows the top 50 (by default) most-expressed features. Each row in the plot below corresponds to a gene, and each bar corresponds to the expression of a gene in a single cell. The circle indicates the median expression of each gene, with which genes are sorted.
+
+```{r, echo=FALSE}
+plotHighestExprs(sce, exprs_values = "counts")
+```
+
+# Library size
+
+Next we consider the total number of reads per sample. Wells with few reads/molecules are likely to have been broken or failed to capture a cell, and should thus be removed.
+
+```{r, echo=FALSE}
+hist(
+    sce$total_counts,
+    breaks = 100
+)
+abline(v = 100, col = "red")
+
+filter_by_total_counts <- (sce$total_counts < 100)
+table(filter_by_total_counts)
+```
+
+# Detected genes
+
+In addition to ensuring sufficient sequencing depth for each sample, we also want to make sure that the reads are distributed across the transcriptome. Thus, we count the total number of unique genes detected in each sample.
+
+```{r, echo=FALSE, warning=FALSE}
+hist(
+    sce$total_features_by_counts,
+    breaks = 100
+)
+abline(v = 50, col = "red")
+
+filter_by_detected_genes <- (sce$total_features_by_counts < 50)
+```
+
+# ERCCs and MT genes
+
+A particularly useful plot for cell-level QC involves percentage of expression in feature controls against the total number of expressed features. These two metadata variables can be plotted against each other as shown below. 
+
+Well-behaved cells should have a large number of expressed features and and a low percentage of expression from feature controls. High percentage expression from feature controls and few expressed features are indicative of blank and failed cells.
+
+```{r, echo=FALSE}
+plotColData(sce, x = "total_features_by_counts",
+    y = "pct_counts_feature_control") +
+    theme(legend.position = "top") +
+    stat_smooth(method = "lm", se = FALSE, size = 2, fullrange = TRUE)
+```
+
+
+```{r, echo=FALSE}
+plotExprsFreqVsMean(sce)
+
+```
+
+# Library complexity {#Library_complexity .tabset .tabset-fade}
+
+Library complexity refers to the proportion of assigned reads accounted for by the N most abundant features within each individual sample, with values for N usually ranging from tens to hundreds. It is expected to observe a lower library complexity in single cells relative to bulk samples, due to higher dropout events in single cells, and the union of multiple phenotypes within bulk samples. In contrast, blank samples are expected to have extremely low library complexity, as only 92 ERCC spike-ins sequences are expected in those libraries, in contrast to thousands of genomic features in biological samples.
+
+## Full
+
+```{r full_lib, echo=FALSE}
+# Need to parameterise the generation of these plots
+plotScater(sce, nfeatures = 300, exprs_values = "counts")
+```
+
+# scater calulate QC metrics
+
+## Calulate single-cell QC
+
+```{r single_QC, include=FALSE}
+
+# parameterise with if statement
+
+ERCCs <- grep("^ERCC-[[:digit:]]+$", rownames(counts), value = TRUE)
+sce.sc <- calculateQCMetrics(
+  sce,
+  feature_controls = list(ERCC = ERCCs)
+)
+```
+
+```{r full_QC,  include=FALSE}
+sceset <- calculateQCMetrics(
+  sce
+  )
+```
+
+
+# MT gene content
+
+High mitochronrial genes indicate improper lysing of the single cells and are indicitive of poor RNA capture.
+
+```{r}
+metric <- sceset$pct_counts_MT
+scater.MT.M <- median(metric)
+scater.MT.MAD <- mad(metric)
+scater.MT.outliers <- metric > scater.MT.M + 2 * scater.MT.MAD
+table(scater.MT.outliers)
+outlier$MT <- metric > scater.MT.M + 2 * scater.MT.MAD
+```
+
+```{r mt_plot_QC,  echo=FALSE}
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_MT)) +
+  geom_point() +
+  geom_hline(
+    yintercept = scater.MT.M + 2 * c(-1,1) * scater.MT.MAD,
+    colour = "red", linetype = 2:1
+  ) +
+  geom_hline(yintercept = scater.MT.M) +
+  theme(
+    axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+    legend.position = "bottom", legend.box = "vertical"
+  )
+```
+
+# ERCC content
+
+```{r ercc_cont, }
+# need to parameterise to state that it is onyl active if ERCC present
+metric <- sce.sc$pct_counts_ERCC
+scater.ERCC.M <- median(metric)
+scater.ERCC.MAD <- mad(metric)
+scater.ERCC.outliers <- metric > scater.ERCC.M + 10 * scater.ERCC.MAD
+table(scater.ERCC.outliers)
+
+outlier$ERCC <- metric > scater.ERCC.M + 10 * scater.ERCC.MAD
+```
+
+
+```{r ercc_plot_QC,  echo=FALSE}
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_ERCC)) +
+  geom_point(aes(colour = Lane, shape = Condition)) +
+  geom_hline(
+    yintercept = scater.ERCC.M + 10 * c(-1,1) * scater.ERCC.MAD,
+    colour = "red", linetype = 2:1
+  ) +
+  geom_hline(yintercept = scater.ERCC.M) +
+  theme(
+    axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+    legend.position = "bottom", legend.box = "vertical"
+  )
+```
+
+
+## Top proportion of library assigned to most abundant features {.tabset}
+
+### Top 50
+
+```{r Top50,  echo=FALSE}
+metric <- sceset$pct_counts_in_top_50_features
+scater.top50.M <- median(metric)
+scater.top50.MAD <- mad(metric)
+scater.top50.outliers <-
+  metric > scater.top50.M + 4 * scater.top50.MAD
+table(scater.top50.outliers)
+outlier$Top50 <- metric > scater.top50.M + 4 * scater.top50.MAD
+
+```
+
+```{r Top50_plot,  echo=FALSE}
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_50_features)) +
+  geom_point() +
+  geom_hline(
+    yintercept = scater.top50.M + 4 * c(-1,1) * scater.top50.MAD,
+    colour = "red", linetype = 2:1
+  ) +
+  geom_hline(yintercept = scater.top50.M) +
+  theme(
+    axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+    legend.position = "bottom", legend.box = "vertical"
+  )
+```
+
+
+### Top 100
+
+```{r Top100,  echo=FALSE}
+metric <- sceset$pct_counts_in_top_100_features
+scater.top100.M <- median(metric)
+scater.top100.MAD <- mad(metric)
+scater.top100.outliers <-
+  metric > scater.top100.M + 3 * scater.top100.MAD
+table(scater.top100.outliers)
+outlier$Top100 <- metric > scater.top100.M + 4 * scater.top100.MAD
+
+```
+
+
+```{r Top100_plot, echo=FALSE}
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_100_features)) +
+  geom_point() +
+  geom_hline(
+    yintercept = scater.top100.M + 3 * c(-1,1) * scater.top100.MAD,
+    colour = "red", linetype = 2:1
+  ) +
+  geom_hline(yintercept = scater.top100.M) +
+  theme(
+    axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+    legend.position = "bottom", legend.box = "vertical"
+  )
+```
+
+### Top 200
+
+```{r Top200,  echo=FALSE}
+metric <- sceset$pct_counts_in_top_200_features
+scater.top200.M <- median(metric)
+scater.top200.MAD <- mad(metric)
+scater.top200.outliers <-
+  metric > scater.top200.M + 3 * scater.top200.MAD
+table(scater.top200.outliers)
+outlier$Top200 <- metric > scater.top100.M + 4 * scater.top100.MAD
+```
+
+```{r Top200_plot,  echo=FALSE}
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_200_features)) +
+  geom_point() +
+  geom_hline(
+    yintercept = scater.top200.M + 3 * c(-1,1) * scater.top200.MAD,
+    colour = "red", linetype = 2:1
+  ) +
+  geom_hline(yintercept = scater.top200.M) +
+  theme(
+    axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+    legend.position = "bottom", legend.box = "vertical"
+  )
+
+```
+
+# Global summary of QC metrics
+
+```{r, include=FALSE}
+outlier.vars <- ls(pattern = "outliers$")
+outliers.df <- data.frame(lapply(
+  outlier.vars,
+  function(x){ifelse(get(x), "Fail", "Pass")}
+))
+colnames(outliers.df) <- gsub(".outliers$", "", outlier.vars)
+rownames(outliers.df) <- colnames(sce.sc)
+```
+
+## Cells passing
+
+```{r sum_failed, echo=FALSE }
+colSums(outliers.df == "Pass")
+
+```
+
+## Cells failing
+
+```{r, echo=FALSE}
+colSums(outliers.df == "Fail")
+```
+
+## Summary of failures 
+
+This displays the counts for the number of failures for each fature
+
+```{r count_sc, echo=FALSE}
+table(rowSums(outliers.df == "Fail"))
+```
+
+## Summary of pass and fails
+
+```{r idx_pass, echo=FALSE}
+idx.pass <- rowSums(outliers.df == "Fail") == 0
+table(idx.pass)
+```
+
+## Heatmap of pass and fails
+
+```{r heatmap_fail, cache=FALSE, echo=FALSE}
+col9 <- brewer.pal(10, "Set3")[c(1:8, 10)]
+
+sample.order.supervised <- order(sceset)
+
+hm <- Heatmap(
+  as.matrix(outliers.df),
+  name = "Filter",
+  col = c("Pass" = "lightblue", "Fail" = "red"),
+  cluster_rows = FALSE, show_row_names = FALSE
+)
+
+#postscript("Figures.dir/cells_passing_filter_MCF7.eps")
+draw(hm)
+#dev.off()
+```
+
+
+# Remove cells that fail QC
+
+```{r pass, cache=FALSE, echo=FALSE}
+sce.pass <- sceset[,idx.pass]
+assay(sce.pass, "log2_counts") <- log2(counts(sceset[,idx.pass]) + 1)
+length(colnames(sce.pass))
+```
+
+```{r}
+saveRDS(sce.pass, file="pass.rds")
+```
+
+
+

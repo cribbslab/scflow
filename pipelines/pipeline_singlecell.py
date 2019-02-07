@@ -1,3 +1,30 @@
+##############################################################################
+#
+#   Botnar Resaerch Centre
+#
+#   $Id$
+#
+#   Copyright (C) 2018 Adam Cribbs
+#
+#   This program is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU General Public License
+#   as published by the Free Software Foundation; either version 2
+#   of the License, or (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+###############################################################################
+
+
+# To do:
+# merger reads if over multiple lanes
+
 """===========================
 Pipeline single cell
 ==============================
@@ -5,13 +32,33 @@ Pipeline single cell
 Overview
 ==================
 
-This pipeline was developed to perform mapping of sequencing data obtained from single cell techniques
-including DropSeq, 10X, celseq and gemcode. Pseudoalignment is performed on the RNA reads,
-using kallisto/bus or salmon/alevin and the resulting data is quantitatvely and qualitatively analysed.
+This pipeline performs alignment free based quantification of drop-seq, 10X and smart-seq2
+single-cell seqeucning analysis. Pseudoalignment is performed on the RNA reads,
+using kallisto or Alevin and the resulting data is quantitatvely and qualitatively analysed.
+
+The pipeline performs the following analyses:
+* Alignment using kallisto or alevin (pert of salmon)
+* QC of reads using the scater package
 
 
-Requires:
- * a fastq file (single/paired end??)
+Usage
+=====
+
+Configuration
+-------------
+
+The pipeline uses CGAT-core and CGAT-apps throught the pipeline. Please see installation
+and setup and installation instructions at `cgat-core documentation <>`_
+
+
+Input files
+-----------
+
+The pipeline is ran using fastq files that follow the naming convention Read1: Name.fastq.1.gz
+and read2: Name.fastq.2.gz. 
+
+ * a fastq file (single /paired end?? - AC:require both (always paired end for drop seq methods and
+potentially single end or paired end for smartseq2)
  * a GTF geneset
 
 The default file format assumes the following convention:
@@ -32,6 +79,12 @@ from ruffus import *
 import sys
 import os
 import sqlite3
+
+import cgatcore.pipeline as P
+import cgatcore.experiment as E
+import ModuleSC
+
+import pandas as pd
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
 import ModuleSC
@@ -39,16 +92,15 @@ import ModuleSC
 import cgat.GTF as GTF
 import cgatcore.iotools as iotools
 
-import cgatpipelines.tasks.geneset as geneset
-from cgatpipelines.report import run_report
-
 # Load options from the config file
+
 PARAMS = P.get_parameters(
     ["%s/pipeline.yml" % os.path.splitext(__file__)[0],
      "../pipeline.yml",
      "pipeline.yml"])
 
-# Determine the location of the input fastq files
+# Determine the location of the input fastq files
+
 try:
     PARAMS['data']
 except NameError:
@@ -338,11 +390,11 @@ def busText(infile, outfile):
 # SCE object  
 #########################
 
-@follows(mkdir("R.dir"))
+@follows(mkdir("SCE.dir"))
 @active_if(PARAMS['salmon_alevin'])
 @transform(runSalmonAlevin,
            regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"R.dir/\1.rds")
+           r"SCE.dir/\1.rds")
 def readAlevinSCE(infile,outfile):
     '''
     Collates alevin count matrices for each sample
@@ -362,81 +414,73 @@ def readAlevinSCE(infile,outfile):
     P.run(statement)
 
 
-# Quality control
+#########################
+# QC step  
+#########################
 
-############################################
-# Quality control of the fastq files
-############################################
-
-# Is this needed????
-'''
-@follows(mkdir("fastqc_pre.dir"))
-@transform(SEQUENCEFILES,
-           suffix(".fastq.gz"),
-           r"fastqc_pre.dir/\1.fastq")
-def fastqc_pre(infile, outfile):
+@follows(mkdir("QC_report.dir"))
+@transform(readAlevinSCE,
+           suffix(".rds"),
+           "SCE.dir/pass.rds")
+def run_qc(infile, outfile):
     """
-    Runs fastQC on each input file
+    Runs an Rmarkdown report that allows users to visualise and set their
+    quality parameters according to the data. The aim is for the pipeline
+    to generate default thresholds then the user can open the Rmarkdown in
+    rstudio and re-run the report, modifying parameters changesto suit the
+    data
     """
 
-    statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+
+    #probably just need to knit one document not render_site
+    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC/Sample_QC.Rmd QC_report.dir &&
+                   cd QC_report.dir && R -e "rmarkdown::render_site(encoding = 'UTF-8')"'''
 
     P.run(statement)
 
-@follows(fastqc_pre)
-@follows(mkdir("processed.dir"))
-@transform(SEQUENCEFILES,
-           suffix(".fastq.gz"),
-           r"processed.dir/\1_processed.fastq.gz")
-def process_reads(infile, outfile):
-    """
-    Runs trimmomatic quality related trimming
-    """
 
-    if PARAMS["trimmomatic_run"]:
+#########################
+# Seurat analysis  
+#########################
 
-        trimmomatic_options = PARAMS["trimmomatic_options"]
+# create seurat object from single cell experiment
+# perform clustering on s seurat object - clustered using given number of PCA components
+# tSNE plotting on saved surat object - a range of perplexity choices
+# plot tSNE perplexity hyper parameters on tSNE layout
+# UMAP analysis
+# Diffusion map
+# find clusters (findMarkers i think the function is called)
+# differential expression of markers in clusters
 
-        trimmomatic_options = "ILLUMINACLIP:%s:%s:%s:%s" % (
-            PARAMS["trimmomatic_adapter"],
-            PARAMS["trimmomatic_mismatches"],
-            PARAMS["trimmomatic_p_thresh"],
-            PARAMS["trimmomatic_c_thresh"]) + "\t" + trimmomatic_options
 
-        phred = PARAMS["trimmomatic_phred"]
+#########################
+# Velocity analysis  
+#########################
 
-        ModuleTrna.process_trimmomatic(infile, outfile, phred,
-                                   trimmomatic_options)
-    else:
+# Rmarkdown maybe then users can play around with parameters?
 
-        statement = "cp %(infile)s %(outfile)s"
 
-        P.run(statement)
+#########################
+# Visulalisation of selected data  
+#########################
 
-@follows(mkdir("fastqc_post.dir"))
-@transform(process_reads,
-           regex("processed.dir/(\S+)_processed.fastq.gz"),
-           r"fastqc_post.dir/\1.fastq")
-def fastqc_post(infile, outfile):
-    """
-    Runs fastQC on each of the processed files
-    """
+# make violin plots from user selected genes
+# heatmap of lists of genes
 
-    statement = """fastqc -q -o fastqc_post.dir/ %(infile)s
-                """
+@follows(readAlevinSCE, busText)
+def quant():
+    pass
 
-    P.run(statement)
-'''
-# Scater 
+# what about adding a knee plot - how does alevin or kallisto handle the
+# expected number of cells? - check documentation
+@follows(run_qc)
+def qc():
+    pass
 
-## Multi QC
-## Generate our own multi QC report using R
 
-# Pseudotime
-# clustering
-# Velocyte
-# Cell cycle (cyclone), blocking
-
+@follows()
+def seurat
 
 
 def main(argv=None):
