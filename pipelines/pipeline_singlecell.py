@@ -415,11 +415,28 @@ def readAlevinSCE(infile,outfile):
     
     P.run(statement)
 
+#########################
+# Multiqc
+#########################
+
+@follows(mkdir("Mapping_qc.dir"))
+@originate("Mapping_qc.dir/multiqc_report.html")
+def renderMultiqc(infile):
+    '''build mulitqc report'''
+
+    statement = (
+        "export LANG=en_GB.UTF-8 && "
+        "export LC_ALL=en_GB.UTF-8 && "
+        "multiqc . -f && "
+        "mv multiqc_report.html MultiQC_report.dir/")
+
+    P.run(statement)
 
 #########################
 # QC step  
 #########################
 
+@follows(buildMultiqc)
 @follows(mkdir("QC_report.dir"))
 @transform(readAlevinSCE,
            suffix(".rds"),
