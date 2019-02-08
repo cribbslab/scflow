@@ -372,8 +372,8 @@ def runKallistoBus(infiles, outfile):
 
 @active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
-           regex(r"kallisto.dir/(.*)/output.bus"),
-           r"kallisto.dir/\1/\1_sorted.txt")
+           suffix(".bus"),
+           r"\1.bus.sorted.txt")
 def busText(infile, outfile):
     '''
     Sort the bus file produced by kallisto and then convert it to a text file.
@@ -384,6 +384,26 @@ def busText(infile, outfile):
     statement = '''
     bustools sort -o %(tmp_bus)s %(infile)s ;
     bustools text -o %(outfile)s %(tmp_bus)s
+    '''
+
+    P.run(statement)
+
+
+
+@transform(busText,
+           suffix(".sorted.txt"),
+           r"\1.count")
+def busCount(infile, outfile):
+    '''
+    Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
+    ''' 
+
+    folder = infile.rsplit('/', 1)[0]
+    sc_directory = PARAMS['sc_dir']
+    bus2count = sc_directory + "/pipelines/bus2count.py"
+
+    statement = '''
+    python %(bus2count)s --busdir %(folder)s 
     '''
 
     P.run(statement)
@@ -499,9 +519,22 @@ def qc():
 
 
 @follows()
-def seurat():
-    pass
+@transform(readAlevinSCE,
+           regex(r"SCE.dir/(.*).rds"),
+           r"Seurat.dir/\1.rds")
+def seurat(infile,outfile):
+    ''' 
+    Takes sce object and converts it to a seurat object for further analysis
+    '''
+    working_dir = os.getcwd()
+    sc_directory = PARAMS['sc_dir']
+    script_loc = sc_directory + "/pipelines/R/seurat.R"
 
+    statement = '''
+    Rscript %(script_loc)s -w %(working_dir)s -i %(infile)s -o %(outfile)s
+    '''
+    
+    P.run(statement)
 
 def main(argv=None):
     if argv is None:
