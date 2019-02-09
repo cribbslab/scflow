@@ -512,7 +512,7 @@ def qc():
     pass
 
 
-@follows()
+@follows(mkdir("Seurat.dir"))
 @transform(readAlevinSCE,
            regex(r"SCE.dir/(.*).rds"),
            r"Seurat.dir/\1.rds")
@@ -524,7 +524,7 @@ def seurat_generate(infile,outfile):
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
 
     statement = '''
-    Rscript %(R_ROOT)s/seurat.R -w=%(working_dir)s -i=%(infile)s -o=%(outfile)s
+    Rscript %(R_ROOT)s/seurat.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
     '''
     
     P.run(statement)
@@ -540,9 +540,9 @@ def seurat_dimreduction(infile, outfile):
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
 
     statement = '''Rscript %(R_ROOT)s/seurat_dimreduction.R
-    				-w=%(working_dir)s
-    				-i=%(infile)s
-    				-o=%(outfile)s
+    				-w %(working_dir)s
+    				-i %(infile)s
+    				-o %(outfile)s
     				--mingenes=%(seurat_mingenes)s
     				--maxmitopercent=%(seurat_maxmitopercent)s'''
 
