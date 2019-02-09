@@ -21,10 +21,6 @@
 #   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ###############################################################################
 
-
-# To do:
-# merger reads if over multiple lanes
-
 """
 ====================
 Pipeline single cell
@@ -522,19 +518,54 @@ def qc():
 @transform(readAlevinSCE,
            regex(r"SCE.dir/(.*).rds"),
            r"Seurat.dir/\1.rds")
-def seurat(infile,outfile):
+def seurat_generate(infile,outfile):
     ''' 
     Takes sce object and converts it to a seurat object for further analysis
     '''
     working_dir = os.getcwd()
-    sc_directory = PARAMS['sc_dir']
-    script_loc = sc_directory + "/pipelines/R/seurat.R"
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
 
     statement = '''
-    Rscript %(script_loc)s -w %(working_dir)s -i %(infile)s -o %(outfile)s
+    Rscript %(R_ROOT)s/seurat.R -w=%(working_dir)s -i=%(infile)s -o=%(outfile)s
     '''
     
     P.run(statement)
+
+
+@transform(seurat_generate,
+           regex("Seurat.dir/\1.rds"),
+           r"Seurat.dir/\1.dim_reduction.rds")
+def seurat_dimreduction(infile, outfile):
+    '''
+    Takes a seurate object and computes a PCA-based dimension reduction
+    '''
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+
+    statement = '''Rscript %(R_ROOT)s/seurat_dimreduction.R
+    				-w=%(working_dir)s
+    				-i=%(infile)s
+    				-o=%(outfile)s
+    				--mingenes=%(seurat_mingenes)s
+    				--maxmitopercent=%(seurat_maxmitopercent)s'''
+
+    P.run(statement)
+
+
+@transform(seurat_generate,
+           regex("Seurat.dir/\1.rds"),
+           r"Seurat.dir/\1.seurat_cluster.rds")
+def seurat_clustering(infile, outfile):
+    '''
+    Takes sce seurat object and creates a series of cluster visualisations
+    over a number of perplexities.
+    '''
+
+    statement = '''Rscript '''
+
+    P.run(statement)
+
+
+
 
 def main(argv=None):
     if argv is None:

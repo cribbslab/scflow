@@ -28,4 +28,4 @@ sce_object = readRDS(input)
 seurat_object = Convert(from = sce_object, to = "seurat")
 
 
-saveRDS(object = seurat_object, file = out)
+saveRDS(object = seurat_object, file = opt$out)
