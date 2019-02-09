@@ -435,9 +435,9 @@ def readAlevinSCE(infile,outfile):
 # Multiqc
 #########################
 
-@follows(mkdir("Mapping_qc.dir"))
+@follows(mkdir("MultiQC_report.dir"))
 @originate("Mapping_qc.dir/multiqc_report.html")
-def renderMultiqc(infile):
+def build_multiqc(infile):
     '''build mulitqc report'''
 
     statement = (
@@ -452,7 +452,7 @@ def renderMultiqc(infile):
 # QC step  
 #########################
 
-@follows(buildMultiqc)
+@follows(build_multiqc)
 @follows(mkdir("QC_report.dir"))
 @transform(readAlevinSCE,
            suffix(".rds"),
@@ -469,8 +469,8 @@ def run_qc(infile, outfile):
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
     #probably just need to knit one document not render_site
-    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC/Sample_QC.Rmd QC_report.dir &&
-                   cd QC_report.dir && R -e "rmarkdown::render_site(encoding = 'UTF-8')"'''
+    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd QC_report.dir &&
+                   cd QC_report.dir && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
 
     P.run(statement)
 
@@ -479,7 +479,6 @@ def run_qc(infile, outfile):
 # Seurat analysis  
 #########################
 
-# perform clustering on s seurat object - clustered using given number of PCA components
 # tSNE plotting on saved surat object - a range of perplexity choices
 # plot tSNE perplexity hyper parameters on tSNE layout
 # UMAP analysis
@@ -558,29 +557,27 @@ def seurat_clustering(infile, outfile):
     Takes sce seurat object and creates a series of cluster visualisations
     over a number of perplexities.
     '''
-
-	R_ROOT = os.path.join(os.path.dirname(__file__), "R")	
-
-    statement = '''Rscript seurat_cluster.R'''
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+	
+    statement = '''Rscript %(R_ROOT)s/seurat_cluster.R'''
 
     P.run(statement)
 
 
-@transform(seurat_marker,
+@transform(seurat_clustering,
            regex("Seurat.dir/(\S+).rds"),
            r"Seurat.dir/\1.seurat_marker.rds")
-def run_seurat_markdown(infile, outfile)
+def run_seurat_markdown(infile, outfile):
 	'''
     Takes sce seurat object from clustering and generates
-    an Rmarkdown report for visualising clusters, finding marker
+    an Rmarkdown report for running tsne, visualising clusters, finding marker
     genes and creating feature plots
     '''
 
-	R_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")	
+	R_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+	statement = ''' '''
 
-    statement = ''''''
-
-    P.run(statement)
+	P.run(statement)
 
 
 def main(argv=None):
