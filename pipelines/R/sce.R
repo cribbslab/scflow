@@ -3,6 +3,7 @@
 library("tidyverse")
 library("SingleCellExperiment")
 library("optparse")
+library('biomaRt')
 
 option_list = list(
   make_option(c("-w", "--workingdir"), type="character", default=NULL, 
@@ -61,9 +62,27 @@ readAlevin <- function(files) {
     }
 
 mat <- readAlevin(input)
+
+# Convert to gene names - currently human need to do for mouse
+
+df <- as.data.frame(mat)
+
+
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+genes <- rownames(df)
+G_list <- getBM(filters= "ensembl_gene_id", attributes=c("ensembl_gene_id","hgnc_symbol"),values=genes,mart= mart)
+df <- merge(as.data.frame(df),G_list,by.x="row.names",by.y="ensembl_gene_id")
+df$Row.names <- NULL
+rownames(df) <- make.unique(df$hgnc_symbol)
+df$hgnc_symbol <- NULL
+mat <- as.matrix(df)
+
 v <- log2(mat + 1)
 sce <- SingleCellExperiment(assays = list(counts = mat, logcounts = v))
 saveRDS(object = sce, file = out)
+
+
+
 
 
 

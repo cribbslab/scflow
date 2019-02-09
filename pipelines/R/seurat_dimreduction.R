@@ -25,13 +25,17 @@ opt = parse_args(opt_parser);
 
 wd = opt$workingdir
 
-so <- readRDS(opt$input)
+#so <- readRDS(opt$input)
+so <- readRDS("../Seurat.dir/seurat.rds")
 
 # see if any meta data is required to be added:
 # so <- AddMetaData(so, metadata)
 
 # Identify MT genes, if mouse then ignoring case will
 # handle both situations. 
+
+
+
 mito.genes <- grep("^MT-", rownames(so@data), value=TRUE, ignore.case=TRUE)
 percent.mito <- Matrix::colSums(so@data[mito.genes, ]) / Matrix::colSums(so@raw.data)
 
