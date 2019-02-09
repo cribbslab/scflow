@@ -479,7 +479,6 @@ def run_qc(infile, outfile):
 # Seurat analysis  
 #########################
 
-# create seurat object from single cell experiment
 # perform clustering on s seurat object - clustered using given number of PCA components
 # tSNE plotting on saved surat object - a range of perplexity choices
 # plot tSNE perplexity hyper parameters on tSNE layout
