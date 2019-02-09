@@ -532,7 +532,7 @@ def seurat_generate(infile,outfile):
 
 
 @transform(seurat_generate,
-           regex("Seurat.dir/\1.rds"),
+           regex("Seurat.dir/(\S+).rds"),
            r"Seurat.dir/\1.dim_reduction.rds")
 def seurat_dimreduction(infile, outfile):
     '''
@@ -551,7 +551,7 @@ def seurat_dimreduction(infile, outfile):
 
 
 @transform(seurat_generate,
-           regex("Seurat.dir/\1.rds"),
+           regex("Seurat.dir/(\S+).rds"),
            r"Seurat.dir/\1.seurat_cluster.rds")
 def seurat_clustering(infile, outfile):
     '''
@@ -559,11 +559,28 @@ def seurat_clustering(infile, outfile):
     over a number of perplexities.
     '''
 
-    statement = '''Rscript '''
+	R_ROOT = os.path.join(os.path.dirname(__file__), "R")	
+
+    statement = '''Rscript seurat_cluster.R'''
 
     P.run(statement)
 
 
+@transform(seurat_marker,
+           regex("Seurat.dir/(\S+).rds"),
+           r"Seurat.dir/\1.seurat_marker.rds")
+def run_seurat_markdown(infile, outfile)
+	'''
+    Takes sce seurat object from clustering and generates
+    an Rmarkdown report for visualising clusters, finding marker
+    genes and creating feature plots
+    '''
+
+	R_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")	
+
+    statement = ''''''
+
+    P.run(statement)
 
 
 def main(argv=None):
