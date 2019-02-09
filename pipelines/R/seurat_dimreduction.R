@@ -25,8 +25,7 @@ opt = parse_args(opt_parser);
 
 wd = opt$workingdir
 
-#so <- readRDS(opt$input)
-so <- readRDS("../Seurat.dir/seurat.rds")
+so <- readRDS(opt$input)
 
 # see if any meta data is required to be added:
 # so <- AddMetaData(so, metadata)
@@ -49,11 +48,6 @@ VlnPlot(
     )
 dev.off()
 
-plot_fn <- function() {
-    par(mfrow=c(1, 2))
-    GenePlot(s, "nUMI", "percent.mito", cex.use=1)
-    GenePlot(s, "nUMI", "nGene", cex.use=1)
-    par(mfrow=c(1, 1))
 
 
 ################### Filter cells #########################
@@ -64,8 +58,8 @@ plot_fn <- function() {
 # threshold.
 so <- FilterCells(object = so,
    subset.names = c("nGene", "percent.mito"), 
-   low.thresholds = c(opt$mingenes, -Inf),
-   high.thresholds = c(Inf, opt$maxmitopercent))
+   low.thresholds = c(as.numeric(opt$mingenes), -Inf),
+   high.thresholds = c(Inf, as.numeric(opt$maxmitopercent)))
 
 
 #################### Normalise data ######################
@@ -79,8 +73,7 @@ so <- NormalizeData(
 #################### Scale data ######################
 
 
-so <- ScaleData(object = so,
-   vars.to.regress = c("nUMI", "percent.mito"))
+so <- ScaleData(so)
 
 # TODO: add function to handle cell cycle gene analysis and regression
 
@@ -98,7 +91,7 @@ so <- FindVariableGenes(object = so,
 
 
 so <- RunPCA(object = so,
-   pc.genes = pbmc@var.genes,
+   pc.genes = so@var.genes,
    do.print = FALSE,
    pcs.compute-50)
 
@@ -106,7 +99,7 @@ so <- RunPCA(object = so,
 svg(paste(opt$outdir,"/","pca.svg", sep=""),width=14,height=7)
 PCHeatmap(so,
 	pc.use=1:12,
-	cells.use=min(1000, length(s@cell.names)),
+	cells.use=min(1000, length(so@cell.names)),
 	do.balanced=TRUE,
         label.columns=TRUE,
 	cexRow=0.8,
@@ -114,7 +107,7 @@ PCHeatmap(so,
 dev.off()
 
 svg(paste(opt$outdir,"/","pca_elbow.svg", sep=""),width=14,height=7)
-PCElbowPlot(s, num.pc=nPCs)
+PCElbowPlot(so, num.pc=nPCs)
 dev.off()
 
 ############# Jack straw ################
