@@ -388,7 +388,7 @@ def busText(infile, outfile):
 
 @transform(busText,
            suffix(".sorted.txt"),
-           r"\1.count")
+           r"\1.mtx")
 def busCount(infile, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
@@ -397,9 +397,12 @@ def busCount(infile, outfile):
     folder = infile.rsplit('/', 1)[0]
     sc_directory = PARAMS['sc_dir']
     bus2count = sc_directory + "/pipelines/bus2count.py"
+    barcode_thresh = PARAMS['kallisto_barcodethresh']
+    ec = PARAMS['kallisto_expectedcells']
+    threads = PARAMS['kallisto_threads']
 
     statement = '''
-    python %(bus2count)s --busdir %(folder)s 
+    python %(bus2count)s --dir %(folder)s --barcodethresh %(barcode_thresh)s --expectedcells --threads %(threads)s --out %(outfile)s
     '''
 
     P.run(statement)
