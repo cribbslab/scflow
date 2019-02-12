@@ -425,11 +425,13 @@ def readAlevinSCE(infile,outfile):
     working_dir = os.getcwd()
     sc_directory = PARAMS['sc_dir']
     script_loc = sc_directory + "/pipelines/R/sce.R"
+    species = PARAMS['sce_species']
+    gene_name = PARAMS['sce_genesymbol']
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(script_loc)s -w %(working_dir)s -i %(infile)s -o %(outfile)s
+    Rscript %(script_loc)s -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s
     '''
     
     P.run(statement)
