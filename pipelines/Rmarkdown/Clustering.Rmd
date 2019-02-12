@@ -7,72 +7,36 @@ output: html_document
 library(scater)
 library(SummarizedExperiment)
 library(SC3)
-sce.pass <- readRDS("results/sce_pass.rds")
-sce.pass_hcc <- readRDS("results/sce_pass_hcc.rds")
-sceset <- readRDS("results/sceset.rds")
-sceset_hcc <- readRDS("results/sceset_hcc.rds")
+library(dplyr)
+sce <- readRDS("../SCE.dir/sce.rds")
+sce.pass <- readRDS("../SCE.dir/pass.rds")
 ```
 
 # PCA {.tabset}
 
-
-
-## Before filtering MCF7
+## Before filtering 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-sceset<- normalize(sceset)
-sceset <- runPCA(sceset)
-reducedDimNames(sceset)
+sce<- normalize(sce)
+sce <- runPCA(sce)
+reducedDimNames(sce)
 
-plotReducedDim(sceset, use_dimred = "PCA", 
-    colour_by = "Condition")
-
+svg("../output.dir/Total_PCA.svg")
+plotReducedDim(sce, use_dimred = "PCA")
+dev.off()
 ```
 
 
-## After filtering MCF7
+## After filtering 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 sce.pass<- normalize(sce.pass)
 sce.pass <- runPCA(sce.pass)
-reducedDimNames(sce.pass)
 
-plotReducedDim(sce.pass, use_dimred = "PCA", 
-    colour_by = "assignments", shape_by = "Condition")
-dev.copy2pdf(file="Figures.dir/PCA_MCF7_cellcycle.pdf",out.type="cairo", width=10, height=10)
-
-sce.filtered<- normalize(sce.filtered)
-sce.filtered <- runPCA(sce.filtered)
-reducedDimNames(sce.filtered)
-plotReducedDim(sce.filtered, use_dimred = "PCA", 
-    colour_by = "sc3_5_clusters", shape_by = "Condition")
-dev.copy2pdf(file="Figures.dir/PCA_MCF7_sc3_clusters.pdf",out.type="cairo", width=10, height=10)
-
+svg("../output.dir/Pass_PCA.svg")
+plotReducedDim(sce.pass, use_dimred = "PCA")
+dev.off()
 ```
-
-## After filtering HCC
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-sce.pass_hcc<- normalize(sce.pass_hcc)
-sce.pass_hcc <- runPCA(sce.pass_hcc)
-reducedDimNames(sce.pass_hcc)
-
-plotReducedDim(sce.pass_hcc, use_dimred = "PCA", 
-    colour_by = "assignments", shape_by = "Condition")
-dev.copy2pdf(file="Figures.dir/PCA_HCC_cellcycle.pdf",out.type="cairo", width=10, height=10)
-
-#sce.filtered_hcc<- normalize(sce.filtered_hcc)
-#sce.filtered_hcc <- runPCA(sce.filtered_hcc)
-#reducedDimNames(sce.filtered_hcc)
-#plotReducedDim(sce.filtered_hcc, use_dimred = "PCA", 
-#    colour_by = "sc3_3_clusters", shape_by = "Condition")
-#dev.copy2pdf(file="Figures.dir/PCA_HCC_sc3_clusters.pdf",out.type="cairo", width=10, height=10)
-```
-
-# Conclusion
-
-After filtering the clustering on the PCA looks to be greatly improves and there is clear seperation on PC1 between the Normoxia and hypoxia.
-
 
 # TSNE {.tabset}
 
@@ -82,36 +46,27 @@ t-distributed stochastic neighbour embedding (t-SNE) is widely used for visualiz
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 set.seed=100
-sceset <- runTSNE(sceset, ncomponents = 2, ntop = 500,
+sce <- runTSNE(sce, ncomponents = 2, ntop = 500,
                   exprs_values = "logcounts",
     use_dimred="PCA")
-plotTSNE(sceset, colour_by="Condition")
+svg("../output.dir/Total_tSNE.svg")
+plotTSNE(sce, colour_by = "GAPDH")
+dev.off()
 ```
 
-## After filtering MCF7
+## After filtering
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 set.seed=100
 sce.pass <- runTSNE(sce.pass, ncomponents = 2, ntop = 500,
                   exprs_values = "logcounts",
     use_dimred="PCA")
-plotTSNE(sce.pass, colour_by = "CA9",shape_by="Condition")
+svg("../output.dir/Pass_tSNE.svg")
+plotTSNE(sce.pass, colour_by = "GAPDH")
+dev.off()
 ```
 
-## After filtering HCC
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-set.seed=100
-sce.pass_hcc <- runTSNE(sce.pass_hcc, ncomponents = 3, ntop = 600,
-                  exprs_values = "logcounts",
-                  use_dimred = "PCA")
-
-plotTSNE(sce.pass_hcc, colour_by = "CA9", shape_by="Condition")
-
-```
-
-
-# SC3 clustering MCF7
+# SC3 clustering
 
 This clustering follows the SC3 package and will hopefully reveal clusters within the data. This particular analysis will take time to properly analyse.
 
@@ -122,200 +77,53 @@ metadata(sce.filtered)$sc3$k_estimation
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 rowData(sce.filtered)$feature_symbol <- rownames(rowData(sce.filtered))
-sce.filtered <- sc3(sce.filtered, ks = 5, biology = TRUE, gene_filter = TRUE, pct_dropout_max = 90, pct_dropout_min = 5)
+
+# Turn on gene_filter=TRUE if your data requires it
+sce.filtered <- sc3(sce.filtered, ks = 5, biology = TRUE, gene_filter = FALSE, pct_dropout_max = 90, pct_dropout_min = 5)
 ```
 
 ## Visulaisation of the consensus matrix
 
 ```{r, echo=FALSE}
-sc3_plot_consensus(sce.filtered, k = 5, show_pdata = "Condition")
+svg("../output.dir/SC3_consensus.svg")
+sc3_plot_consensus(sce.filtered, k = 5)
+dev.off()
 ```
 
 ## Visualisation of the expression matrix
 
 ```{r, echo=FALSE}
-svg("Figures.dir/SC3_diff_exprs_MCF7.svg")
-sc3_plot_expression(sce.filtered, k = 5, show_pdata = "Condition")
+svg("../output.dir/SC3_diff_exprs.svg")
+sc3_plot_expression(sce.filtered, k = 5)
 dev.off()
-
-sc3_plot_expression(sce.filtered, k = 5, show_pdata = "Condition")
-dev.copy2pdf(file="Figures.dir/SC3_diff_exprs_MCF7.pdf",out.type="cairo", width=10, height=50)
 ```
 
 ## Identify marker genes that discriminate clusters
 
 ```{r, echo=FALSE}
-svg("Figures.dir/Marker_genes_MCF7.svg")
-sc3_plot_markers(sce.filtered, k = 5, show_pdata = "Condition")
+svg("../output.dir/Marker_genes.svg")
+sc3_plot_markers(sce.filtered, k = 5)
 dev.off()
+```
 
-sc3_plot_markers(sce.filtered, k = 5, show_pdata = "Condition")
-dev.copy2pdf(file="Figures.dir/Marker_genes_MCF7.pdf",out.type="cairo", width=10, height=10)
+# Differential gene plots
 
+```{r}
+svg("../output.dir/DE_genes.svg")
 sc3_plot_de_genes(sce.filtered, k = 5, p.val=0.05)
-dev.copy2pdf(file="Figures.dir/SC3_DE_MCF7.pdf",out.type="cairo", width=5, height=10)
-
-row_data <- rowData(sce.filtered)
-de_genes_MCF7 <- row_data[ , grep("sc3_", colnames(row_data))]
-
-de_genes_MCF7 <- as.data.frame(de_genes_MCF7) %>% 
-  rownames_to_column("SYMBOL")
-
-```
-
-# SC3 clustering HCC
-
-This clustering follows the SC3 package and will hopefully reveal clusters within the data. This particular analysis will take time to properly analyse.
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-sce.filtered_hcc <- sc3_estimate_k(sce.pass_hcc)
-metadata(sce.filtered_hcc)$sc3$k_estimation
-```
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-rowData(sce.filtered_hcc)$feature_symbol <- rownames(rowData(sce.filtered_hcc))
-sce.filtered_hcc <- sc3(sce.filtered_hcc, ks = 3, biology = TRUE, gene_filter = TRUE, pct_dropout_max = 90, pct_dropout_min = 5)
-```
-
-## Visulaisation of the consensus matrix
-
-```{r, echo=FALSE}
-sc3_plot_consensus(sce.filtered_hcc, k = 3, show_pdata = "Condition")
-```
-
-## Visualisation of the expression matrix
-
-```{r, echo=FALSE}
-svg("Figures.dir/SC3_diff_exprs_HCC.svg")
-sc3_plot_expression(sce.filtered_hcc, k = 3, show_pdata = "Condition")
 dev.off()
 
-sc3_plot_expression(sce.filtered_hcc, k = 3, show_pdata = "Condition")
-dev.copy2pdf(file="Figures.dir/SC3_diff_exprs_HCC.pdf",out.type="cairo", width=10, height=50)
-
-sc3_plot_de_genes(sce.filtered_hcc, k = 3, p.val=0.05)
-dev.copy2pdf(file="Figures.dir/SC3_DE_HCC.pdf",out.type="cairo", width=10, height=10)
+row_data <- rowData(sce.filtered)
+de_genes <- row_data[ , grep("sc3_", colnames(row_data))]
 
 
-row_data <- rowData(sce.filtered_hcc)
-de_genes_HCC <- row_data[ , grep("sc3_", colnames(row_data))]
-
-de_genes_HCC <- as.data.frame(de_genes_HCC) %>% 
+de_genes <- as.data.frame(de_genes) %>% 
   rownames_to_column("SYMBOL")
-
-
+write.csv(de_genes, file = "../output.dir/Sc3_de_genes.csv")
 ```
 
-## Identify marker genes that discriminate clusters
-
-```{r, echo=FALSE}
-svg("Figures.dir/Marker_genes_HCC.svg")
-sc3_plot_markers(sce.filtered_hcc, k = 3, show_pdata = "Condition")
-dev.off()
-```
-
-# Similar overlapping gene lists
+# Save RDS
 
 ```{r}
-# Filter gene lists
-
-library(VennDiagram)
-
-row_data <- rowData(sce.filtered_hcc)
-de_genes_HCC <- row_data[ , grep("sc3_", colnames(row_data))]
-
-de_genes_HCC <- as.data.frame(de_genes_HCC) %>% 
-  rownames_to_column("SYMBOL")
-
-row_data <- rowData(sce.filtered)
-de_genes_MCF7 <- row_data[ , grep("sc3_", colnames(row_data))]
-
-de_genes_MCF7 <- as.data.frame(de_genes_MCF7) %>% 
-  rownames_to_column("SYMBOL")
-
-de_genes_HCC %>% filter(sc3_3_de_padj < 0.01) %>% filter(sc3_3_markers_clusts == "2") -> de_genes_HCC
-de_genes_MCF7 %>% filter(sc3_5_de_padj < 0.01) %>%  filter(sc3_5_markers_clusts == "1" |
-                                                             sc3_5_markers_clusts == "4"|
-                                                             sc3_5_markers_clusts == "5")-> de_genes_MCF7
-
-RNA_MAZ1392=de_genes_HCC$SYMBOL
-RNA_MAZ1805 <- de_genes_MCF7$SYMBOL
-
-venn.diagram(
-  x = list(RNA_MAZ1392, RNA_MAZ1805),
-  category.names = c("HCC" , "MCF7"),
-  filename = 'overlap.tiff',
-  output = TRUE ,
-  imagetype="tiff" ,
-  height = 480 , 
-  width = 480 , 
-  resolution = 600,
-  lwd = 2,
-  lty = 'blank',
-  fill = c("#462066","#FF7A5A"),
-  cex = 0.2,
-  fontface = "bold",
-  fontfamily = "sans",
-  cat.cex = 0.2,
-  cat.fontface = "bold",
-  cat.default.pos = "outer",
-  cat.pos = c(-27, 27),
-  cat.dist = c(0.055, 0.05),
-  cat.fontfamily = "sans"
-)
-
-
-intersect <- intersect(RNA_MAZ1392, RNA_MAZ1805)
-write.csv(intersect, file="overlap.csv")
-```
-
-```{r}
-
-library(VennDiagram)
-
-row_data <- rowData(sce.filtered_hcc)
-de_genes_HCC <- row_data[ , grep("sc3_", colnames(row_data))]
-
-de_genes_HCC <- as.data.frame(de_genes_HCC) %>% 
-  rownames_to_column("SYMBOL")
-
-row_data <- rowData(sce.filtered)
-de_genes_MCF7 <- row_data[ , grep("sc3_", colnames(row_data))]
-
-de_genes_MCF7 <- as.data.frame(de_genes_MCF7) %>% 
-  rownames_to_column("SYMBOL")
-
-
-de_genes_HCC %>% filter(sc3_3_de_padj < 0.01) -> de_genes_HCC
-de_genes_MCF7 %>% filter(sc3_5_de_padj < 0.01) -> de_genes_MCF7
-
-RNA_MAZ1392=de_genes_HCC$SYMBOL
-RNA_MAZ1805 <- de_genes_MCF7$SYMBOL
-
-venn.diagram(
-  x = list(RNA_MAZ1392, RNA_MAZ1805),
-  category.names = c("HCC" , "MCF7"),
-  filename = 'overlap_total.tiff',
-  output = TRUE ,
-  imagetype="tiff" ,
-  height = 480 , 
-  width = 480 , 
-  resolution = 600,
-  lwd = 2,
-  lty = 'blank',
-  fill = c("#462066","#FF7A5A"),
-  cex = 0.2,
-  fontface = "bold",
-  fontfamily = "sans",
-  cat.cex = 0.2,
-  cat.fontface = "bold",
-  cat.default.pos = "outer",
-  cat.pos = c(-27, 27),
-  cat.dist = c(0.055, 0.05),
-  cat.fontfamily = "sans"
-)
-
-
-intersect <- intersect(RNA_MAZ1392, RNA_MAZ1805)
-write.csv(intersect, file="overlap_total.csv")
+saveRDS(sce.filtered, file="../SCE.dir/pass_clustering.rds")
 ```
