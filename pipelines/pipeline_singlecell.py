@@ -468,7 +468,6 @@ def run_qc(infile, outfile):
 
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
-    #probably just need to knit one document not render_site
     statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd QC_report.dir &&
                    cd QC_report.dir && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
 
