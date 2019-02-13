@@ -8,10 +8,14 @@ library('biomaRt')
 option_list = list(
   make_option(c("-w", "--workingdir"), type="character", default=NULL, 
               help="working directory", metavar="character"),
-  make_option(c("-i", "--input"), type="character", default="sce.rds", 
+  make_option(c("-i", "--input"), type="character", default="salmon.dir/alevin/quants_mat.gz", 
               help="input file (quants_mat.gz path) [default= %default]", metavar="character"),
   make_option(c("-o", "--out"), type="character", default="sce.rds", 
-              help="output file name [default= %default]", metavar="character")
+              help="output file name [default= %default]", metavar="character"),
+  make_option(c("-s", "--species"), type="character", default="human", 
+              help="Species, human or mouse [default = %default]", metavar="character"),
+  make_option(c("-g", "--genesymbol"), type="integer", default="1", 
+              help="Logical. Whether to use gene names/symbols instead of ensembl IDs in SCE object", metavar="integer")
 ); 
 
 opt_parser = OptionParser(option_list=option_list);
@@ -63,19 +67,29 @@ readAlevin <- function(files) {
 
 mat <- readAlevin(input)
 
-# Convert to gene names - currently human need to do for mouse
+# Convert to gene names 
+gene_name <- as.integer(opt$genesymbol)
+if(gene_name){
+  df <- as.data.frame(mat)
+  species <- opt$species
+  if(species == "human"){
+    emsembl_species <- "hsapiens_gene_ensembl"
+    symbol <- "hgnc_symbol"
+  }
+  if(species == "mouse"){
+    emsembl_species <- "mmusculus_gene_ensembl"
+    symbol <- "mgi_symbol"
+  }
+  mart <- useDataset(emsembl_species, useMart("ensembl"))
+  genes <- rownames(df)
+  G_list <- getBM(filters= "ensembl_gene_id", attributes=c("ensembl_gene_id",symbol),values=genes,mart= mart)
+  df <- merge(as.data.frame(df),G_list,by.x="row.names",by.y="ensembl_gene_id")
+  df$Row.names <- NULL
+  rownames(df) <- make.unique(df[[symbol]])
+  df[[symbol]] <- NULL
+  mat <- as.matrix(df)
+}
 
-df <- as.data.frame(mat)
-
-
-mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
-genes <- rownames(df)
-G_list <- getBM(filters= "ensembl_gene_id", attributes=c("ensembl_gene_id","hgnc_symbol"),values=genes,mart= mart)
-df <- merge(as.data.frame(df),G_list,by.x="row.names",by.y="ensembl_gene_id")
-df$Row.names <- NULL
-rownames(df) <- make.unique(df$hgnc_symbol)
-df$hgnc_symbol <- NULL
-mat <- as.matrix(df)
 
 v <- log2(mat + 1)
 sce <- SingleCellExperiment(assays = list(counts = mat, logcounts = v))

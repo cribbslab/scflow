@@ -96,6 +96,10 @@ kallisto:
   # Note that 10Xv3 is not supported in version 0.44 of Kallisto
   sctechnology: 10Xv2
 
+  barcodethresh: 100
+
+  expectedcells: 100
+
 
 salmon:
   # Length of k-mer for indexing.
@@ -131,6 +135,7 @@ salmon:
   # String format, precede with --
   # https://salmon.readthedocs.io/en/latest/alevin.html#description-of-important-options
   alevin_options: ''
+
 
 sce:
 
