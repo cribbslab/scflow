@@ -412,21 +412,19 @@ def busCount(infile, outfile):
 @active_if(PARAMS['salmon_alevin'])
 @transform(runSalmonAlevin,
            regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"SCE.dir/\1.rds")
+           r"SCE.dir/\1/sce..rds")
 def readAlevinSCE(infile,outfile):
     '''
     Collates alevin count matrices for each sample
     Creates a single cell experiment class in R and saves as an r object
     '''
 
-    working_dir = os.getcwd()
-    sc_directory = PARAMS['sc_dir']
-    script_loc = sc_directory + "/pipelines/R/sce.R"
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(script_loc)s -w %(working_dir)s -i %(infile)s -o %(outfile)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
     '''
     
     P.run(statement)
