@@ -418,7 +418,7 @@ def readAlevinSCE(infile,outfile):
     Collates alevin count matrices for each sample
     Creates a single cell experiment class in R and saves as an r object
     '''
-
+    working_dir = os.getcwd()
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     
     job_memory = "10G"
