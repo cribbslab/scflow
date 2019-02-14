@@ -28,7 +28,7 @@ data: 0
 # salmon
 # alevin
 # kallisto
-# bustools??
+# bustools
 quantifiers: [kallisto, bustools]
 
 
@@ -70,7 +70,7 @@ merge:
   pattern_output: \1_\2_\3_\5
 
 ####################
-# kallisto options
+# kallisto options
 ####################
 
 kallisto:
@@ -114,7 +114,7 @@ salmon:
 
   # Optional options
   # see https://salmon.readthedocs.io/en/latest/salmon.html#description-of-important-options
-  # for a list of more salmon options
+  # for a list of more salmon options
   index_options: ''
 
   # Whether to run alevin
@@ -126,8 +126,7 @@ salmon:
   # chromium
     # for 10x chromium v2 sc protocol
   # chromiumV3
-  # gemcode
-    # for 10x gemocode v1 sc protocol
+  # gemcode - for 10x gemocode v1 sc protocol
   # celseq
   # celseq2
   sctechnology: dropseq
@@ -143,7 +142,7 @@ sce:
   # Species information for annotation
   # human
   # mouse
-  species: human
+  species: mouse
 
   # Whether to use gene symbols for SCE or ensembl IDs.
   genesymbol: 1

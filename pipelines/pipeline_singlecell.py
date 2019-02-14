@@ -388,7 +388,7 @@ def busText(infile, outfile):
 
 @transform(busText,
            suffix(".sorted.txt"),
-           r"\1.mtx")
+           r"\1.count")
 def busCount(infile, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
@@ -397,12 +397,9 @@ def busCount(infile, outfile):
     folder = infile.rsplit('/', 1)[0]
     sc_directory = PARAMS['sc_dir']
     bus2count = sc_directory + "/pipelines/bus2count.py"
-    barcode_thresh = PARAMS['kallisto_barcodethresh']
-    ec = PARAMS['kallisto_expectedcells']
-    threads = PARAMS['kallisto_threads']
 
     statement = '''
-    python %(bus2count)s --dir %(folder)s --barcodethresh %(barcode_thresh)s --expectedcells --threads %(threads)s --out %(outfile)s
+    python %(bus2count)s --busdir %(folder)s 
     '''
 
     P.run(statement)
@@ -415,23 +412,19 @@ def busCount(infile, outfile):
 @active_if(PARAMS['salmon_alevin'])
 @transform(runSalmonAlevin,
            regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"SCE.dir/\1.rds")
+           r"SCE.dir/\1/sce..rds")
 def readAlevinSCE(infile,outfile):
     '''
     Collates alevin count matrices for each sample
     Creates a single cell experiment class in R and saves as an r object
     '''
-
     working_dir = os.getcwd()
-    sc_directory = PARAMS['sc_dir']
-    script_loc = sc_directory + "/pipelines/R/sce.R"
-    species = PARAMS['sce_species']
-    gene_name = PARAMS['sce_genesymbol']
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(script_loc)s -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
     '''
     
     P.run(statement)
@@ -473,7 +466,6 @@ def run_qc(infile, outfile):
 
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
-    #probably just need to knit one document not render_site
     statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd QC_report.dir &&
                    cd QC_report.dir && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
 
