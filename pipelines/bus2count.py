@@ -35,11 +35,11 @@ from itertools import chain, combinations, product,compress
 from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.sparse import coo_matrix
 from scipy.io import mmwrite
-
+import mygene
+import ModuleBus2count
+import csv
 
 import cgatcore.experiment as E
-
-
 
 def main(argv=sys.argv):
 
@@ -62,11 +62,12 @@ def main(argv=sys.argv):
     parser.add_option("-o", "--out", dest="outfile", type ="string" ,
                       help="Gene count matrix outfile")
 
-    parser.add_option("-e", "expectedcells", dest="exp_cells", type ="int" ,
+    parser.add_option("-e", "--expectedcells", dest="exp_cells", type ="int" ,
                       help="Expected number of cells")
 
-    parser.add_option( "threads", dest="threads", type ="int" ,
+    parser.add_option( "--threads", dest="threads", type ="int" ,
                       help="Number of threads")
+    
 
     parser.set_defaults(bus_dir=None, t2gmap = 'transcript2geneMap.tsv', thresh = 100, outfile = 'kallisto.dir/output.bus.mtx', exp_cells = 1000, threads = 1)
 
@@ -84,183 +85,7 @@ def main(argv=sys.argv):
     matrix_ec = bus_dir + "/matrix.ec"
     transcripts = bus_dir + "/transcripts.txt"
     sorted_text = bus_dir + "/output.bus.sorted.txt"
-
-
-'''
-    tr2g = {}
-    trlist = []
-    with open(t2gmap) as f:
-        next(f)
-        for line in f:
-            l = line.split()
-            tr2g[l[0]] = l[1]
-            trlist.append(l[0])
-
-    genes = list(set(tr2g[t] for t in tr2g))
-
-    # Equivalence classes
-    ecs = {}
-    with open(matrix_ec) as f:
-        for line in f:
-            l = line.split()
-            ec = int(l[0])
-            trs = [int(x) for x in l[1].split(',')]
-            ecs[ec] = trs
-        
-    def ec2g(ec):
-        if ec in ecs:
-            return list(set(tr2g[trlist[t]] for t in ecs[ec]))        
-        else:
-            return []
-    # if parameter['whitelist']!=0:
-    #whitelist = set(x.strip() for x in open(parameter['whitelist']))
-
-    barcodes=np.array(pd.read_csv(sorted_text ,delimiter='\t',usecols=[0],header=None, dtype=str)).reshape(-1,)
-
-    counts = collections.Counter(barcodes)
-    labels, values = zip(*counts.items())
-    # sort the values in descending order
-    indSort = np.argsort(values)[::-1]
-    # rearrange the data
-    labels = np.array(labels)[indSort]
-    values = np.array(values)[indSort]
-
-    indices = np.arange(len(labels))
-    print("NUM_OF_DISTINCT_BARCODES =",len(indices))
-
-    cell_gene = collections.defaultdict(lambda: collections.defaultdict(float))
-    pbar=None
-    pumi=None
-    with open(sorted_text) as f:
-        gs = set()
-        for line in f:
-            l = line.split()
-            barcode,umi,ec,count = line.split()
-            ec = int(ec)
-        
-            if barcode == pbar:
-                # same barcode
-                if umi == pumi:
-                    # same UMI, let's update with intersection of genelist
-                    gl = ec2g(ec)
-                    gs.intersection_update(gl)
-                else:
-                    # new UMI, process the previous gene set
-                    for g in gs:
-                        cell_gene[barcode][g] += 1.0/len(gs)
-                        # record new umi, reset gene set
-                        pumi = umi
-                        gs = set(ec2g(ec))
-            else:
-            # work with previous gene list
-                for g in gs:
-                    cell_gene[pbar][g] += 1.0/len(gs)
-            
-                if sum(cell_gene[pbar][g] for g in cell_gene[pbar]) < 10:
-                    del cell_gene[pbar]
-            
-                pbar = barcode
-                pumi = umi
-            
-                gs = set(ec2g(ec))
-        #remember the last gene
-        for g in gs:
-            cell_gene[pbar][g] += 1.0/len(gs)
-        
-        if sum(cell_gene[pbar][g] for g in cell_gene[pbar]) < 10:
-            del cell_gene[pbar]
-
-    barcode_hist = collections.defaultdict(int)
-    for barcode in cell_gene:
-        cg = cell_gene[barcode]
-        s = len([cg[g] for g in cg])
-        barcode_hist[barcode] += s
-
-
-    bcv = [x for b,x in barcode_hist.items() if x > 10 and x < 4000]
-    plt.hist(bcv,bins=100)
-    # Better wording needed for labels
-    plt.xlabel('Number of cells with the same barcode')
-    plt.ylabel('Frequency')
-    plt.savefig('kallisto.dir/barcode_histogram.png')
-
-    # Paramaterise based on how histogram looks. User can see plot and then run again based on plot
-        
-    bad_barcode = [x for x in barcode_hist if  barcode_hist[x] <= barcode_thresh]
-
-    s = 0
-    bad_s = 0
-    bad_barcode_set = set(bad_barcode)
-    for barcode in cell_gene:
-        cg = cell_gene[barcode]
-        cgs =  sum(cg[g] for g in cg)
-        s += cgs
-        if barcode in bad_barcode_set:
-            bad_s += cgs
-
-    gene_to_id = dict((g,i+1) for i,g in enumerate(genes))
-    barcodes_to_use = [b for b,x in barcode_hist.items() if x > 0]
-
-    num_entries = 0
-    for barcode in barcodes_to_use:
-        num_entries += len([x for x in cell_gene[barcode].values() if round(x)>0])
-
-    with open(outfile, 'w') as of:
-        of.write('%%MatrixMarket matrix coordinate real general\n%\n')
-        #number of genes
-        of.write("%d %d %d\n"%(len(genes), len(barcodes_to_use), num_entries))
-        bcid = 0
-        for barcode in barcodes_to_use:
-            bcid += 1
-            cg = cell_gene[barcode]
-            gl = [(gene_to_id[g],round(cg[g])) for g in cg if round(cg[g]) > 0]
-            gl.sort()
-            for x in gl:
-                of.write("%d %d %d\n"%(x[0],bcid,x[1]))
-
-'''
-import mygene
-
-    def g2n_dict():
-        mg = mygene.MyGeneInfo()
-        ginfo = mg.querymany(ENSGLIST, scopes='ensembl.gene',returnall=True)
-
-        g2n = {}
-        count_exept=0
-        for g in ginfo['out']:
-            try:
-                gene_id=str(g['query'])
-                gene_name=str(g['symbol'])
-        
-                g2n[gene_id] = g2n.get(gene_id, [])
-                g2n[gene_id].append(str(g['symbol']))                
-            except KeyError:
-                count_exept+=1
-                g2n[ str(g['query']) ] = [str(g['query'])]
-        return(g2n)
-
-    def t2g_dict(infile):
-        d={}
-        with open(infile) as f:
-            next(f)
-            for line in f:
-                (key, value)=line.split()
-                d[key]=value
-        return(d)
-   
-    # load transcripts        
-    trlist = []
-    with open(busdir+'transcripts.txt') as f:
-        for line in f:
-            trlist.append(line[:-3])
-
-    # Dictionaries for transcript to gene and for gene to gene symbol
-    g2n = g2n_dict()
-    tr2g = t2g_dict(t2gmap)
-
-    # ec to gene names 
-    ec2gn = {ec:frozenset([item for sublist in  [g2n[tr2g[trlist[t][:len_of_ens]]] for t in ecs[ec]]   for item in sublist ]) for ec in equivalence_classes}
-
+    
     # load equivalence classes
     ecs = {}
     with open(matrix_ec) as f:
@@ -270,9 +95,9 @@ import mygene
             trs = [int(x) for x in l[1].split(',')]
             ecs[ec] = trs
 
-    barcodes=np.array(pd.read_csv(busdir+'output.bus.sorted.txt',delimiter='\t',usecols=[0],header=None, dtype=str)).reshape(-1,)
+    barcodes=np.array(pd.read_csv(bus_dir+'/output.bus.sorted.txt',delimiter='\t',usecols=[0],header=None, dtype=str)).reshape(-1,)
 
-    counts = Counter(barcodes)
+    counts = collections.Counter(barcodes)
     labels, values = zip(*counts.items())
     # sort the values in descending order
     indSort = np.argsort(values)[::-1]
@@ -306,44 +131,27 @@ import mygene
     ax.axvline(NUM_OF_BARCODES, color='g', linestyle='--',linewidth=2.0)
     ax.axhline(values[t], color='gray', linestyle='--',linewidth=.5)
     ax.axhline(values[t]/10, color='red', linestyle='--',linewidth=.5)
-    fig.savefig( bus_dir + '/Figures.dir/UMI_barcodes.png')
+    fig.savefig( bus_dir + '/UMI_barcodes.png')
 
     # No whitelist info, otherwise would incorporate here
     codewords = labels[:NUM_OF_BARCODES]
     f.write("CBs_detected \t %d \n"%len(codewords))
 
-    NUM_OF_UMIS_in_CELL_BARCODES=sum(values[:NUM_OF_BARCODES]
+    NUM_OF_UMIS_in_CELL_BARCODES=sum(values[:NUM_OF_BARCODES])
     f.write("NUM_UMIs_in_CBs \t %d \n"%NUM_OF_UMIS_in_CELL_BARCODES)
     
     ## Error correct barcodes
     dmin = 3 # Paramaterised in code, find out what it means?
 
-    def hamdist(s1, s2):
-        return sum(ch1 != ch2 for ch1, ch2 in zip(s1, s2))
-
-    def is_far_enough(i):
-        d=100000
-        codi=codewords[i]
-        j_range=list(np.arange(1,i))+list(np.arange(i+1,len(codewords)))
-        while d>=dmin and len(j_range)>0:
-            j=j_range.pop()
-            d=np.min([d,hamdist(codi,codewords[j])])
-
-        return i if d>=dmin else -1
-
     brc_idx_to_correct=[]
-    p=Pool(parameter['NUM_THREADS'])
-    ret_vec=p.map(is_far_enough, np.arange(len(codewords)) )
-    p.close()
-    p.join()
+    ret_vec = ModuleBus2count.get_ret_vec(dmin, codewords, threads)
+
 
     brc_idx_to_correct = [i for i in ret_vec if i>=0]
     f.write("DMIN \t %d \n"%dmin)
-    f.write("NUM_CBS_TO_ERROR_CORRECT \t %d \n"%len(brc_idx_to_correct))
-
-
-
-
+    f.write("NUM_CBs_TO_ERROR_CORRECT \t %d \n"%len(brc_idx_to_correct))
+    
+    '''
     def hamming_circle(s, n, alphabet='ATCG'):
         """Generate strings over alphabet whose Hamming distance from s is
         exactly n.
@@ -361,9 +169,9 @@ import mygene
 
     def merge_barcodes(barcs):
         offset=barcs[0]
-    	barcs=barcs[1]
-    	retvec=[]
-    	for idd in range(len(codewords)):
+        barcs=barcs[1]
+        retvec=[]
+        for idd in range(len(codewords)):
             retvec+=[[]]
         for idx, barcode in enumerate(barcs):
             if barcode in codeword_set: retvec[cw[barcode]] +=[idx+offset]
@@ -398,10 +206,9 @@ import mygene
         neighbors = hamming_circle(brc,1)
         for neighbor in neighbors:
             brc_to_correct_neigbors.add(neighbor)
+    '''
 
-    p = Pool(threads])
-    ret_threads=p.map(merge_barcodes, barcode_split)
-    p.close(); p.join()
+    ret_threads = ModuleBus2count.get_ret_threads(threads, barcodes, codewords, brc_idx_to_correct)
 
     ret_vec=[]
     for idd in range(len(codewords)):
@@ -419,29 +226,30 @@ import mygene
     f.write("NUM_OF_UMIS_in_CBs_AFTER_ERROR_CORRECTION \t %d \n"%NUM_OF_UMIS_in_error_corrected_CELL_BARCODES)
     f.write("NUM_OF_UMIS_RESCUED \t %d \n"%(NUM_OF_UMIS_in_error_corrected_CELL_BARCODES - NUM_OF_UMIS_in_CELL_BARCODES))
     f.write("PERCENT_UMI_INCREASE \t  {:.3}% \n".format(100*(NUM_OF_UMIS_in_error_corrected_CELL_BARCODES - NUM_OF_UMIS_in_CELL_BARCODES)/NUM_OF_UMIS_in_CELL_BARCODES)) 
-    
+
+
     b2c={} #barcode to codeword dict
     for i in range(len(ret_vec)):
         for j in ret_vec[i]:
             b2c[barcodes[j]]=i
 
-
-
     cellsets = {i:set() for i in range(len(codewords))} # this set will collapse duplicate ec-umis in each cell
     num_tx_aligned_reads = 0
-    with open(busdir+'output.bus.sorted.txt') as f:
-        rdr = csv.reader(f, delimiter='\t')
+    with open(bus_dir+'/output.bus.sorted.txt') as r:
+        print("=================================================== in")
+        rdr = csv.reader(r, delimiter='\t')
         for bar,umi,ec,c in rdr:
+
             num_tx_aligned_reads+=int(c)
             try:
                 cell = b2c[bar]
                 cellsets[cell].add((int(ec),umi))
             
             except KeyError: pass  
-        
-    # # from set back to sorted list
-    # for c in range(len(cellsets)):
-    #     cellsets[c]=sorted(list(cellsets[c]),key=lambda x: x[1])
+    print("out)
+    # from set back to sorted list
+    #for c in range(len(cellsets)):
+     #    cellsets[c]=sorted(list(cellsets[c]),key=lambda x: x[1])
 
     # Intersect ec/UMIs
     
@@ -451,12 +259,12 @@ import mygene
 
     ecs_sets={i:set(ecs[i]) for i in ecs.keys()}
 
-new_cellsets={}
+    new_cellsets={}
 
     for c in range(len(cellsets)):
         new_cellsets[c]=set()
         cell = cellsets[c]
-        umi_dict=defaultdict(list)
+        umi_dict=collections.defaultdict(list)
         for i in cell:
             umi_dict[i[1]].append(ecs_sets[i[0]])
 
@@ -495,11 +303,11 @@ new_cellsets={}
     ax = ax.ravel()
     cnt=0
     for c in np.random.randint(0,len(codewords),4):
-        labels, values = zip(*Counter([i[0] for i in cellsets[c]]).items())
+        labels, values = zip(*collections.Counter([i[0] for i in cellsets[c]]).items())
  
         ecdf = ECDF([len(ecs[i]) for i in labels])
         ax[cnt-1].plot(ecdf.x,ecdf.y)
-        labels, values = zip(*Counter([i[0] for i in new_cellsets[c]]).items())
+        labels, values = zip(*collections.Counter([i[0] for i in new_cellsets[c]]).items())
  
         ecdf = ECDF([len(ecs[i]) for i in labels])
         ax[cnt].plot(ecdf.x,ecdf.y)
@@ -508,7 +316,7 @@ new_cellsets={}
         ax[cnt].xlabel('x: number of tx')
         ax[cnt].ylabel('Pr(ec_size < x)')
         ax[cnt].legend(['before','after'])
-        fig.savefig( bus_dir + '/Figures.dir/ec_intersection_example_cells.png')
+        fig.savefig( bus_dir + '/ec_intersection_example_cells.png')
         cnt+=1
 
     # Get TCC matrix
@@ -530,7 +338,7 @@ new_cellsets={}
     data=[]
 
     for c in range(len(codewords)):
-        labels, values = zip(*Counter([i[0] for i in new_cellsets[c]]).items())
+        labels, values = zip(*collections.Counter([i[0] for i in new_cellsets[c]]).items())
         col+= [c] * len(labels)
         row+=[tmp[ec] for ec in labels]
         data+=values
@@ -538,6 +346,49 @@ new_cellsets={}
     del row,col,data
 
     f.write("MEDIAN_UMI_COUNTS_TCC \t %d \n"%(int(np.median(np.array(A.sum(axis=0))[0]))))
+
+
+    def g2n_dict(ENSGLIST):
+        mg = mygene.MyGeneInfo()
+        ginfo = mg.querymany(ENSGLIST, scopes='ensembl.gene',returnall=True)
+
+        g2n = {}
+        count_exept=0
+        for g in ginfo['out']:
+            try:
+                gene_id=str(g['query'])
+                gene_name=str(g['symbol'])
+        
+                g2n[gene_id] = g2n.get(gene_id, [])
+                g2n[gene_id].append(str(g['symbol']))                
+            except KeyError:
+                count_exept+=1
+                g2n[ str(g['query']) ] = [str(g['query'])]
+        return(g2n)
+
+    def t2g_dict(infile):
+        d={}
+        with open(infile) as f:
+            next(f)
+            for line in f:
+                (key, value)=line.split()
+                d[key]=value
+        return(d)
+   
+    # load transcripts        
+    trlist = []
+    with open(bus_dir+'/transcripts.txt') as f:
+        for line in f:
+            trlist.append(line[:-3])
+
+    # Dictionaries for transcript to gene and for gene to gene symbol
+ 
+    tr2g = t2g_dict(t2gmap) 
+    ENSGLIST = list(np.unique(list(tr2g.values())))
+    g2n = g2n_dict(ENSGLIST)
+
+    # ec to gene names 
+    ec2gn = {ec:frozenset([item for sublist in  [g2n[tr2g[trlist[t][:len_of_ens]]] for t in ecs[ec]]   for item in sublist ]) for ec in equivalence_classes}
 
     ec_counts=np.array(A.sum(axis=1)).T[0]
     counts_sz =np.zeros(1000)
@@ -559,13 +410,13 @@ new_cellsets={}
 
     mmwrite(bus_dir+'/matrix.tcc.mtx',A)
     
-    with open(save_dir+'matrix2.ec','w') as of:
+    with open(bus_dir+'/matrix2.ec','w') as of:
         for ec in equivalence_classes:
             transcripts = ",".join([str(i) for i in ecs[ec]])
             of.write("%s\t%s\n"%(str(ec),transcripts))
 
-    with open(save_dir+'matrix.cells','w') as of:
-        of.write('\n'.join(x + '-' + str(parameter['LANE']) for x in codewords))
+    with open(bus_dir+'/matrix.cells','w') as of:
+        of.write('\n'.join(codewords))
         of.write('\n')
 
     # Gene counts
@@ -578,7 +429,7 @@ new_cellsets={}
                 gn2ec[gn] = set([ec])
 
 
-    cell_gene = defaultdict(lambda: defaultdict(float))
+    cell_gene = collections.defaultdict(lambda: collections.defaultdict(float))
 
     for c in range(len(codewords)):
         for ec,umi in new_cellsets[c]:
@@ -629,7 +480,7 @@ new_cellsets={}
     ax.axhline(0.1, color='firebrick', linestyle='--',linewidth=1)
     ax.axvline(t, color='firebrick', linestyle='--',linewidth=1)
     ax.plot(np.sort(np.array(B.mean(axis=1)),axis=0).T[0][::-1][:t],color='green',linewidth=2)
-    fig.savefig(bus_dir+'/Figure.dir/Mean_gene_counts.png')
+    fig.savefig(bus_dir+'/Mean_gene_counts.png')
 
 
     f.write('RELIABLY_DETECTED_GENES \t %d \n'%t)
@@ -637,7 +488,7 @@ new_cellsets={}
 
     # Write gene matrix
 
-    mmwrite(bus_dir +'/GCmatrix.mtx',B)
+    mmwrite(outfile,B)
 
     with open(bus_dir+'/GCmatrix.genes','w') as of:
         for g in genes:
