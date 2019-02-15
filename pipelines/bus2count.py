@@ -246,7 +246,7 @@ def main(argv=sys.argv):
                 cellsets[cell].add((int(ec),umi))
             
             except KeyError: pass  
-    print("out)
+    print("out")
     # from set back to sorted list
     #for c in range(len(cellsets)):
      #    cellsets[c]=sorted(list(cellsets[c]),key=lambda x: x[1])
