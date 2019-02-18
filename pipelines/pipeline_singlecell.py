@@ -412,7 +412,7 @@ def busCount(infile, outfile):
 @active_if(PARAMS['salmon_alevin'])
 @transform(runSalmonAlevin,
            regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"SCE.dir/\1/sce..rds")
+           r"SCE.dir/\1/sce.rds")
 def readAlevinSCE(infile,outfile):
     '''
     Collates alevin count matrices for each sample
@@ -420,11 +420,13 @@ def readAlevinSCE(infile,outfile):
     '''
     working_dir = os.getcwd()
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    species = PARAMS['sce_species']
+    gene_name = PARAMS['sce_genesymbol']
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s
     '''
     
     P.run(statement)
@@ -434,7 +436,7 @@ def readAlevinSCE(infile,outfile):
 #########################
 
 @follows(mkdir("MultiQC_report.dir"))
-@originate("Mapping_qc.dir/multiqc_report.html")
+@originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
     '''build mulitqc report'''
 
@@ -453,8 +455,8 @@ def build_multiqc(infile):
 @follows(build_multiqc)
 @follows(mkdir("QC_report.dir"))
 @transform(readAlevinSCE,
-           suffix(".rds"),
-           "SCE.dir/pass.rds")
+           regex("(\S+/\S+)/sce.rds"),
+           r"\1/pass.rds")
 def run_qc(infile, outfile):
     """
     Runs an Rmarkdown report that allows users to visualise and set their
@@ -464,10 +466,11 @@ def run_qc(infile, outfile):
     data
     """
 
+    inf_dir = os.path.dirname(infile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
-    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd QC_report.dir &&
-                   cd QC_report.dir && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
+    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
 
     P.run(statement)
 
@@ -511,8 +514,8 @@ def qc():
 
 @follows(mkdir("Seurat.dir"))
 @transform(readAlevinSCE,
-           regex(r"SCE.dir/(.*).rds"),
-           r"Seurat.dir/\1.rds")
+           regex(r"SCE.dir/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/seurat.rds")
 def seurat_generate(infile,outfile):
     ''' 
     Takes sce object and converts it to a seurat object for further analysis
@@ -528,12 +531,13 @@ def seurat_generate(infile,outfile):
 
 
 @transform(seurat_generate,
-           regex("Seurat.dir/(\S+).rds"),
-           r"Seurat.dir/\1.dim_reduction.rds")
+           regex("Seurat.dir/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/\2_dim_reduction.rds")
 def seurat_dimreduction(infile, outfile):
     '''
     Takes a seurate object and computes a PCA-based dimension reduction
     '''
+    working_dir = outfile.replace("seurat.dim_reduction.rds", "")
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
 
     statement = '''Rscript %(R_ROOT)s/seurat_dimreduction.R
@@ -541,29 +545,18 @@ def seurat_dimreduction(infile, outfile):
     				-i %(infile)s
     				-o %(outfile)s
     				--mingenes=%(seurat_mingenes)s
-    				--maxmitopercent=%(seurat_maxmitopercent)s'''
+    				--maxmitopercent=%(seurat_maxmitopercent)s
+                                --npcs=%(seurat_npcs)s
+                                --reductionmethod="pca"
+                                --pccomponents=%(seurat_npcs)s
+                                --resolution=%(seurat_resolution)s
+                                --algorithm=%(seurat_algorithm)s'''
 
     P.run(statement)
 
-
-@transform(seurat_generate,
-           regex("Seurat.dir/(\S+).rds"),
-           r"Seurat.dir/\1.seurat_cluster.rds")
-def seurat_clustering(infile, outfile):
-    '''
-    Takes sce seurat object and creates a series of cluster visualisations
-    over a number of perplexities.
-    '''
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-	
-    statement = '''Rscript %(R_ROOT)s/seurat_cluster.R'''
-
-    P.run(statement)
-
-
-@transform(seurat_clustering,
-           regex("Seurat.dir/(\S+).rds"),
-           r"Seurat.dir/\1.seurat_marker.rds")
+@transform(seurat_dimreduction,
+           regex("Seurat.dir/(\S+)/(\S+)_dim_reduction.rds"),
+           r"Seurat.dir/\1/\2.seurat_marker.rds")
 def run_seurat_markdown(infile, outfile):
 	'''
     Takes sce seurat object from clustering and generates

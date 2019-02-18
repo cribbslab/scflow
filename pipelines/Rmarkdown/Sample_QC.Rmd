@@ -16,7 +16,6 @@ library(ComplexHeatmap)
 library(ggrepel)
 library(tidyverse)
 library(SingleCellExperiment)
-library(org.Hs.eg.db)
 library(limma)
 library(pheatmap)
 options(stringsAsFactors = FALSE)
@@ -25,7 +24,7 @@ options(stringsAsFactors = FALSE)
 # Load RDS data
 
 ```{r}
-sce <- readRDS("../SCE.dir/sce.rds")
+sce <- readRDS("sce.rds")
 
 ```
 
@@ -91,26 +90,15 @@ In addition to ensuring sufficient sequencing depth for each sample, we also wan
 
 ```{r, echo=FALSE, warning=FALSE}
 hist(
-    sce$total_features_by_counts,
+    sce$log10_total_features,
     breaks = 100
 )
-abline(v = 50, col = "red")
+abline(v = 2, col = "red")
 
-filter_by_detected_genes <- (sce$total_features_by_counts < 50)
+filter_by_detected_genes <- (sce$log10_total_features < 2)
 ```
 
-# ERCCs and MT genes
 
-A particularly useful plot for cell-level QC involves percentage of expression in feature controls against the total number of expressed features. These two metadata variables can be plotted against each other as shown below. 
-
-Well-behaved cells should have a large number of expressed features and and a low percentage of expression from feature controls. High percentage expression from feature controls and few expressed features are indicative of blank and failed cells.
-
-```{r, echo=FALSE}
-plotColData(sce, x = "total_features_by_counts",
-    y = "pct_counts_feature_control") +
-    theme(legend.position = "top") +
-    stat_smooth(method = "lm", se = FALSE, size = 2, fullrange = TRUE)
-```
 
 
 ```{r, echo=FALSE}
@@ -184,7 +172,7 @@ ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts
 ### Top 50
 
 ```{r Top50,  echo=FALSE}
-metric <- sceset$pct_counts_in_top_50_features
+metric <- sceset$pct_counts_top_50_features
 scater.top50.M <- median(metric)
 scater.top50.MAD <- mad(metric)
 scater.top50.outliers <-
@@ -195,7 +183,7 @@ outlier$Top50 <- metric > scater.top50.M + 4 * scater.top50.MAD
 ```
 
 ```{r Top50_plot,  echo=FALSE}
-ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_50_features)) +
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_top_50_features)) +
   geom_point() +
   geom_hline(
     yintercept = scater.top50.M + 4 * c(-1,1) * scater.top50.MAD,
@@ -212,7 +200,7 @@ ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts
 ### Top 100
 
 ```{r Top100,  echo=FALSE}
-metric <- sceset$pct_counts_in_top_100_features
+metric <- sceset$pct_counts_top_100_features
 scater.top100.M <- median(metric)
 scater.top100.MAD <- mad(metric)
 scater.top100.outliers <-
@@ -224,7 +212,7 @@ outlier$Top100 <- metric > scater.top100.M + 4 * scater.top100.MAD
 
 
 ```{r Top100_plot, echo=FALSE}
-ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_100_features)) +
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_top_100_features)) +
   geom_point() +
   geom_hline(
     yintercept = scater.top100.M + 3 * c(-1,1) * scater.top100.MAD,
@@ -240,7 +228,7 @@ ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts
 ### Top 200
 
 ```{r Top200,  echo=FALSE}
-metric <- sceset$pct_counts_in_top_200_features
+metric <- sceset$pct_counts_top_200_features
 scater.top200.M <- median(metric)
 scater.top200.MAD <- mad(metric)
 scater.top200.outliers <-
@@ -250,7 +238,7 @@ outlier$Top200 <- metric > scater.top100.M + 4 * scater.top100.MAD
 ```
 
 ```{r Top200_plot,  echo=FALSE}
-ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_200_features)) +
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_top_200_features)) +
   geom_point() +
   geom_hline(
     yintercept = scater.top200.M + 3 * c(-1,1) * scater.top200.MAD,
@@ -318,9 +306,10 @@ hm <- Heatmap(
   cluster_rows = FALSE, show_row_names = FALSE
 )
 
-#postscript("Figures.dir/cells_passing_filter_MCF7.eps")
+postscript("cells_passing_filter.eps")
 draw(hm)
-#dev.off()
+dev.off()
+draw(hm)
 ```
 
 
@@ -333,7 +322,7 @@ length(colnames(sce.pass))
 ```
 
 ```{r}
-saveRDS(sce.pass, file="../SCE.dir/pass.rds")
+saveRDS(sce.pass, file="pass.rds")
 ```
 
 
