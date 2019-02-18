@@ -7,6 +7,9 @@ output: html_notebook
 library(knitr)
 library(tidyverse)
 library(Seurat)
+library(yaml)
+
+opts <- read_yaml("../../pipeline.yml")
 ```
 
 This notebook impliments seurats differentially expressed gene analysis. 
@@ -78,5 +81,24 @@ top10 <- so.markers %>%  group_by(cluster) %>% top_n(10, avg_logFC)
 
 
 DoHeatmap(so, genes.use = top10$gene, slim.col.label = TRUE, remove.key = TRUE)
+```
 
+## Diffusion
+
+```{r}
+so <- RunDiffusion(so, genes.use = so@var.genes)
+
+DMPlot(so)
+```
+
+## umap
+
+```{r}
+so <- RunUMAP(so,
+              dims.use = 1:opts$seurat$npcs)
+
+umap <- as.data.frame(so@dr$umap@cell.embeddings)
+umap$cluster <- so@ident[rownames(umap)]
+
+DimPlot(so, reduction.use = "umap")
 ```
