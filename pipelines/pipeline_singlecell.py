@@ -573,6 +573,25 @@ def run_seurat_markdown(infile, outfile):
     P.run(statement)
 
 
+@transform(readAlevinSCE,
+           regex(r"SCE.dir/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/Clustering.html")
+def clustering(infile, outfile):
+    '''
+    Perform SC3 clustering analysis and observe the effects of clustering before and after
+    filtering cells based on quality metrics.
+    '''
+
+    inf_dir = os.path.dirname(infile)
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+
+    statement = '''cp %(NOTEBOOK_ROOT)s/Clustering.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Clustering.Rmd',encoding = 'UTF-8')" '''
+
+    P.run(statement)
+
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv
