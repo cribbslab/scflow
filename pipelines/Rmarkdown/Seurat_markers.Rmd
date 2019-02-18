@@ -1,0 +1,82 @@
+---
+title: "Seurat DE clusters"
+output: html_notebook
+---
+
+```{r}
+library(knitr)
+library(tidyverse)
+library(Seurat)
+```
+
+This notebook impliments seurats differentially expressed gene analysis. 
+
+# Import seurat object
+
+The follwing function will import the seurat object generated during the pipeline.
+
+The object contains calculated PCA, TSNE and cluster analysis computed according to the pipeline.yml
+options. Inspect the output of the pipeline before running this Rmarkdown document to see if you are
+happy with the settings, if you are unhappy then please delete the seurat_dim_reduction.rds file, modify the pipeline.yml file then re-run.
+
+```{r, import_data}
+so <- readRDS("seurat_dim_reduction.rds")
+```
+
+# Visualisation of the data
+
+## PCA
+```{r, pca_1}
+PCAPlot(so, dim.1=1, dim.2=2)
+```
+
+## TSNE
+
+```{r, tsne_1}
+TSNEPlot(so)
+```
+
+## Finding differentially expressed genes (cluster biomarkers)
+
+Seurat can help you find markers that define clusters via differential expression. By default, it identifes positive and negative markers of a single cluster (specified in ident.1), compared to all other cells. FindAllMarkers automates this process for all clusters, but you can also test groups of clusters vs. each other, or against all cells.
+
+The min.pct argument requires a gene to be detected at a minimum percentage in either of the two groups of cells, and the thresh.test argument requires a gene to be differentially expressed (on average) by some amount between the two groups. You can set both of these to 0, but with a dramatic increase in time - since this will test a large number of genes that are unlikely to be highly discriminatory. As another option to speed up these computations, max.cells.per.ident can be set. This will downsample each identity class to have no more cells than whatever this is set to. While there is generally going to be a loss in power, the speed increases can be significiant and the most highly differentially expressed genes will likely still rise to the top.
+
+
+### Find specific cluster marker
+
+```{r}
+# Find markers for cluster 1
+cluster1.markers <-  FindMarkers(so, ident.1 = 1, min.pct = 0.25)
+kable(print(x=head(x = cluster1.markers, n=10)), caption= "cluster specific markers")
+```
+
+### Final all markers
+
+```{r}
+so.markers <- FindAllMarkers(so, only.pos = TRUE, min.pct = 0.25, thresh.use = 0.25)
+kable(so.markers %>% group_by(cluster) %>%  top_n(2, avg_logFC))
+```
+
+# Visualise markers
+
+## Vln
+
+```{r}
+VlnPlot(so, features.plot = c(so.markers$gene[1], so.markers$gene[2]))
+```
+
+```{r}
+FeaturePlot(so, features.plot = c(so.markers$gene[1], so.markers$gene[2]),
+            cols.use = c("grey", "red"), reduction.use = "tsne")
+```
+
+## Heatmap
+
+```{r}
+top10 <- so.markers %>%  group_by(cluster) %>% top_n(10, avg_logFC)
+
+
+DoHeatmap(so, genes.use = top10$gene, slim.col.label = TRUE, remove.key = TRUE)
+
+```
