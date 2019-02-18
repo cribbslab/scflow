@@ -84,7 +84,9 @@ dev.off()
 #################### Scale data ######################
 
 
-so <- ScaleData(so, genes.use = so@var.genes)
+so <- ScaleData(so,
+		genes.use = so@var.genes,
+		vars.to.regress = c("nUMI"))
 
 # TODO: add function to handle cell cycle gene analysis and regression
 
