@@ -83,14 +83,6 @@ top10 <- so.markers %>%  group_by(cluster) %>% top_n(10, avg_logFC)
 DoHeatmap(so, genes.use = top10$gene, slim.col.label = TRUE, remove.key = TRUE)
 ```
 
-## Diffusion
-
-```{r}
-so <- RunDiffusion(so, genes.use = so@var.genes)
-
-DMPlot(so)
-```
-
 ## umap
 
 ```{r}
