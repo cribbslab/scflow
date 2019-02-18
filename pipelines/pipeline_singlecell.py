@@ -388,23 +388,22 @@ def busText(infile, outfile):
 
 @transform(busText,
            suffix(".sorted.txt"),
-           add_inputs(getTranscript2GeneMap, buildReferenceTranscriptome),
+           add_inputs(getTranscript2GeneMap),
            r"\1.mtx")
 def busCount(infiles, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
     ''' 
     
-    sorted_bus, t2gmap, ref_trans = infiles
+    sorted_bus, t2gmap = infiles
     folder = sorted_bus.rsplit('/', 1)[0]
     sc_directory = PARAMS['sc_dir']
     bus2count = sc_directory + "/pipelines/bus2count.py"
     exp_cells = PARAMS['kallisto_expectedcells']
     threads = PARAMS['kallisto_threads']
-    species = PARAMS['kallisto_species']
 
     statement = '''
-    python %(bus2count)s --dir %(folder)s --t2gmap %(t2gmap)s --expectedcells %(exp_cells)s --threads %(threads)s -o %(outfile)s --species %(species)s --reftrans %(ref_trans)s
+    python %(bus2count)s --dir %(folder)s --t2gmap %(t2gmap)s --expectedcells %(exp_cells)s --threads %(threads)s -o %(outfile)s
     '''
 
     P.run(statement)

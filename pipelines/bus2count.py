@@ -236,7 +236,6 @@ def main(argv=sys.argv):
     cellsets = {i:set() for i in range(len(codewords))} # this set will collapse duplicate ec-umis in each cell
     num_tx_aligned_reads = 0
     with open(bus_dir+'/output.bus.sorted.txt') as r:
-        print("=================================================== in")
         rdr = csv.reader(r, delimiter='\t')
         for bar,umi,ec,c in rdr:
 
@@ -246,7 +245,7 @@ def main(argv=sys.argv):
                 cellsets[cell].add((int(ec),umi))
             
             except KeyError: pass  
-    print("out")
+
 
     # from set back to sorted list
     #for c in range(len(cellsets)):
@@ -262,6 +261,7 @@ def main(argv=sys.argv):
 
     new_cellsets={}
 
+    print("=================================================== in")
     for c in range(len(cellsets)):
         new_cellsets[c]=set()
         cell = cellsets[c]
@@ -298,7 +298,7 @@ def main(argv=sys.argv):
                     s2ec[frozenset(new_ec)] = new_id
                     new_cellsets[c].add((s2ec[frozenset(new_ec)],umi))
     
-
+    print("out")
     # figure of cells before and after
     fig, ax = plt.subplots(2,2,sharex=True)
     ax = ax.ravel()
@@ -307,18 +307,20 @@ def main(argv=sys.argv):
         labels, values = zip(*collections.Counter([i[0] for i in cellsets[c]]).items())
  
         ecdf = ECDF([len(ecs[i]) for i in labels])
-        ax[cnt-1].plot(ecdf.x,ecdf.y)
+        ax[cnt].plot(ecdf.x,ecdf.y)
         labels, values = zip(*collections.Counter([i[0] for i in new_cellsets[c]]).items())
  
         ecdf = ECDF([len(ecs[i]) for i in labels])
         ax[cnt].plot(ecdf.x,ecdf.y)
         plt.xlim([0,30])
-        ax[cnt].title( 'cell barcode: {:1}'.format(codewords[c]))
+        ax[cnt].set_title( 'cell barcode: {:1}'.format(codewords[c]))
         ax[cnt].set_xlabel('x: number of tx')
-        ax[cnt].ylabel('Pr(ec_size < x)')
+        ax[cnt].set_ylabel('Pr(ec_size < x)')
         ax[cnt].legend(['before','after'])
-        fig.savefig( bus_dir + '/ec_intersection_example_cells.png')
         cnt+=1
+
+    fig.suptitle("Equivalence classes for 4 random CBs", fontsize=14)
+    fig.savefig(bus_dir + '/ec_intersection_example_cells.png')
 
     # Get TCC matrix
     ec_set=set()
