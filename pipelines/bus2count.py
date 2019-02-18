@@ -247,6 +247,7 @@ def main(argv=sys.argv):
             
             except KeyError: pass  
     print("out")
+
     # from set back to sorted list
     #for c in range(len(cellsets)):
      #    cellsets[c]=sorted(list(cellsets[c]),key=lambda x: x[1])
@@ -311,9 +312,9 @@ def main(argv=sys.argv):
  
         ecdf = ECDF([len(ecs[i]) for i in labels])
         ax[cnt].plot(ecdf.x,ecdf.y)
-        ax[cnt].xlim([0,30])
+        plt.xlim([0,30])
         ax[cnt].title( 'cell barcode: {:1}'.format(codewords[c]))
-        ax[cnt].xlabel('x: number of tx')
+        ax[cnt].set_xlabel('x: number of tx')
         ax[cnt].ylabel('Pr(ec_size < x)')
         ax[cnt].legend(['before','after'])
         fig.savefig( bus_dir + '/ec_intersection_example_cells.png')
