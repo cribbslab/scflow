@@ -84,7 +84,9 @@ dev.off()
 #################### Scale data ######################
 
 
-so <- ScaleData(so, genes.use = so@var.genes)
+so <- ScaleData(so,
+		genes.use = so@var.genes,
+		vars.to.regress = c("nUMI"))
 
 # TODO: add function to handle cell cycle gene analysis and regression
 
@@ -128,7 +130,7 @@ dev.off()
 so <- ProjectPCA(so, do.print = FALSE)
 
 so <-  FindClusters(so,
-                  reduction.type=opt$pccomponents,
+                  reduction.type=opt$reductionmethod,
                   dims.use = 1:as.numeric(opt$npcs),
                   resolution = opt$resolution,
                   algorithm = opt$algorithm,
@@ -139,13 +141,14 @@ so <-  FindClusters(so,
 nclusters <- length(unique(so@ident))
 
 
-so <- buildClusterTree(so,do.reorder = TRUE,reorder.numeric = TRUE,pcs.use = 1:11)
+so <- BuildClusterTree(so,do.reorder = TRUE,reorder.numeric = TRUE,
+                       pcs.use = 1:as.numeric(opt$npcs))
 
 
 ############# Run tsne ##################
 
 so <- RunTSNE(so,
-	     dims.use=comps,
+	     dims.use=1:as.numeric(opt$npcs),
 	     do.fast=T)
 
 

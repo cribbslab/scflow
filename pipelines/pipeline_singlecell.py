@@ -560,20 +560,42 @@ def seurat_dimreduction(infile, outfile):
 
     P.run(statement)
 
+
 @transform(seurat_dimreduction,
            regex("Seurat.dir/(\S+)/(\S+)_dim_reduction.rds"),
-           r"Seurat.dir/\1/\2.seurat_marker.rds")
+           r"Seurat.dir/\1/Seurat_markers.html")
 def run_seurat_markdown(infile, outfile):
-	'''
+    '''
     Takes sce seurat object from clustering and generates
     an Rmarkdown report for running tsne, visualising clusters, finding marker
     genes and creating feature plots
     '''
 
-	R_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-	statement = ''' '''
+    inf_dir = os.path.dirname(infile)
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+    statement = '''cp %(NOTEBOOK_ROOT)s/Seurat_markers.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Seurat_markers.Rmd',encoding = 'UTF-8')" '''
 
-	P.run(statement)
+    P.run(statement)
+
+
+@transform(readAlevinSCE,
+           regex(r"SCE.dir/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/Clustering.html")
+def clustering(infile, outfile):
+    '''
+    Perform SC3 clustering analysis and observe the effects of clustering before and after
+    filtering cells based on quality metrics.
+    '''
+
+    inf_dir = os.path.dirname(infile)
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+
+    statement = '''cp %(NOTEBOOK_ROOT)s/Clustering.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Clustering.Rmd',encoding = 'UTF-8')" '''
+
+    P.run(statement)
+
 
 
 def main(argv=None):

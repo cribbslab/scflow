@@ -8,8 +8,8 @@ library(scater)
 library(SummarizedExperiment)
 library(SC3)
 library(dplyr)
-sce <- readRDS("../SCE.dir/sce.rds")
-sce.pass <- readRDS("../SCE.dir/pass.rds")
+sce <- readRDS("sce.rds")
+sce.pass <- readRDS("pass.rds")
 ```
 
 # PCA {.tabset}
@@ -21,9 +21,9 @@ sce<- normalize(sce)
 sce <- runPCA(sce)
 reducedDimNames(sce)
 
-svg("../output.dir/Total_PCA.svg")
+#svg("Before_filtering_PCA.svg")
 plotReducedDim(sce, use_dimred = "PCA")
-dev.off()
+#dev.off()
 ```
 
 
@@ -33,9 +33,9 @@ dev.off()
 sce.pass<- normalize(sce.pass)
 sce.pass <- runPCA(sce.pass)
 
-svg("../output.dir/Pass_PCA.svg")
+#svg("Pass_PCA.svg")
 plotReducedDim(sce.pass, use_dimred = "PCA")
-dev.off()
+#dev.off()
 ```
 
 # TSNE {.tabset}
@@ -48,10 +48,10 @@ t-distributed stochastic neighbour embedding (t-SNE) is widely used for visualiz
 set.seed=100
 sce <- runTSNE(sce, ncomponents = 2, ntop = 500,
                   exprs_values = "logcounts",
-    use_dimred="PCA")
-svg("../output.dir/Total_tSNE.svg")
-plotTSNE(sce, colour_by = "GAPDH")
-dev.off()
+    use_dimred="PCA", check_duplicates = FALSE)
+#svg("Before_clustering_tSNE.svg")
+plotTSNE(sce, colour_by = sce@rowRanges@partitioning@NAMES[1])
+#dev.off()
 ```
 
 ## After filtering
@@ -61,9 +61,9 @@ set.seed=100
 sce.pass <- runTSNE(sce.pass, ncomponents = 2, ntop = 500,
                   exprs_values = "logcounts",
     use_dimred="PCA")
-svg("../output.dir/Pass_tSNE.svg")
-plotTSNE(sce.pass, colour_by = "GAPDH")
-dev.off()
+#svg("Pass_tSNE.svg")
+plotTSNE(sce.pass, sce@rowRanges@partitioning@NAMES[1])
+#dev.off()
 ```
 
 # SC3 clustering
@@ -85,33 +85,33 @@ sce.filtered <- sc3(sce.filtered, ks = 5, biology = TRUE, gene_filter = FALSE, p
 ## Visulaisation of the consensus matrix
 
 ```{r, echo=FALSE}
-svg("../output.dir/SC3_consensus.svg")
+#svg("SC3_consensus.svg")
 sc3_plot_consensus(sce.filtered, k = 5)
-dev.off()
+#dev.off()
 ```
 
 ## Visualisation of the expression matrix
 
 ```{r, echo=FALSE}
-svg("../output.dir/SC3_diff_exprs.svg")
+#svg("SC3_diff_exprs.svg")
 sc3_plot_expression(sce.filtered, k = 5)
-dev.off()
+#dev.off()
 ```
 
 ## Identify marker genes that discriminate clusters
 
 ```{r, echo=FALSE}
-svg("../output.dir/Marker_genes.svg")
+#svg("Marker_genes.svg")
 sc3_plot_markers(sce.filtered, k = 5)
-dev.off()
+#dev.off()
 ```
 
 # Differential gene plots
 
 ```{r}
-svg("../output.dir/DE_genes.svg")
+#svg("DE_genes.svg")
 sc3_plot_de_genes(sce.filtered, k = 5, p.val=0.05)
-dev.off()
+#dev.off()
 
 row_data <- rowData(sce.filtered)
 de_genes <- row_data[ , grep("sc3_", colnames(row_data))]
@@ -119,11 +119,13 @@ de_genes <- row_data[ , grep("sc3_", colnames(row_data))]
 
 de_genes <- as.data.frame(de_genes) %>% 
   rownames_to_column("SYMBOL")
-write.csv(de_genes, file = "../output.dir/Sc3_de_genes.csv")
+
+dir.create("cluster_output.dir")
+write.csv(de_genes, file = "cluster_output.dir/Sc3_de_genes.csv")
 ```
 
 # Save RDS
 
 ```{r}
-saveRDS(sce.filtered, file="../SCE.dir/pass_clustering.rds")
+saveRDS(sce.filtered, file="pass_clustering.rds")
 ```
