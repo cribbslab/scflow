@@ -292,6 +292,7 @@ def main(argv=sys.argv):
         data+=values
     A=coo_matrix((data, (row, col)), shape=(len(equivalence_classes),len(codewords)))
     del row,col,data
+    A_large = A.toarray()
 
     f.write("MEDIAN_UMI_COUNTS_TCC \t %d \n"%(int(np.median(np.array(A.sum(axis=0))[0]))))
 
@@ -366,9 +367,9 @@ def main(argv=sys.argv):
 
     # Write TCC matrix
 
-    mmwrite(bus_dir+'/matrix.tcc.mtx',A)
+    mmwrite(bus_dir+'/matrix.tcc.coord.mtx',A)
     
-    with open(bus_dir+'/matrix2.ec','w') as of:
+    with open(bus_dir+'/matrix_updated.ec','w') as of:
         for ec in equivalence_classes:
             transcripts = ",".join([str(i) for i in ecs[ec]])
             of.write("%s\t%s\n"%(str(ec),transcripts))
@@ -417,6 +418,7 @@ def main(argv=sys.argv):
     
     B=coo_matrix((data, (row, col)), shape=(len(genes),len(codewords)))
     del row,col,data
+    B_large = B.toarray()
 
     f = open(bus_dir + "/bus_count.log", "a+")
     f.write('MEDIAN_UMI_COUNTs_GENE \t %d \n'%int(np.median(np.array(B.sum(axis=0))[0])))
@@ -444,19 +446,26 @@ def main(argv=sys.argv):
     f.write('RELIABLY_DETECTED_GENES \t %d \n'%t)
     f.close()
 
-    # Write gene matrix
+    ## Write gene matrix ##
 
-    mmwrite(outfile,B)
+    # Coordinates
+    mmwrite(bus_dir + 'GCmatrix.coord',B)
 
+    # Save full array
+    np.savetxt(outfile, B_large, delimiter = ',')
+    
+    regex_match = "frozenset\(\{\'(.*)\'\}\)"
     with open(bus_dir+'/GCmatrix.genes','w') as of:
         for g in genes:
             print(g)
-            of.write("%s\n"%g)
+            gname_re = re.search(regex_match, g)
+            gene_name = gname_re.group(1)
 
+            of.write("%s\n"%gene_name)
+             
     with open(bus_dir +'/GCmatrix.cells','w') as of:
         of.write('\n'.join(codewords))
         
-
 
 if __name__ == "__main__":
     sys.exit(main())

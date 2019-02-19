@@ -389,7 +389,7 @@ def busText(infile, outfile):
 @transform(busText,
            suffix(".sorted.txt"),
            add_inputs(getTranscript2GeneMap),
-           r"\1.mtx")
+           r"\1_mat.gz")
 def busCount(infiles, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
