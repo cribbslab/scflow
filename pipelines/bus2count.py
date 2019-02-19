@@ -20,6 +20,7 @@ Command line options
 
 '''
 
+
 import os 
 import sys
 import re
@@ -38,6 +39,7 @@ from scipy.io import mmwrite
 import mygene
 import ModuleBus2count
 import csv
+import pickle
 
 import cgatcore.experiment as E
 
@@ -80,7 +82,7 @@ def main(argv=sys.argv):
     exp_cells = options.exp_cells
     threads = options.threads
 
-# Bus files
+    # Bus files
 
     matrix_ec = bus_dir + "/matrix.ec"
     transcripts = bus_dir + "/transcripts.txt"
@@ -94,8 +96,10 @@ def main(argv=sys.argv):
             ec = int(l[0])
             trs = [int(x) for x in l[1].split(',')]
             ecs[ec] = trs
-
+    
     barcodes=np.array(pd.read_csv(bus_dir+'/output.bus.sorted.txt',delimiter='\t',usecols=[0],header=None, dtype=str)).reshape(-1,)
+
+    #ref='Mus_musculus.GRCm38'
 
     counts = collections.Counter(barcodes)
     labels, values = zip(*counts.items())
@@ -146,68 +150,10 @@ def main(argv=sys.argv):
     brc_idx_to_correct=[]
     ret_vec = ModuleBus2count.get_ret_vec(dmin, codewords, threads)
 
-
     brc_idx_to_correct = [i for i in ret_vec if i>=0]
     f.write("DMIN \t %d \n"%dmin)
     f.write("NUM_CBs_TO_ERROR_CORRECT \t %d \n"%len(brc_idx_to_correct))
-    
-    '''
-    def hamming_circle(s, n, alphabet='ATCG'):
-        """Generate strings over alphabet whose Hamming distance from s is
-        exactly n.
-        """
-        for positions in combinations(range(len(s)), n):
-            for replacements in product(range(len(alphabet) - 1), repeat=n):
-                cousin = list(s)
-                for p, r in zip(positions, replacements):
-                    if cousin[p] == alphabet[r]:
-                        cousin[p] = alphabet[-1]
-                    else:
-                        cousin[p] = alphabet[r]
-                yield ''.join(cousin)
-
-
-    def merge_barcodes(barcs):
-        offset=barcs[0]
-        barcs=barcs[1]
-        retvec=[]
-        for idd in range(len(codewords)):
-            retvec+=[[]]
-        for idx, barcode in enumerate(barcs):
-            if barcode in codeword_set: retvec[cw[barcode]] +=[idx+offset]
-            else:
-                if barcode in brc_to_correct_neigbors:
-                    neighbors = hamming_circle(barcode,1)
-                    for neighbor in neighbors:
-                        if neighbor in brc_to_correct: retvec[cw[neighbor]] +=[idx+offset]; break;
-        return retvec
-
-# Link barcodes to their closest codeword
-
-    chunksize=1+int(len(barcodes)/threads)
-    
-    cw={}
-    for id in range(len(codewords)):
-        cw[codewords[id]] = id
-    
-    barcode_split=[]
-    for i in range(0, len(barcodes), chunksize):
-        barcode_split+=[[i,barcodes[i:i+chunksize]]]
-    
-    codeword_set = set(codewords)
-    codeword_list = list(codewords)
-    brc_to_correct=set(codewords[brc_idx_to_correct])
-
-
-    #### Generate the set of all dist-1 neighbors of brc_to_correct (for fast check in merge func)
-    #### note: the number of barcodes in this set is len(brc_to_correct)*3*barcode_length
-    brc_to_correct_neigbors=set()
-    for brc in brc_to_correct:
-        neighbors = hamming_circle(brc,1)
-        for neighbor in neighbors:
-            brc_to_correct_neigbors.add(neighbor)
-    '''
-
+   
     ret_threads = ModuleBus2count.get_ret_threads(threads, barcodes, codewords, brc_idx_to_correct)
 
     ret_vec=[]
@@ -335,7 +281,6 @@ def main(argv=sys.argv):
     for id in range(len(equivalence_classes)):
         tmp[equivalence_classes[id]] = id
 
-
     row=[]
     col=[]
     data=[]
@@ -351,9 +296,9 @@ def main(argv=sys.argv):
     f.write("MEDIAN_UMI_COUNTS_TCC \t %d \n"%(int(np.median(np.array(A.sum(axis=0))[0]))))
 
 
-    def g2n_dict(ENSGLIST):
+    def g2n_dict(ENSGLIST, species_code):
         mg = mygene.MyGeneInfo()
-        ginfo = mg.querymany(ENSGLIST, scopes='ensembl.gene',returnall=True)
+        ginfo = mg.querymany(ENSGLIST, scopes='ensembl.gene',returnall=True, species = species_code )
 
         g2n = {}
         count_exept=0
@@ -378,21 +323,30 @@ def main(argv=sys.argv):
                 d[key]=value
         return(d)
    
+ 
     # load transcripts        
     trlist = []
     with open(bus_dir+'/transcripts.txt') as f:
         for line in f:
-            trlist.append(line[:-3])
+            trlist.append(line)
 
     # Dictionaries for transcript to gene and for gene to gene symbol
- 
-    tr2g = t2g_dict(t2gmap) 
-    ENSGLIST = list(np.unique(list(tr2g.values())))
-    g2n = g2n_dict(ENSGLIST)
+    tr2g = t2g_dict(t2gmap)
 
-    # ec to gene names 
+    # 15 for human, 18 for mouse
+    len_of_ens = len(list(tr2g.keys())[0])
+    if len_of_ens == 15:
+        species = 9606
+    elif len_of_ens == 18:
+        species = 10090
+    
+    ENSGLIST = list(np.unique(list(tr2g.values())))
+    g2n = g2n_dict(ENSGLIST, species) 
+
+    # ec to gene names  
     ec2gn = {ec:frozenset([item for sublist in  [g2n[tr2g[trlist[t][:len_of_ens]]] for t in ecs[ec]]   for item in sublist ]) for ec in equivalence_classes}
 
+    # Stats
     ec_counts=np.array(A.sum(axis=1)).T[0]
     counts_sz =np.zeros(1000)
     for ec in equivalence_classes:
@@ -404,6 +358,7 @@ def main(argv=sys.argv):
             pass
     counts_sz=100*counts_sz/sum(counts_sz)
 
+    f = open(bus_dir + "/bus_count.log", "a+")
     f.write('PERCENT_INCREASE_READS_KEPT_IN_TCCs \t {:.1f}% \n'.format(100*(100-counts_sz[0])/counts_sz[0]))
     f.write('NUM_OF_TCC_DEDUPLICATED_UMIs/TRANSCRIPTOME_ALIGNED_READS \t {:.1f}% \n'.format(100*A.sum()/num_tx_aligned_reads))
 
@@ -495,11 +450,12 @@ def main(argv=sys.argv):
 
     with open(bus_dir+'/GCmatrix.genes','w') as of:
         for g in genes:
+            print(g)
             of.write("%s\n"%g)
 
-    with open(+'GCmatrix.cells','w') as of:
-        of.write('\n'.join(x + '-' + str(parameter['LANE']) for x in codewords))
-        of.write('\n')
+    with open(bus_dir +'/GCmatrix.cells','w') as of:
+        of.write('\n'.join(codewords))
+        
 
 
 if __name__ == "__main__":

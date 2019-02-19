@@ -406,6 +406,8 @@ def busCount(infiles, outfile):
     python %(bus2count)s --dir %(folder)s --t2gmap %(t2gmap)s --expectedcells %(exp_cells)s --threads %(threads)s -o %(outfile)s
     '''
 
+    job_memory = "10G"
+
     P.run(statement)
 
 #########################
