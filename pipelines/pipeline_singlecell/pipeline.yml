@@ -25,11 +25,11 @@ data: 0
 
 # Pseduoaligner
 # allowble quantifiers:
-# salmon
-# alevin
-# kallisto
-# bustools
-quantifiers: [kallisto, bustools]
+# salmon 
+ #(alevin)
+# kallisto 
+ #(bus)
+pseudoaligner: kallisto
 
 
 # Provide a reference geneset (suffix= ".gtf.gz")

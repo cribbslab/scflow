@@ -389,7 +389,7 @@ def busText(infile, outfile):
 @transform(busText,
            suffix(".sorted.txt"),
            add_inputs(getTranscript2GeneMap),
-           r"\1_mat.gz")
+           r"\1.mat.gz")
 def busCount(infiles, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
@@ -406,7 +406,7 @@ def busCount(infiles, outfile):
     python %(bus2count)s --dir %(folder)s --t2gmap %(t2gmap)s --expectedcells %(exp_cells)s --threads %(threads)s -o %(outfile)s
     '''
 
-    job_memory = "10G"
+    job_memory = "30G"
 
     P.run(statement)
 
@@ -428,14 +428,43 @@ def readAlevinSCE(infile,outfile):
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
+    pseudo = PARAMS['pseudoaligner']
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s
     '''
     
     P.run(statement)
+
+
+## Kallisto SCE object
+@follows(mkdir("SCE.dir"))
+@active_if(PARAMS['kallisto_bustools'])
+@transform(busCount,
+           regex("kallisto.dir/(.*)/output.bus.mat.gz"),
+           r"SCE.dir/\1/sce.rds")
+def readBusSCE(infile, outfile):
+    ''' 
+    Takes in gene count matrices for each sample
+    Creates a single cell experiment class in R and saves as an r object
+    '''
+
+    working_dir = os.getcwd()
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    species = PARAMS['sce_species']
+    gene_name = PARAMS['sce_genesymbol']
+    pseudo = PARAMS['pseudoaligner']
+    
+    job_memory = "10G"
+
+    statement = '''
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --pseudoaligner %(pseudo)s
+    '''
+
+    P.run(statement)
+
 
 #########################
 # Multiqc

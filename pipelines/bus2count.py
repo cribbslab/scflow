@@ -450,15 +450,12 @@ def main(argv=sys.argv):
 
     # Coordinates
     mmwrite(bus_dir + 'GCmatrix.coord',B)
-
-    # Save full array
-    np.savetxt(outfile, B_large, delimiter = ',')
     
     regex_match = "frozenset\(\{\'(.*)\'\}\)"
     with open(bus_dir+'/GCmatrix.genes','w') as of:
         for g in genes:
             print(g)
-            gname_re = re.search(regex_match, g)
+            gname_re = re.search(regex_match, str(g))
             gene_name = gname_re.group(1)
 
             of.write("%s\n"%gene_name)
@@ -466,6 +463,8 @@ def main(argv=sys.argv):
     with open(bus_dir +'/GCmatrix.cells','w') as of:
         of.write('\n'.join(codewords))
         
+   # Save full array
+    np.savetxt(outfile, B_large, delimiter = ',')
 
 if __name__ == "__main__":
     sys.exit(main())
