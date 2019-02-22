@@ -419,7 +419,7 @@ def busCount(infiles, outfile):
 @active_if(PARAMS['salmon_alevin'])
 @transform(runSalmonAlevin,
            regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"SCE.dir/\1/sce.rds")
+           r"SCE.dir/\1/alevin/sce.rds")
 def readAlevinSCE(infile,outfile):
     '''
     Collates alevin count matrices for each sample
@@ -429,7 +429,7 @@ def readAlevinSCE(infile,outfile):
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
-    pseudo = PARAMS['pseudoaligner']
+    pseudo = 'alevin'
     
     job_memory = "10G"
 
@@ -445,7 +445,7 @@ def readAlevinSCE(infile,outfile):
 @active_if(PARAMS['kallisto_bustools'])
 @transform(busCount,
            regex("kallisto.dir/(.*)/output.bus.mat.gz"),
-           r"SCE.dir/\1/sce.rds")
+           r"SCE.dir/\1/bus/sce.rds")
 def readBusSCE(infile, outfile):
     ''' 
     Takes in gene count matrices for each sample
@@ -456,7 +456,7 @@ def readBusSCE(infile, outfile):
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
-    pseudo = PARAMS['pseudoaligner']
+    pseudo = 'kallisto'
     
     job_memory = "10G"
 
@@ -547,15 +547,17 @@ def quant():
 def qc():
     pass
 
-
+# Working with alevin and kallisto, tuple. Need to change downstream and in this statement
 @follows(mkdir("Seurat.dir"))
-@transform(readAlevinSCE,
-           regex(r"SCE.dir/(\S+)/(\S+).rds"),
-           r"Seurat.dir/\1/seurat.rds")
+@transform((readAlevinSCE,readBusSCE),
+           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/\2/seurat.rds")
 def seurat_generate(infile,outfile):
     ''' 
     Takes sce object and converts it to a seurat object for further analysis
     '''
+    
+    alevin_sce, bus_sce = infiles
     working_dir = os.getcwd()
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
 

@@ -23,15 +23,6 @@ copyright: Cribbs Group, Botnar Research Centre (2019)
 # Location of the data. 0 for current working directory, 1 for data.dir, other= defined path
 data: 0
 
-# Pseduoaligner
-# allowble quantifiers:
-# salmon 
- #(alevin)
-# kallisto 
- #(bus)
-pseudoaligner: kallisto
-
-
 # Provide a reference geneset (suffix= ".gtf.gz")
 # Geneset should be located in working directory
 geneset: refgeneset.gtf.gz
