@@ -403,6 +403,7 @@ def busCount(infiles, outfile):
     threads = PARAMS['kallisto_threads']
 
     statement = '''
+    rm -rf %(folder)s/bus_count.log;
     python %(bus2count)s --dir %(folder)s --t2gmap %(t2gmap)s --expectedcells %(exp_cells)s --threads %(threads)s -o %(outfile)s
     '''
 
