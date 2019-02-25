@@ -324,7 +324,7 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
     job_memory = "30G"
-
+    job_threads = 5
     P.run(statement)
 
 #############################
@@ -388,19 +388,26 @@ def busText(infile, outfile):
 
 @transform(busText,
            suffix(".sorted.txt"),
-           r"\1.count")
-def busCount(infile, outfile):
+           add_inputs(getTranscript2GeneMap),
+           r"\1.mat.gz")
+def busCount(infiles, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
     ''' 
-
-    folder = infile.rsplit('/', 1)[0]
+    
+    sorted_bus, t2gmap = infiles
+    folder = sorted_bus.rsplit('/', 1)[0]
     sc_directory = PARAMS['sc_dir']
     bus2count = sc_directory + "/pipelines/bus2count.py"
+    exp_cells = PARAMS['kallisto_expectedcells']
+    threads = PARAMS['kallisto_threads']
 
     statement = '''
-    python %(bus2count)s --busdir %(folder)s 
+    rm -rf %(folder)s/bus_count.log;
+    python %(bus2count)s --dir %(folder)s --t2gmap %(t2gmap)s --expectedcells %(exp_cells)s --threads %(threads)s -o %(outfile)s
     '''
+
+    job_memory = "30G"
 
     P.run(statement)
 
@@ -422,14 +429,43 @@ def readAlevinSCE(infile,outfile):
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
+    pseudo = PARAMS['pseudoaligner']
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s
     '''
     
     P.run(statement)
+
+
+## Kallisto SCE object
+@follows(mkdir("SCE.dir"))
+@active_if(PARAMS['kallisto_bustools'])
+@transform(busCount,
+           regex("kallisto.dir/(.*)/output.bus.mat.gz"),
+           r"SCE.dir/\1/sce.rds")
+def readBusSCE(infile, outfile):
+    ''' 
+    Takes in gene count matrices for each sample
+    Creates a single cell experiment class in R and saves as an r object
+    '''
+
+    working_dir = os.getcwd()
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    species = PARAMS['sce_species']
+    gene_name = PARAMS['sce_genesymbol']
+    pseudo = PARAMS['pseudoaligner']
+    
+    job_memory = "10G"
+
+    statement = '''
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --pseudoaligner %(pseudo)s
+    '''
+
+    P.run(statement)
+
 
 #########################
 # Multiqc
@@ -476,18 +512,6 @@ def run_qc(infile, outfile):
 
 
 #########################
-# Seurat analysis  
-#########################
-
-# tSNE plotting on saved surat object - a range of perplexity choices
-# plot tSNE perplexity hyper parameters on tSNE layout
-# UMAP analysis
-# Diffusion map
-# find clusters (findMarkers i think the function is called)
-# differential expression of markers in clusters
-
-
-#########################
 # Velocity analysis  
 #########################
 
@@ -513,7 +537,7 @@ def qc():
 
 
 @follows(mkdir("Seurat.dir"))
-@transform(readAlevinSCE,
+@transform(run_qc,
            regex(r"SCE.dir/(\S+)/(\S+).rds"),
            r"Seurat.dir/\1/seurat.rds")
 def seurat_generate(infile,outfile):
@@ -575,14 +599,14 @@ def run_seurat_markdown(infile, outfile):
 
 @transform(readAlevinSCE,
            regex(r"SCE.dir/(\S+)/(\S+).rds"),
-           r"Seurat.dir/\1/Clustering.html")
+           r"SCE.dir/\1/Clustering.html")
 def clustering(infile, outfile):
     '''
     Perform SC3 clustering analysis and observe the effects of clustering before and after
     filtering cells based on quality metrics.
     '''
 
-    inf_dir = os.path.dirname(infile)
+    inf_dir = os.path.dirname(outfile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
     statement = '''cp %(NOTEBOOK_ROOT)s/Clustering.Rmd %(inf_dir)s &&
@@ -590,6 +614,10 @@ def clustering(infile, outfile):
 
     P.run(statement)
 
+
+@follows(clustering, run_seurat_markdown)
+def seurat():
+    pass
 
 
 def main(argv=None):
