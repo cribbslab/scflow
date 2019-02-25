@@ -15,7 +15,7 @@ option_list = list(
   make_option(c("-s", "--species"), type="character", default="human", 
               help="Species, human or mouse [default = %default]", metavar="character"),
   make_option(c("-g", "--genesymbol"), type="integer", default="0", 
-              help="Logical. Whether to use gene names/symbols instead of ensembl IDs in SCE object", metavar="integer"),
+              help="Logical. Whether to use gene names/symbols instead of ensembl IDs in SCE object  [default = %default]", metavar="integer"),
   make_option(c("-p", "--pseudoaligner"), type="character", default="alevin", 
               help="Pseudoaligner used, kallisto or alevin [default = %default]", metavar="character")
   ); 
@@ -106,7 +106,7 @@ if(pseudo == "alevin"){
 }
 
 
-## Currently python ouput for kallisto converts ensembl names to symbols. Should remove from python and do within 
+## Currently python output for kallisto converts ensembl names to symbols. Should remove from python and do within 
 ## this R script as currently some ensembl names remain in gene names, where symbols couldn't be found
 
 # Convert to gene names 
