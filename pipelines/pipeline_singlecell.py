@@ -76,6 +76,7 @@ from ruffus import *
 
 import sys
 import os
+import re
 import sqlite3
 
 import cgatcore.pipeline as P
@@ -547,30 +548,40 @@ def quant():
 def qc():
     pass
 
+@transform((readBusSCE, readAlevinSCE), 
+           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"SCE.dir/\1/\2/sce.rds")
+def combine_alevin_bus(infiles, outfiles):
+    '''
+    dummy task to combine alevin and bus output into one task 
+    '''
+ 
 # Working with alevin and kallisto, tuple. Need to change downstream and in this statement
 @follows(mkdir("Seurat.dir"))
-@transform((readAlevinSCE,readBusSCE),
+@transform(combine_alevin_bus,
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
            r"Seurat.dir/\1/\2/seurat.rds")
 def seurat_generate(infile,outfile):
     ''' 
     Takes sce object and converts it to a seurat object for further analysis
     '''
-    
-    alevin_sce, bus_sce = infiles
+
     working_dir = os.getcwd()
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-
+    E.warn(infile)
+   
     statement = '''
     Rscript %(R_ROOT)s/seurat.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
     '''
     
+    job_memory = '10G'
     P.run(statement)
+    
 
 
 @transform(seurat_generate,
-           regex("Seurat.dir/(\S+)/(\S+).rds"),
-           r"Seurat.dir/\1/\2_dim_reduction.rds")
+           regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/\2/\3_dim_reduction.rds")
 def seurat_dimreduction(infile, outfile):
     '''
     Takes a seurate object and computes a PCA-based dimension reduction
@@ -594,8 +605,8 @@ def seurat_dimreduction(infile, outfile):
 
 
 @transform(seurat_dimreduction,
-           regex("Seurat.dir/(\S+)/(\S+)_dim_reduction.rds"),
-           r"Seurat.dir/\1/Seurat_markers.html")
+           regex("Seurat.dir/(\S+)/(\S+)/(\S+)_dim_reduction.rds"),
+           r"Seurat.dir/\1/\2/Seurat_markers.html")
 def run_seurat_markdown(infile, outfile):
     '''
     Takes sce seurat object from clustering and generates
@@ -612,8 +623,8 @@ def run_seurat_markdown(infile, outfile):
 
 
 @transform(readAlevinSCE,
-           regex(r"SCE.dir/(\S+)/(\S+).rds"),
-           r"Seurat.dir/\1/Clustering.html")
+           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/\2/Clustering.html")
 def clustering(infile, outfile):
     '''
     Perform SC3 clustering analysis and observe the effects of clustering before and after
