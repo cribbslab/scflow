@@ -537,7 +537,7 @@ def qc():
 
 
 @follows(mkdir("Seurat.dir"))
-@transform(readAlevinSCE,
+@transform(run_qc,
            regex(r"SCE.dir/(\S+)/(\S+).rds"),
            r"Seurat.dir/\1/seurat.rds")
 def seurat_generate(infile,outfile):
