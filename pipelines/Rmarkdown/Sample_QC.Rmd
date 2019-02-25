@@ -80,7 +80,7 @@ hist(
 )
 abline(v = 100, col = "red")
 
-filter_by_total_counts <- (sce$total_counts < 100)
+filter_by_total_counts <- (sce$total_counts > 100)
 table(filter_by_total_counts)
 ```
 
@@ -95,7 +95,8 @@ hist(
 )
 abline(v = 2, col = "red")
 
-filter_by_detected_genes <- (sce$log10_total_features < 2)
+filter_by_detected_genes <- (sce$log10_total_features > 2)
+sce <- sce[,filter_by_detected_genes &  filter_by_total_counts]
 ```
 
 
