@@ -8,7 +8,7 @@
 ################################################################
 
 # genome ID
-genome: hg38
+genome: mm10
 genome_dir: /ifs/mirror/genomes/index/
 
 # Location of the single cell directory
@@ -25,7 +25,7 @@ data: 0
 
 # Provide a reference geneset (suffix= ".gtf.gz")
 # Geneset should be located in working directory
-geneset: refgeneset.gtf.gz
+geneset: geneset_all.gtf.gz
 
 ################################################################
 ## merge options
@@ -57,8 +57,8 @@ merge:
   # to create:
   # hgmm_100_S1_001
 
-  pattern_input: (\S+)_(\d+)_(S\d)_(L\d+)_(\d+)
-  pattern_output: \1_\2_\3_\5
+  pattern_input: (\S+)_(\d+)_(S\d)_(L\d+)
+  pattern_output: \1_\2_\3
 
 ####################
 # kallisto options
@@ -86,10 +86,6 @@ kallisto:
   # SCRBSeq
   # Note that 10Xv3 is not supported in version 0.44 of Kallisto
   sctechnology: 10Xv2
-
-  barcodethresh: 100
-
-  expectedcells: 100
 
 
 salmon:
@@ -127,7 +123,6 @@ salmon:
   # https://salmon.readthedocs.io/en/latest/alevin.html#description-of-important-options
   alevin_options: ''
 
-
 sce:
 
   # Species information for annotation
@@ -137,3 +132,16 @@ sce:
 
   # Whether to use gene symbols for SCE or ensembl IDs.
   genesymbol: 1
+
+seurat:
+  mingenes: 50
+
+  maxmitopercent: 0.1
+
+  npcs: 5
+
+  # resultion for finding seurat clusters
+  resolution: 0.8
+
+  # algorithm to use for findClustrs
+  algorithm: 1

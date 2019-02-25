@@ -76,10 +76,10 @@ metadata(sce.filtered)$sc3$k_estimation
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-rowData(sce.filtered)$feature_symbol <- rownames(rowData(sce.filtered))
-
+rowData(sce.filtered)$feature_symbol <- rownames(sce.filtered)
+sce.filtered <- sce.filtered[!duplicated(rowData(sce.filtered)$feature_symbol), ]
 # Turn on gene_filter=TRUE if your data requires it
-sce.filtered <- sc3(sce.filtered, ks = 5, biology = TRUE, gene_filter = FALSE, pct_dropout_max = 90, pct_dropout_min = 5)
+sce.filtered <- sc3(sce.filtered, ks = 5, biology = TRUE)
 ```
 
 ## Visulaisation of the consensus matrix
@@ -115,10 +115,6 @@ sc3_plot_de_genes(sce.filtered, k = 5, p.val=0.05)
 
 row_data <- rowData(sce.filtered)
 de_genes <- row_data[ , grep("sc3_", colnames(row_data))]
-
-
-de_genes <- as.data.frame(de_genes) %>% 
-  rownames_to_column("SYMBOL")
 
 dir.create("cluster_output.dir")
 write.csv(de_genes, file = "cluster_output.dir/Sc3_de_genes.csv")

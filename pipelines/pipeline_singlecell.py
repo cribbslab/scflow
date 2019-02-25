@@ -325,7 +325,7 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
     job_memory = "30G"
-
+    job_threads = 5
     P.run(statement)
 
 #############################
@@ -639,6 +639,10 @@ def clustering(infile, outfile):
 
     P.run(statement)
 
+
+@follows(clustering)
+def seurat():
+    pass
 
 
 def main(argv=None):
