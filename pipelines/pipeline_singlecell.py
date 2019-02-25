@@ -512,18 +512,6 @@ def run_qc(infile, outfile):
 
 
 #########################
-# Seurat analysis  
-#########################
-
-# tSNE plotting on saved surat object - a range of perplexity choices
-# plot tSNE perplexity hyper parameters on tSNE layout
-# UMAP analysis
-# Diffusion map
-# find clusters (findMarkers i think the function is called)
-# differential expression of markers in clusters
-
-
-#########################
 # Velocity analysis  
 #########################
 
@@ -611,14 +599,14 @@ def run_seurat_markdown(infile, outfile):
 
 @transform(readAlevinSCE,
            regex(r"SCE.dir/(\S+)/(\S+).rds"),
-           r"Seurat.dir/\1/Clustering.html")
+           r"SCE.dir/\1/Clustering.html")
 def clustering(infile, outfile):
     '''
     Perform SC3 clustering analysis and observe the effects of clustering before and after
     filtering cells based on quality metrics.
     '''
 
-    inf_dir = os.path.dirname(infile)
+    inf_dir = os.path.dirname(outfile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
     statement = '''cp %(NOTEBOOK_ROOT)s/Clustering.Rmd %(inf_dir)s &&
@@ -627,7 +615,7 @@ def clustering(infile, outfile):
     P.run(statement)
 
 
-@follows(clustering)
+@follows(clustering, run_seurat_markdown)
 def seurat():
     pass
 
