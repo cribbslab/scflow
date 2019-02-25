@@ -14,9 +14,11 @@ option_list = list(
               help="output file name [default= %default]", metavar="character"),
   make_option(c("-s", "--species"), type="character", default="human", 
               help="Species, human or mouse [default = %default]", metavar="character"),
-  make_option(c("-g", "--genesymbol"), type="integer", default="1", 
-              help="Logical. Whether to use gene names/symbols instead of ensembl IDs in SCE object", metavar="integer")
-); 
+  make_option(c("-g", "--genesymbol"), type="integer", default="0", 
+              help="Logical. Whether to use gene names/symbols instead of ensembl IDs in SCE object", metavar="integer"),
+  make_option(c("-p", "--pseudoaligner"), type="character", default="alevin", 
+              help="Pseudoaligner used, kallisto or alevin [default = %default]", metavar="character")
+  ); 
 
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
@@ -26,7 +28,7 @@ wd = opt$workingdir
 setwd(wd)
 out <- opt$out
 input <- opt$input
-sample_folders = list.files(path = "wd/salmon.dir/")
+pseudo <- opt$pseudoaligner 
 
 readAlevin <- function(files) {
   dir <- sub("/alevin$","",dirname(files))
@@ -65,7 +67,47 @@ readAlevin <- function(files) {
   return(mat)
     }
 
-mat <- readAlevin(input)
+## Kallisto BUS matrix
+
+readBus <- function(files) {
+  dir <- dirname(files)
+  barcode.file <- file.path(dir, "GCmatrix.cells")
+  gene.file <- file.path(dir, "GCmatrix.genes")
+  matrix.file <- file.path(dir, "output.bus.mat.gz")
+  #var.file <- file.path(dir, "alevin/quants_var_mat.gz") ## Var file ????
+  for (f in c(barcode.file, gene.file, matrix.file)) {
+    if (!file.exists(f)) {
+      stop("expecting 'files' to point to 'output.bus.mat.gz' file in a directory 'kallisto/<Sample_Name>'
+           also containing 'GCmatrix.cells' and 'GCmatrix.genes'.
+           please re-run kallisto and bustools")
+    }
+    }
+  cell.names <- readLines(barcode.file)
+  gene.names <- readLines(gene.file)
+  num.cells <- length(cell.names)
+  num.genes <- length(gene.names)
+  mat <- matrix(nrow=num.genes, ncol=num.cells, dimnames=list(gene.names, cell.names))
+  con <- gzcon(file(matrix.file, "rb"))
+  for (j in seq_len(num.cells)) {
+    mat[,j] <- readBin(con, double(), endian = "little", n=num.genes)
+  }
+  close(con)
+  # if inferential replicate variance exists:
+  
+  return(mat)
+  }
+
+if(pseudo == "alevin"){
+  mat <- readAlevin(input)
+} else if(pseudo == "kallisto"){
+  mat <- readBus(input)
+} else{
+  stop("expecting pseudo to be set to kallisto or alevin, check spelling in yml file.")
+}
+
+
+## Currently python ouput for kallisto converts ensembl names to symbols. Should remove from python and do within 
+## this R script as currently some ensembl names remain in gene names, where symbols couldn't be found
 
 # Convert to gene names 
 gene_name <- as.integer(opt$genesymbol)
@@ -94,9 +136,4 @@ if(gene_name){
 v <- log2(mat + 1)
 sce <- SingleCellExperiment(assays = list(counts = mat, logcounts = v))
 saveRDS(object = sce, file = out)
-
-
-
-
-
 
