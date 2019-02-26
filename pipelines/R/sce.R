@@ -4,12 +4,13 @@ library("tidyverse")
 library("SingleCellExperiment")
 library("optparse")
 library('biomaRt')
+library("Matrix")
 
 option_list = list(
   make_option(c("-w", "--workingdir"), type="character", default=NULL, 
               help="working directory", metavar="character"),
   make_option(c("-i", "--input"), type="character", default="salmon.dir/alevin/quants_mat.gz", 
-              help="input file (quants_mat.gz path) [default= %default]", metavar="character"),
+              help="input file (quants_mat.gz/GCcoordmatrix.mtx path) [default= %default]", metavar="character"),
   make_option(c("-o", "--out"), type="character", default="sce.rds", 
               help="output file name [default= %default]", metavar="character"),
   make_option(c("-s", "--species"), type="character", default="human", 
@@ -73,26 +74,26 @@ readBus <- function(files) {
   dir <- dirname(files)
   barcode.file <- file.path(dir, "GCmatrix.cells")
   gene.file <- file.path(dir, "GCmatrix.genes")
-  matrix.file <- file.path(dir, "output.bus.mat.gz")
-  #var.file <- file.path(dir, "alevin/quants_var_mat.gz") ## Var file ????
+  # Using sparse matrix
+  matrix.file <- file.path(dir, "output.bus_GCcoordmatrix.mtx")
+
   for (f in c(barcode.file, gene.file, matrix.file)) {
     if (!file.exists(f)) {
       stop("expecting 'files' to point to 'output.bus.mat.gz' file in a directory 'kallisto/<Sample_Name>'
            also containing 'GCmatrix.cells' and 'GCmatrix.genes'.
            please re-run kallisto and bustools")
     }
-    }
+  }
+  
+  sparse_in <- readMM(matrix.file)
+  mat <- as.matrix(sparse_in)
+  
   cell.names <- readLines(barcode.file)
   gene.names <- readLines(gene.file)
   num.cells <- length(cell.names)
   num.genes <- length(gene.names)
-  mat <- matrix(nrow=num.genes, ncol=num.cells, dimnames=list(gene.names, cell.names))
-  con <- gzcon(file(matrix.file, "rb"))
-  for (j in seq_len(num.cells)) {
-    mat[,j] <- readBin(con, double(), endian = "little", n=num.genes)
-  }
-  close(con)
-  # if inferential replicate variance exists:
+  rownames(mat) <- gene.names
+  colnames(mat) <- cell.names
   
   return(mat)
   }
@@ -102,12 +103,9 @@ if(pseudo == "alevin"){
 } else if(pseudo == "kallisto"){
   mat <- readBus(input)
 } else{
-  stop("expecting pseudo to be set to kallisto or alevin, check spelling in yml file.")
+  stop("expecting kallisto or alevin.")
 }
 
-
-## Currently python output for kallisto converts ensembl names to symbols. Should remove from python and do within 
-## this R script as currently some ensembl names remain in gene names, where symbols couldn't be found
 
 # Convert to gene names 
 gene_name <- as.integer(opt$genesymbol)
@@ -131,7 +129,6 @@ if(gene_name){
   df[[symbol]] <- NULL
   mat <- as.matrix(df)
 }
-
 
 v <- log2(mat + 1)
 sce <- SingleCellExperiment(assays = list(counts = mat, logcounts = v))

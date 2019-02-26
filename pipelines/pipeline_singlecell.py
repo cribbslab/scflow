@@ -274,7 +274,7 @@ if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
             DATADIR, PARAMS["merge_pattern_input"].strip()))
 
     SEQUENCEFILES_KALLISTO_OUTPUT = (
-        r"kallisto.dir/%s/output.bus" % (
+        r"kallisto.dir/%s/bus/output.bus" % (
             PARAMS["merge_pattern_output"].strip()))
 
     SEQUENCEFILES_SALMON_OUTPUT = (
@@ -286,7 +286,7 @@ else:
         "(\S+).(fastq.gz|fastq.1.gz)")
 
     SEQUENCEFILES_KALLISTO_OUTPUT = (
-        r"kallisto.dir/\1/output.bus")
+        r"kallisto.dir/\1/bus/output.bus")
 
     SEQUENCEFILES_SALMON_OUTPUT = (
         r"salmon.dir/\1/alevin/quants_mat.gz")
@@ -358,6 +358,8 @@ def runKallistoBus(infiles, outfile):
     -t %(kallisto_threads)s %(fastqfiles)s
     '''
 
+    job_memory = '20G'
+
     P.run(statement)
 
 #########################
@@ -390,7 +392,7 @@ def busText(infile, outfile):
 @transform(busText,
            suffix(".sorted.txt"),
            add_inputs(getTranscript2GeneMap),
-           r"\1.mat.gz")
+           r"\1_GCcoordmatrix.mtx")
 def busCount(infiles, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
@@ -445,7 +447,7 @@ def readAlevinSCE(infile,outfile):
 @follows(mkdir("SCE.dir"))
 @active_if(PARAMS['kallisto_bustools'])
 @transform(busCount,
-           regex("kallisto.dir/(.*)/output.bus.mat.gz"),
+           regex("kallisto.dir/(.*)/bus/output.bus_GCcoordmatrix.mtx"),
            r"SCE.dir/\1/bus/sce.rds")
 def readBusSCE(infile, outfile):
     ''' 
@@ -462,7 +464,7 @@ def readBusSCE(infile, outfile):
     job_memory = "10G"
 
     statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --pseudoaligner %(pseudo)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s
     '''
 
     P.run(statement)
@@ -622,7 +624,7 @@ def run_seurat_markdown(infile, outfile):
     P.run(statement)
 
 
-@transform(readAlevinSCE,
+@transform(combine_alevin_bus,
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
            r"Seurat.dir/\1/\2/Clustering.html")
 def clustering(infile, outfile):
