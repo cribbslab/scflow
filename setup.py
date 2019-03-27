@@ -67,6 +67,9 @@ setup(
     packages=cribbslab_packages,
     package_dir=cribbslab_package_dirs,
     include_package_data=True,
+    entry_points={
+        "console_scripts": ["cgatsc = pipelines.cgatsc:main"]
+    },
     # other options
     zip_safe=False,
     test_suite="tests",
