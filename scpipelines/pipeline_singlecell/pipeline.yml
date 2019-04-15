@@ -8,7 +8,7 @@
 ################################################################
 
 # genome ID
-genome: hg38
+genome: mm10
 genome_dir: /ifs/mirror/genomes/index/
 
 # Location of the single cell directory
@@ -25,16 +25,16 @@ data: 0
 
 # Pseduoaligner
 # allowble quantifiers:
-# salmon
-# alevin
-# kallisto
-# bustools??
-quantifiers: [kallisto, bustools]
+# salmon 
+ #(alevin)
+# kallisto 
+ #(bus)
+pseudoaligner: alevin
 
 
 # Provide a reference geneset (suffix= ".gtf.gz")
 # Geneset should be located in working directory
-geneset: refgeneset.gtf.gz
+geneset: geneset_all.gtf.gz
 
 ################################################################
 ## merge options
@@ -66,11 +66,11 @@ merge:
   # to create:
   # hgmm_100_S1_001
 
-  pattern_input: (\S+)_(\d+)_(S\d)_(L\d+)_(\d+)
-  pattern_output: \1_\2_\3_\5
+  pattern_input: (\S+)_(\d+)_(S\d)_(L\d+)
+  pattern_output: \1_\2_\3
 
 ####################
-# kallisto options
+# kallisto options
 ####################
 
 kallisto:
@@ -110,7 +110,7 @@ salmon:
 
   # Optional options
   # see https://salmon.readthedocs.io/en/latest/salmon.html#description-of-important-options
-  # for a list of more salmon options
+  # for a list of more salmon options
   index_options: ''
 
   # Whether to run alevin
@@ -122,8 +122,7 @@ salmon:
   # chromium
     # for 10x chromium v2 sc protocol
   # chromiumV3
-  # gemcode
-    # for 10x gemocode v1 sc protocol
+  # gemcode - for 10x gemocode v1 sc protocol
   # celseq
   # celseq2
   sctechnology: dropseq
@@ -132,3 +131,26 @@ salmon:
   # String format, precede with --
   # https://salmon.readthedocs.io/en/latest/alevin.html#description-of-important-options
   alevin_options: ''
+
+sce:
+
+  # Species information for annotation
+  # human
+  # mouse
+  species: mouse
+
+  # Whether to use gene symbols for SCE or ensembl IDs.
+  genesymbol: 1
+
+seurat:
+  mingenes: 50
+
+  maxmitopercent: 0.1
+
+  npcs: 5
+
+  # resultion for finding seurat clusters
+  resolution: 0.8
+
+  # algorithm to use for findClustrs
+  algorithm: 1

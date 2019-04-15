@@ -16,7 +16,17 @@ option_list = list(
   make_option(c("--mingenes"), type="character", default="NULL", 
               help="Threshold for the minimum number of genes to filter"),
   make_option(c("--maxmitopercent"), type="character", default="NULL", 
-              help="Threshold for the maximum percentage of mitochrondrial to filter")
+              help="Threshold for the maximum percentage of mitochrondrial to filter"),
+  make_option(c("--reductionmethod"), default="pca",
+                help="Type of dimensionality reduction to perform. Options include 'pca', 'ica'"),
+  make_option(c("--npcs"), type="character", default="NULL", 
+              help="Number of PC components for elbow plot"),
+  make_option(c("--pccomponents"), type="integer", default=10,
+                help="The number of principle components to use"),
+  make_option(c("--resolution"), type="double", default=1,
+                help="cluster resolution"),
+  make_option(c("--algorithm"), type="integer", default=3,
+                help="1=original Louvain, 2=Louvain multilevel, 3=SLM")
 
 ); 
 
@@ -27,24 +37,16 @@ wd = opt$workingdir
 
 so <- readRDS(opt$input)
 
-# see if any meta data is required to be added:
-# so <- AddMetaData(so, metadata)
-
-# Identify MT genes, if mouse then ignoring case will
-# handle both situations. 
-
-
-
 mito.genes <- grep("^MT-", rownames(so@data), value=TRUE, ignore.case=TRUE)
 percent.mito <- Matrix::colSums(so@data[mito.genes, ]) / Matrix::colSums(so@raw.data)
 
 # Add the meta data for percent mito to the object
 so <- AddMetaData(so, percent.mito, "percent.mito")
 
-svg(paste(opt$outdir,"/","vln.svg", sep=""),width=14,height=7)
+
+svg(paste(wd,"vln.svg", sep=""),width=14,height=7)
 VlnPlot(
-    so, c("nGene", "nUMI", "percent.mito"), size.title.use=14, size.x.use=12,
-    group.by=opt$groupby, x.lab.rot=TRUE, point.size.use=0.1, nCol=3
+    so, c("nGene", "nUMI", "percent.mito"), size.title.use=14, size.x.use=12, x.lab.rot=TRUE, point.size.use=0.1, nCol=3
     )
 dev.off()
 
@@ -64,28 +66,31 @@ so <- FilterCells(object = so,
 
 #################### Normalise data ######################
 
-so <- NormalizeData(
-    object=so,
-    normalization.method="LogNormalize",
-    scale.factor=10000
-    )
+so <-  NormalizeData(object = so, normalization.method = "LogNormalize", 
+                     scale.factor = 10000)
 
-#################### Scale data ######################
-
-
-so <- ScaleData(so)
-
-# TODO: add function to handle cell cycle gene analysis and regression
 
 #################### Find HVG ######################
 
-
+svg(paste(wd,"variable_genes.svg", sep=""),width=14,height=7)
 so <- FindVariableGenes(object = so,
    mean.function = ExpMean,
    dispersion.function = LogVMR, 
    x.low.cutoff = 0.0125,
    x.high.cutoff = 3,
    y.cutoff = 0.5)
+dev.off()
+
+#################### Scale data ######################
+
+
+so <- ScaleData(so,
+		genes.use = so@var.genes,
+		vars.to.regress = c("nUMI"))
+
+# TODO: add function to handle cell cycle gene analysis and regression
+
+
 
 ############# Perform Linear dim reduction ################
 
@@ -93,12 +98,21 @@ so <- FindVariableGenes(object = so,
 so <- RunPCA(object = so,
    pc.genes = so@var.genes,
    do.print = FALSE,
-   pcs.compute-50)
+   pcs.compute=as.numeric(opt$npcs))
 
 
-svg(paste(opt$outdir,"/","pca.svg", sep=""),width=14,height=7)
+svg(paste(wd,"pca_results_viz.svg", sep=""),width=14,height=7)
+VizPCA(so, pcs.use = 1:2)
+dev.off()
+
+
+svg(paste(wd,"pca_results.svg", sep=""),width=14,height=7)
+PCAPlot(so, dim.1 = 1, dim.2 = 2)
+dev.off()
+
+svg(paste(wd,"pca.svg", sep=""),width=14,height=7)
 PCHeatmap(so,
-	pc.use=1:12,
+	pc.use=1:3,
 	cells.use=min(1000, length(so@cell.names)),
 	do.balanced=TRUE,
         label.columns=TRUE,
@@ -106,25 +120,54 @@ PCHeatmap(so,
 	use.full=FALSE)
 dev.off()
 
-svg(paste(opt$outdir,"/","pca_elbow.svg", sep=""),width=14,height=7)
-PCElbowPlot(so, num.pc=nPCs)
+svg(paste(wd,"pca_elbow.svg", sep=""),width=14,height=7)
+PCElbowPlot(so, num.pc=opt$npcs)
 dev.off()
+
+
+############# Find Clusters #############
+
+so <- ProjectPCA(so, do.print = FALSE)
+
+so <-  FindClusters(so,
+                  reduction.type=opt$reductionmethod,
+                  dims.use = 1:as.numeric(opt$npcs),
+                  resolution = opt$resolution,
+                  algorithm = opt$algorithm,
+                  print.output = FALSE,
+                  save.SNN = F)
+
+
+nclusters <- length(unique(so@ident))
+
+
+so <- BuildClusterTree(so,do.reorder = TRUE,reorder.numeric = TRUE,
+                       pcs.use = 1:as.numeric(opt$npcs))
+
+
+############# Run tsne ##################
+
+so <- RunTSNE(so,
+	     dims.use=1:as.numeric(opt$npcs),
+	     do.fast=T)
+
+
+svg(paste(wd,"tsne.svg", sep=""),width=14,height=7)
+TSNEPlot(so)
+dev.off()
+
 
 ############# Jack straw ################
 
-PC <- min(dim(so@dr$pca@cell.embeddings)[2],50)
+#PC <- min(dim(so@dr$pca@cell.embeddings)[2],50)
 
-so <- JackStraw(so,
-   num.replicate=200,
-   num.pc = nPCs,
-   do.par=TRUE,
-   do.print=FALSE)
+#so <- JackStraw(so)
 
-so <- JackStrawPlot(s0, PCs=1:PC)
+#so <- JackStrawPlot(s0)
 
-svg(paste(opt$outdir,"/","jackstraw.svg", sep=""),width=14,height=7)
-so@dr$pca@misc$jackstraw.plot
-dev.off()
+#svg(paste(wd,"jackstraw.svg", sep=""), width=14, height=7)
+#so@dr$pca@misc$jackstraw.plot
+#dev.off()
 
 
 saveRDS(object = so, file = opt$out)
