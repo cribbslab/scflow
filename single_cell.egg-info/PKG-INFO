@@ -1,0 +1,21 @@
+Metadata-Version: 1.1
+Name: single-cell
+Version: 0.0.1
+Summary: single_cell : cribbslab single cell pipeline
+Home-page: UNKNOWN
+Author: Adam Cribbs
+Author-email: adam.cribbs@ndorms.ox.ac.uk
+License: MIT
+Description: single_cell : cribbslab single cell pipeline
+Keywords: computational genomics
+Platform: any
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development
+Classifier: Topic :: Scientific/Engineering
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Unix
+Classifier: Operating System :: MacOS
