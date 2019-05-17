@@ -218,31 +218,7 @@ else:
     SEQUENCEFILES_ALEVIN_OUTPUT = (
         r"processed.dir/\1/\1_processed.fq")
 
-## Use UMI tools to extract CB and UMIs
-
-@collate(SEQUENCEFILES,
-           SEQUENCEFILES_REGEX,
-           SEQUENCEFILES_WHITELIST_OUTPUT)
-def generateCellularBarcodeWhitelist(infiles, outfile):
-    '''
-    Generate whitelist of CBs using UMI tools
-    '''
-    
-    infiles = ModuleVelo.check_multiple_read_files(infiles)
-    reads =  infiles
-    temp_file = P.get_temp_filename(".")
-    BC_pattern = PARAMS['UMItools_BCpattern']
-    cell_num = PARAMS['UMItools_cell_number']
-
-    if isinstance(reads, list):
-        reads = " ".join(reads)
-
-    statement = '''
-    cat reads > %(temp_file)s ; 
-    umi_tools whitelist --stdin %(temp_file)s  --bc-pattern=%(BC_pattern)s --set-cell-number=%(cell_num)s --log2stderr > %(outfile)s
-    '''
-
-## Use alevin to error correct CBs and attach to read file
+## Use alevin to error correct CBs
 
 @active_if(PARAMS['salmon_alevin'])
 @follows(mkdir("processed.dir"))
@@ -275,7 +251,7 @@ def alevinDumpFastq(infiles, outfile):
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
     --%(salmon_sctechnology)s --noQuant --dumpfq -i pipeline.yml  --tgMap pipeline.yml -p %(salmon_threads)s %(barcode_options)s -o %(outfolder)s > %(tmp_fastq)s &&
-    sed '/@/,$!d' tmp_fastq > %(outfile)s
+    sed '/@/,$!d' %(tmp_fastq)s > %(outfile)s
     '''
 
     P.run(statement)
@@ -283,35 +259,6 @@ def alevinDumpFastq(infiles, outfile):
 #################
 # Mapping
 #################
-
-@active_if(PARAMS["star_run"])
-@follows(mkdir("STAR.dir"))
-@collate(SEQUENCEFILES,
-           SEQUENCEFILES_REGEX, 
-           add_inputs(buildStarIndex),
-           SEQUENCEFILES_STAR_OUTPUT)
-def mapReadsWithSTAR(infiles, outfile):
-    '''
-    Mapping reads to the genome/transcriptome.
-    '''
-    
-    infiles = ModuleVelo.check_multiple_read_files(infiles)
-    reads, star_index = infiles
-
-    if isinstance(reads, list):
-        reads = " ".join(reads)
-
-    sample = re.search('STAR\.dir/(.*)Aligned\.out\.bam', outfile)[1]
-
-    threads = PARAMS["star_threads"]
-    job_memory = PARAMS["star_memory"]
-
-    statement = '''
-    STAR --runThreadN %(threads)s --genomeDir %(star_index)s --readFilesIn %(reads)s --outFileNamePrefix STAR.dir/%(sample)s --readFilesCommand zcat 
-    '''
-    # --outSAMtype BAM Unsorted SortedByCoordinate
-    P.run(statement)
-
 
 @active_if(PARAMS["star_run"])
 @follows(mkdir("STAR.dir"))
@@ -373,9 +320,28 @@ def loom_generation():
 
 
 @follows()
-def velocyto():
-    pass
+@active_if()
+@follows(mkdir("velocyto.dir"))
+@transform(tagBAM,
+           regex("STAR.dir/(.*)_Aligned_tag\.out\.bam"),
+           add_inputs(PARAMS['geneset']),
+           r"velocyto.dir/\1.loom")
+def velocytoRun(infiles,outfile):
+    ''' 
+    General run of velocity analysis. Takes in BAM file with CB and UB tags and outputs a loom file.
+    No protocol, run on any technique
+    '''
 
+    bamfile, geneset = infiles
+    temp_file = P.get_temp_filename(".")
+     
+    job_memory = 'unlimited'
+
+    statement = '''
+    zcat %(geneset)s > %(temp_file)s &&  velocyto run --samtools-memory %(velocyto_samtools_memory)s --samtools-threads %(velocyto_samtools_threads)s  %(velocyto_options)s -o ./velocyto.dir %(bamfile)s %(temp_file)s 
+    '''
+
+    P.run(statement)
 
 def main(argv=None):
     if argv is None:

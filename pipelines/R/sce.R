@@ -73,7 +73,7 @@ readAlevin <- function(files) {
 readBus <- function(files) {
   dir <- dirname(files)
   barcode.file <- file.path(dir, "GCmatrix.cells")
-  gene.file <- file.path(dir, "GCmatrix.genes")
+  fgene.file <- file.path(dir, "GCmatrix.genes")
   # Using sparse matrix
   matrix.file <- file.path(dir, "output.bus_GCcoordmatrix.mtx")
 

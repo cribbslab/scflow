@@ -115,9 +115,14 @@ def main(argv=sys.argv):
     # User specifies how many cells they expect roughly in yml file
 
     t=int(math.floor(exp_cells * 0.1))
+    # Hard threshold. May lose some cell types that have low UMI counts that aren't ambient RNA
     exp_values = np.where(values >= values[t] / 10)
 
     NUM_OF_BARCODES = np.shape(exp_values)[1]
+    # test
+    empty_drops = 1
+    if empty_drops:
+        NUM_OF_BARCODES = len(values) -1
 
     ## PLOT, diagram of UMIs per barcode ##
     ModuleBus2count.plot_UMI_per_barcode(indices, values, NUM_OF_BARCODES, t, bus_dir)
@@ -125,6 +130,7 @@ def main(argv=sys.argv):
     # No whitelist info, otherwise would incorporate here
     codewords = labels[:NUM_OF_BARCODES]
     f.write("CBs_detected \t %d \n"%len(codewords))
+    E.warn("++++++++++++++ codewords ++++++++++++++")
 
     NUM_OF_UMIS_in_CELL_BARCODES=sum(values[:NUM_OF_BARCODES])
     f.write("NUM_UMIs_in_CBs \t %d \n"%NUM_OF_UMIS_in_CELL_BARCODES)
@@ -176,11 +182,6 @@ def main(argv=sys.argv):
                 cellsets[cell].add((int(ec),umi))
             
             except KeyError: pass  
-
-
-    # from set back to sorted list
-    #for c in range(len(cellsets)):
-     #    cellsets[c]=sorted(list(cellsets[c]),key=lambda x: x[1])
 
     # Intersect ec/UMIs
     
@@ -255,28 +256,8 @@ def main(argv=sys.argv):
         data+=values
     A=coo_matrix((data, (row, col)), shape=(len(equivalence_classes),len(codewords)))
     del row,col,data
-    A_large = A.toarray()
 
     f.write("MEDIAN_UMI_COUNTS_TCC \t %d \n"%(int(np.median(np.array(A.sum(axis=0))[0]))))
-
-
-    def g2n_dict(ENSGLIST, species_code):
-        mg = mygene.MyGeneInfo()
-        ginfo = mg.querymany(ENSGLIST, scopes='ensembl.gene',returnall=True, species = species_code )
-
-        g2n = {}
-        count_exept=0
-        for g in ginfo['out']:
-            try:
-                gene_id=str(g['query'])
-                gene_name=str(g['symbol'])
-        
-                g2n[gene_id] = g2n.get(gene_id, [])
-                g2n[gene_id].append(str(g['symbol']))                
-            except KeyError:
-                count_exept+=1
-                g2n[ str(g['query']) ] = [str(g['query'])]
-        return(g2n)
 
     def t2g_dict(infile):
         d={}
@@ -305,10 +286,7 @@ def main(argv=sys.argv):
         species = 10090
     
     ENSGLIST = list(np.unique(list(tr2g.values())))
-    #g2n = g2n_dict(ENSGLIST, species) 
 
-    # ec to gene names  
-    #ec2gn = {ec:frozenset([item for sublist in  [g2n[tr2g[trlist[t][:len_of_ens]]] for t in ecs[ec]]   for item in sublist ]) for ec in equivalence_classes}
     # EC to ensembl id    
     ec2gn = {ec:frozenset([item for sublist in  [tr2g[trlist[t][:len_of_ens]] for t in ecs[ec]]   for item in sublist ]) for ec in equivalence_classes}
     ec2id = {ec:frozenset([tr2g[trlist[t]] for t in ecs[ec]]) for ec in equivalence_classes}
@@ -333,14 +311,14 @@ def main(argv=sys.argv):
 
     # Write TCC matrix
 
-    mmwrite(bus_dir+'/matrix.tcc.coord.mtx',A)
+    mmwrite(bus_dir+'/TCC.matrix.mtx',A)
     
-    with open(bus_dir+'/matrix_updated.ec','w') as of:
+    with open(bus_dir+'/TCC.matrix.ec','w') as of:
         for ec in equivalence_classes:
             transcripts = ",".join([str(i) for i in ecs[ec]])
             of.write("%s\t%s\n"%(str(ec),transcripts))
 
-    with open(bus_dir+'/matrix.cells','w') as of:
+    with open(bus_dir+'/TCC.matrix.cells','w') as of:
         of.write('\n'.join(codewords))
         of.write('\n')
 
@@ -384,8 +362,6 @@ def main(argv=sys.argv):
     
     B = coo_matrix((data, (row, col)), shape=(len(genes),len(codewords)))
     del row,col,data
-    #B_large = B.toarray()
-    #B_dense = B.todense()
 
     f = open(bus_dir + "/bus_count.log", "a+")
     f.write('MEDIAN_UMI_COUNTs_GENE \t %d \n'%int(np.median(np.array(B.sum(axis=0))[0])))
@@ -420,8 +396,5 @@ def main(argv=sys.argv):
     with open(bus_dir +'/GCmatrix.cells','w') as of:
         of.write('\n'.join(codewords))
         
-   # Save full array
-   # np.save(outfile, B_large.int32)
-
 if __name__ == "__main__":
     sys.exit(main())

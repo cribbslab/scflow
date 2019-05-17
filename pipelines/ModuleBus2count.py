@@ -119,8 +119,6 @@ def get_ret_threads(threads, barcodes, codewords, brc_idx_to_correct):
 
 ## Plots ##
 
-# Move plot code to here, so bus2count is more readable
-
 # UMIs per barcode (knee plot)
 def plot_UMI_per_barcode(indices, values, NUM_OF_BARCODES, t, bus_dir):
     
