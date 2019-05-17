@@ -17,7 +17,7 @@ IS_OSX = sys.platform == 'darwin'
 ########################################################################
 ########################################################################
 # collect version
-sys.path.insert(0, "single_cell")
+print(sys.path.insert(0, "scpipelines"))
 import version
 
 version = version.__version__
@@ -67,6 +67,9 @@ setup(
     packages=cribbslab_packages,
     package_dir=cribbslab_package_dirs,
     include_package_data=True,
+    entry_points={
+        "console_scripts": ["cgatsc = scpipelines.cgatsc:main"]
+    },
     # other options
     zip_safe=False,
     test_suite="tests",

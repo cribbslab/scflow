@@ -31,11 +31,11 @@ Overview
 ==================
 
 This pipeline performs alignment free based quantification of drop-seq, 10X and smart-seq2
-single-cell seqeucning analysis. Pseudoalignment is performed on the RNA reads,
+single-cell sequencing analysis. Pseudoalignment is performed on the RNA reads,
 using kallisto or Alevin and the resulting data is quantitatvely and qualitatively analysed.
 
 The pipeline performs the following analyses:
-* Alignment using kallisto or alevin (pert of salmon)
+* Alignment using kallisto or alevin (part of salmon)
 * QC of reads using the scater package
 
 
@@ -55,7 +55,7 @@ Input files
 The pipeline is ran using fastq files that follow the naming convention Read1: Name.fastq.1.gz
 and read2: Name.fastq.2.gz. 
 
- * a fastq file (single /paired end?? - AC:require both (always paired end for drop seq methods and
+ * a fastq file (single /paired end (always paired end for drop seq methods and
 potentially single end or paired end for smartseq2)
  * a GTF geneset
 
@@ -470,6 +470,14 @@ def readBusSCE(infile, outfile):
     P.run(statement)
 
 
+@transform((readBusSCE, readAlevinSCE), 
+           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"SCE.dir/\1/\2/sce.rds")
+def combine_alevin_bus(infiles, outfiles):
+    '''
+    dummy task to combine alevin and bus output into one task 
+    '''
+
 #########################
 # Multiqc
 #########################
@@ -493,15 +501,15 @@ def build_multiqc(infile):
 
 @follows(build_multiqc)
 @follows(mkdir("QC_report.dir"))
-@transform(readAlevinSCE,
-           regex("(\S+/\S+)/sce.rds"),
+@transform(combine_alevin_bus,
+           regex("(\S+/\S+/\S+)/sce.rds"),
            r"\1/pass.rds")
 def run_qc(infile, outfile):
     """
     Runs an Rmarkdown report that allows users to visualise and set their
     quality parameters according to the data. The aim is for the pipeline
     to generate default thresholds then the user can open the Rmarkdown in
-    rstudio and re-run the report, modifying parameters changesto suit the
+    rstudio and re-run the report, modifying parameters changes to suit the
     data
     """
 
@@ -512,25 +520,6 @@ def run_qc(infile, outfile):
                    cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
 
     P.run(statement)
-
-
-#########################
-# Seurat analysis  
-#########################
-
-# tSNE plotting on saved surat object - a range of perplexity choices
-# plot tSNE perplexity hyper parameters on tSNE layout
-# UMAP analysis
-# Diffusion map
-# find clusters (findMarkers i think the function is called)
-# differential expression of markers in clusters
-
-
-#########################
-# Velocity analysis  
-#########################
-
-# Rmarkdown maybe then users can play around with parameters?
 
 
 #########################
@@ -550,17 +539,9 @@ def quant():
 def qc():
     pass
 
-@transform((readBusSCE, readAlevinSCE), 
-           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
-           r"SCE.dir/\1/\2/sce.rds")
-def combine_alevin_bus(infiles, outfiles):
-    '''
-    dummy task to combine alevin and bus output into one task 
-    '''
  
-# Working with alevin and kallisto, tuple. Need to change downstream and in this statement
 @follows(mkdir("Seurat.dir"))
-@transform(combine_alevin_bus,
+@transform(run_qc,
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
            r"Seurat.dir/\1/\2/seurat.rds")
 def seurat_generate(infile,outfile):
@@ -579,7 +560,6 @@ def seurat_generate(infile,outfile):
     job_memory = '10G'
     P.run(statement)
     
-
 
 @transform(seurat_generate,
            regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
@@ -626,14 +606,14 @@ def run_seurat_markdown(infile, outfile):
 
 @transform(combine_alevin_bus,
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
-           r"Seurat.dir/\1/\2/Clustering.html")
+           r"SCE.dir/\1/\2/Clustering.html")
 def clustering(infile, outfile):
     '''
     Perform SC3 clustering analysis and observe the effects of clustering before and after
     filtering cells based on quality metrics.
     '''
 
-    inf_dir = os.path.dirname(infile)
+    inf_dir = os.path.dirname(outfile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
     statement = '''cp %(NOTEBOOK_ROOT)s/Clustering.Rmd %(inf_dir)s &&
@@ -642,7 +622,7 @@ def clustering(infile, outfile):
     P.run(statement)
 
 
-@follows(clustering)
+@follows(clustering, run_seurat_markdown)
 def seurat():
     pass
 

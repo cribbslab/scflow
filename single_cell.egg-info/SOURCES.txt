@@ -1,0 +1,15 @@
+README.md
+setup.py
+pipelines/cgatsc.py
+scpipelines/ModuleSC.py
+scpipelines/__init__.py
+scpipelines/cgatsc.py
+scpipelines/pipeline_singlecell.py
+scpipelines/pipeline_velocyto.py
+scpipelines/version.py
+single_cell.egg-info/PKG-INFO
+single_cell.egg-info/SOURCES.txt
+single_cell.egg-info/dependency_links.txt
+single_cell.egg-info/entry_points.txt
+single_cell.egg-info/not-zip-safe
+single_cell.egg-info/top_level.txt

@@ -117,41 +117,14 @@ html_sidebars = {
 
 # Included at the end of each rst file
 rst_epilog = '''
-.. _CGAT Training Programme: http://www.cgat.org
-.. _CGAT pipeline Collection: https://www.cgat.org/downloads/public/CGATpipelines/documentation/
-.. _CGAT Code Collection: https://www.cgat.org/downloads/public/cgat/documentation/
 .. _pysam: https://github.com/pysam-developers/pysam
 .. _samtools: http://samtools.sourceforge.net/
-.. _htslib: http://www.htslib.org/
-.. _tabix: http://samtools.sourceforge.net/tabix.shtml/
-.. _Galaxy: https://main.g2.bx.psu.edu/
-.. _cython: http://cython.org/
-.. _python: http://python.org/
-.. _ipython: http://ipython.org/
-.. _pyximport: http://www.prescod.net/pyximport/
-.. _sphinx: http://sphinx-doc.org/
-.. _ruffus: http://www.ruffus.org.uk/
-.. _cgatreport: https://github.com/AndreasHeger/CGATReport/
-.. _sqlite: http://www.sqlite.org/
-.. _make: http://www.gnu.org/software/make
-.. _UCSC: http://genome.ucsc.edu
-.. _ENSEMBL: http://www.ensembl.org
-.. _GO: http://www.geneontology.org
-.. _gwascatalog: http://www.genome.gov/gwastudies/
-.. _distlid: http://distild.jensenlab.org/
-.. _mysql: https://mariadb.org/
-.. _postgres: http://www.postgresql.org/
-.. _bedtools: http://bedtools.readthedocs.org/en/latest/
-.. _UCSC Tools: http://genome.ucsc.edu/admin/git.html
-.. _git: http://git-scm.com/
-.. _sge: http://wiki.gridengine.info/wiki/index.php/Main_Page
-.. _alignlib: https://github.com/AndreasHeger/alignlib
-.. _iGenomes: https://support.illumina.com/sequencing/sequencing_software/igenome.html
+
 '''
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'cgatcoredoc'
+htmlhelp_basename = 'cgatscdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -178,7 +151,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'cgatcore.tex', 'cgatcore Documentation',
+    (master_doc, 'cgatcore.tex', 'cgat single cell Documentation',
      'CGAT Developers', 'manual'),
 ]
 
@@ -188,7 +161,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'cgatcore', 'cgatcore Documentation',
+    (master_doc, 'cgatsc', 'cgat single cell Documentation',
      [author], 1)
 ]
 
