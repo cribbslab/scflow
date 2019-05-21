@@ -90,7 +90,7 @@ get_single-cell_env() {
     INSTALL_HOME=$TRAVIS_BUILD_DIR
     CONDA_INSTALL_TYPE="single-cell.yml"
     CONDA_INSTALL_DIR=$INSTALL_HOME/conda-install
-    CONDA_INSTALL_ENV="singlecell"
+    CONDA_INSTALL_ENV="single-cell"
 
 } # get_single-cell_env
 
