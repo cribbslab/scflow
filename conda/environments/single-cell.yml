@@ -12,6 +12,7 @@ dependencies:
  - cgatcore
  - matplotlib
  - mygene
+ - pytest
  - nose
  - numpy
  - pandas
