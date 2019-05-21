@@ -1,0 +1,125 @@
+##########################
+#
+# configuration file for pipeline_singlecell
+#
+##########################
+
+# genomeID
+genome: hg38
+genome_dir: /ifs/mirror/genomes/index/
+
+# Location of the single cell directory
+sc_dir: '/ifs/projects/adam/single-cell-test/'
+
+# Project name
+projectname: test
+
+# Copyright statement
+copyright: Cribbs Group, Botnar Research Centre (2019)
+
+# Location of the data. 0 for the current directory
+data: 0
+
+# Provide a reference geneset (suffix= ".gtf.gz")
+# Geneset should be located in working directory
+geneset: geneset_all.gtf.gz
+
+################################################################
+## merge options
+################################################################
+merge:
+  # input pattern
+  # For example, if your files are called:
+  #    CLLP80-S1-1-L001.fastq.1.gz
+  #    CLLP80-S1-1-L001.fastq.2.gz
+  #    CLLP80-S1-1-L002.fastq.1.gz
+  #    CLLP80-S1-1-L002.fastq.2.gz
+  # and you want to create files/ folder starting with:
+  #    CLLP80-S1-1
+  #
+  # choose the following input and output patterns:
+  #
+  # pattern_input= (.*)-(S\d)-(\d)-(L\d+)
+  # pattern_output= \1-\2-\3
+  # Note that the file extension will be added by the pipeline. The
+  # pattern must not include this.
+
+  # hgmm_100_S1_L001_001.fastq.1.gz
+  # hgmm_100_S1_L001_001.fastq.2.gz
+  # hgmm_100_S1_L002_001.fastq.1.gz
+  # hgmm_100_S1_L002_001.fastq.2.gz
+
+  # pattern_input: (\S\d+)-(.*)_(L\d+)
+  # pattern_output: \1_\2_\3_
+  # to create:
+  # N70x-cell_lane.fastq.1.gz
+
+  pattern_input: ''
+  pattern_output: ''
+
+#######################
+# Kallisto
+#######################
+
+kallisto:
+  # kmer size for kallisto. Default is 31 and max is 31
+  # Used to generate the kallisto index
+  # Kallisto will ignore transcripts shorter than this
+  kmer: 31
+
+  # Number of threads for kallisto
+  threads: 5
+
+  # Whether to generate a BUStools file
+  bustools: 0
+  # Must specify a single cell tchnology to generate bustools file
+  # allowable technology:
+  # 10Xv1
+  # 10Xv2
+  # DropSeq
+  # inDrop
+  # CELSeq
+  # CELSeq2
+  # SCRBSeq
+  # Not that 10Xv3 is not supported in version 0.44 of kallisto
+  sctechnology: DropSeq
+
+salmon:
+
+  # Length of kmer for indexing
+  kmer: 31
+
+  # Number of threads that can be used by alevin to perform the quantification
+  threads: 10
+
+  # Library type
+  # ISR recommended for DropSeq and 10Xv2 technology
+  librarytype: ISR
+
+  # Optional options
+  # See https://salmon.readthedocs.io/en/latest/salmon.html#description-of-important-options
+  # for a list of more salmon options
+  index_options: ''
+
+  # Wether to run alevin
+  alevin: 1
+
+  # Single cell technology/protocol to be specified
+  # Allowable sc technology:
+  # dropseq
+  # chromium
+    # for 10x chromium v2 sc protocol
+  # chromiumV3
+  # gemcode
+    # for 10x gemocode v1 sc protocol
+  # celseq
+  # celseq2
+  sctechnology: drposeq
+
+sce:
+
+  # Species for annotation
+  species: human
+
+  # Whether to use gene symbols for SCE or ensembl IDs
+  genesymbol: 0
