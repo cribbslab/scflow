@@ -7,7 +7,7 @@ channels:
  - r
 
 dependencies:
- - python == 3.6
+ - python >= 3.6
  - cgat-apps
  - cgatcore
  - matplotlib
