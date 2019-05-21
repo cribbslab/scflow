@@ -1,12 +1,13 @@
-name: singlecell
+name: single-cell
 
 channels:
  - conda-forge
  - bioconda
  - defaults
+ - r
 
 dependencies:
- - python
+ - python == 3.6
  - cgat-apps
  - cgatcore
  - matplotlib
