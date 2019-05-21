@@ -90,7 +90,7 @@ get_single-cell_env() {
     INSTALL_HOME=$TRAVIS_BUILD_DIR
     CONDA_INSTALL_TYPE="single-cell.yml"
     CONDA_INSTALL_DIR=$INSTALL_HOME/conda-install
-    CONDA_INSTALL_ENV="single"
+    CONDA_INSTALL_ENV="singlecell"
 
 } # get_single-cell_env
 
@@ -219,7 +219,7 @@ conda_install() {
 
     [[ -z ${TRAVIS_BRANCH} ]] && TRAVIS_BRANCH=${INSTALL_BRANCH}
     curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/single-cell/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
-    conda env create --quiet --force --file env.yml
+    conda env create --quiet --file env.yml --force
     
     conda env export --name ${CONDA_INSTALL_ENV}
 
