@@ -1,4 +1,4 @@
-name: single-cell
+name: single
 
 channels:
  - conda-forge
