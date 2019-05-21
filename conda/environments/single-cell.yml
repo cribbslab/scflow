@@ -1,0 +1,34 @@
+name: single-cell
+
+channels:
+ - conda-forge
+ - bioconda
+ - defaults
+ - r
+
+dependencies:
+ - python
+ - cgat-apps
+ - cgatcore
+ - matplotlib
+ - mygene
+ - pytest
+ - nose
+ - numpy
+ - pandas
+ - kallisto
+ - salmon
+ - multiqc
+ - fastqc
+ - fastq-screen
+ - pep8
+ - ruffus
+ - scipy
+ - setuptools
+ - statsmodels
+ - r-base
+ - bioconductor-biomart
+ - bioconductor-singlecellexperiment
+ - r-optparse
+ - r-seurat
+ - r-tidyverse

@@ -1,2 +1,16 @@
 *~
-*.Rhistory
+*.swp
+*.py[cod]
+ctmp*
+*.log
+*.swp
+*#*
+\#*
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+doc/_build
+doc/_static
