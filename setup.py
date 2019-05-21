@@ -68,7 +68,7 @@ setup(
     package_dir=cribbslab_package_dirs,
     include_package_data=True,
     entry_points={
-        "console_scripts": ["cgatsc = scpipelines.cgatsc:main"]
+        "console_scripts": ["single_cell = scpipelines.cgatsc:main"]
     },
     # other options
     zip_safe=False,
