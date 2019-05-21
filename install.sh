@@ -219,7 +219,7 @@ conda_install() {
 
     [[ -z ${TRAVIS_BRANCH} ]] && TRAVIS_BRANCH=${INSTALL_BRANCH}
     curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/single-cell/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
-    conda env create --quiet --file env.yml
+    conda env create --quiet --force --file env.yml
     
     conda env export --name ${CONDA_INSTALL_ENV}
 
