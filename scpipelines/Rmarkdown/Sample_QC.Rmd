@@ -1,12 +1,17 @@
 ---
 title: "Sample QC"
 output: html_document
+params:
+  species: ""
+  mito_mad: ""
+  mito_thresh: ""
+  transcript_thresh: ""
+  spike_ins: ""
 ---
 
 This page sets out the quality control analysis for the single cells. It will be used to remove "Bad" cells before progressing for downstream analysis.
 
 ```{r setup, include=FALSE}
-#source('functions.R')
 library(scran)
 library(ggplot2)
 library(RColorBrewer)
@@ -21,6 +26,18 @@ library(pheatmap)
 options(stringsAsFactors = FALSE)
 ```
 
+```{r setup_cont, include =  FALSE}
+species <- params$species
+if(params$mito_mad){
+mad <- params$mito_mad
+} else{
+mad <- 0
+mito_thresh <- params$mito_thresh
+transcript_thresh <- params$transcript_thresh
+spike_ins <- params$spike_ins
+}
+```
+
 # Load RDS data
 
 ```{r}
@@ -28,6 +45,18 @@ sce <- readRDS("sce.rds")
 
 ```
 
+```{r, include = FALSE}
+rowData(sce)$ensembl_gene_id <- rownames(sce)
+if(species == "human"){
+  symbol <- "hgnc_symbol"
+  ensembl_data <- "hsapiens_gene_ensembl"
+}
+if(species == "mouse"){
+  symbol <- "mgi_symbol"
+  ensembl_data <- "mmusculus_gene_ensembl"
+}
+sce <- getBMFeatureAnnos(sce, filters = "ensembl_gene_id", attributes = c("ensembl_gene_id", symbol, "chromosome_name"), dataset = ensembl_data)
+```
 
 ```{r outliers, include=FALSE}
 # Initiate a dataframe that will allow saving of the outliers.
@@ -41,47 +70,49 @@ outlier <- data.frame(row.names = colnames(sce))
 # **Scater**
 
 ```{r, include=FALSE}
+# Use mitochondrial and ribosomal DNA as feature controls
+mt_genes <- which(rowData(sce)$chromosome_name == "MT")
+ribo_genes <- grepl("^RP[LS]", rowData(sce)$hgnc_symbol)
 
+feature_ctrls <- list(mito = rownames(sce)[mt_genes], ribo = rownames(sce)[ribo_genes])
 
-# Need to parameterise this for human and mouse
-# also parameterise if ERCCs
-#isSpike(sceset, "ERCC") <- grepl("^ERCC-", rownames(sceset))
-isSpike(sce, "MT") <- rownames(sce) %in% 
-    c("ENSG00000198899", "ENSG00000198727", "ENSG00000198888",
-    "ENSG00000198886", "ENSG00000212907", "ENSG00000198786",
-    "ENSG00000198695", "ENSG00000198712", "ENSG00000198804",
-    "ENSG00000198763", "ENSG00000228253", "ENSG00000198938",
-    "ENSG00000198840")
+lapply(feature_ctrls, head)
 
-sce <- calculateQCMetrics(sce,
-                             feature_controls = list( 
-        MT = isSpike(sce, "MT")))
+# Calculate metrics
+sce <- calculateQCMetrics(sce, feature_controls = feature_ctrls)
 
 colnames(colData(sce))
 ```
-
 
 # Examining the most highly expressed genes
 
 We look at a plot that shows the top 50 (by default) most-expressed features. Each row in the plot below corresponds to a gene, and each bar corresponds to the expression of a gene in a single cell. The circle indicates the median expression of each gene, with which genes are sorted.
 
 ```{r, echo=FALSE}
-plotHighestExprs(sce, exprs_values = "counts")
+plotHighestExprs(sce, exprs_values = "counts") #, feature_names_to_plot = symbol
 ```
-
 # Library size
 
 Next we consider the total number of reads per sample. Wells with few reads/molecules are likely to have been broken or failed to capture a cell, and should thus be removed.
 
 ```{r, echo=FALSE}
-hist(
-    sce$total_counts,
-    breaks = 100
-)
+#par(mfrow =c(1,2))
+hist(sce$total_counts, xlab = "Library sizes", main ="", breaks=20,
+     col = "grey80", ylab = "Number of cells")
 abline(v = 100, col = "red")
 
-filter_by_total_counts <- (sce$total_counts > 100)
+hist(sce$total_features_by_counts, xlab = "Number of expressed genes", col ="grey80",
+     breaks = 10, ylab = "Number of cells", main ="")
+
+filter_by_total_counts <- (sce$total_counts >= 100)
 table(filter_by_total_counts)
+outlier$total_counts <- (sce$total_counts < 100)
+
+
+total_cells <- length(colnames(sce)) 
+total_umis <- sum(counts(sce))
+umi_per_cell_average <- total_umis/total_cells
+distinct_umis_per_cell_average <- sum(sce$total_features_by_counts)/total_cells
 ```
 
 # Detected genes
@@ -95,62 +126,63 @@ hist(
 )
 abline(v = 2, col = "red")
 
-filter_by_detected_genes <- (sce$log10_total_features_by_counts > 2)
-sce <- sce[,filter_by_detected_genes &  filter_by_total_counts]
+filter_by_detected_genes <- (sce$log10_total_features_by_counts >= 2)
+outlier$detected_genes <- (sce$log10_total_features_by_counts < 2)
+#sce_qc <- sce[,filter_by_detected_genes &  filter_by_total_counts]
 ```
 
-
-
-
+# Frequency of expression as a function of the mean
+The frequency of expression (i.e. number of cells with non-zero expression) against the mean. These two metrics should be positively correlated with each other for most genes.
 ```{r, echo=FALSE}
 plotExprsFreqVsMean(sce)
-
 ```
 
-# Library complexity {#Library_complexity .tabset .tabset-fade}
-
-Library complexity refers to the proportion of assigned reads accounted for by the N most abundant features within each individual sample, with values for N usually ranging from tens to hundreds. It is expected to observe a lower library complexity in single cells relative to bulk samples, due to higher dropout events in single cells, and the union of multiple phenotypes within bulk samples. In contrast, blank samples are expected to have extremely low library complexity, as only 92 ERCC spike-ins sequences are expected in those libraries, in contrast to thousands of genomic features in biological samples.
-
-## Full
-
-```{r full_lib, echo=FALSE}
-# Need to parameterise the generation of these plots
-plotScater(sce, nfeatures = 300, exprs_values = "counts")
+# Percentage of counts assigned to feature controls
+Well-behaved cells should have a large number of expressed features and and a low percentage of expression from feature controls. High percentage expression from feature controls and few expressed features are indicative of blank and failed cells.
+```{r, include = FALSE}
+plotColData(example_sce, x = "total_features_by_counts",
+    y = "pct_counts_feature_control", colour = "Mutation_Status") +
+    theme(legend.position = "top") +
+    stat_smooth(method = "lm", se = FALSE, size = 2, fullrange = TRUE)
 ```
 
-# scater calulate QC metrics
+# Mitochondrial gene content
 
-## Calulate single-cell QC
+Have a look at spread of cells with high % mito  
+High mitochondrial genes indicate improper lysing of the single cells and are indicitive of poor RNA capture.
+```{r, include = FALSE}
 
-```{r single_QC, include=FALSE}
+plotColData(sce, x = "total_features_by_counts", y = "pct_counts_mito") + geom_hline(yintercept =10, col ="red") + geom_vline(xintercept = 1000, col = "red")
 
-# parameterise with if statement
-
-ERCCs <- grep("^ERCC-[[:digit:]]+$", rownames(counts), value = TRUE)
-sce.sc <- calculateQCMetrics(
-  sce,
-  feature_controls = list(ERCC = ERCCs)
-)
+# Typically retain cells with <10% mito transcripts and >1000 or >500 transcripts per cell
+# i.e Bottom right quadrant, but look at data
+# However tumour cells typically have greater metabolic burden so can usually filter <20% 
 ```
 
-```{r full_QC,  include=FALSE}
-sceset <- calculateQCMetrics(
-  sce
-  )
+PCA plot coloured by percent of mitochondrial dna
+```{r, include = FALSE}
+plotPCA(sce, colour_by = "pct_counts_mito")
 ```
 
-
-# MT gene content
-
-High mitochronrial genes indicate improper lysing of the single cells and are indicitive of poor RNA capture.
-
-```{r}
+Mitochondrial percentage threshold
+```{r, include = FALSE}
 metric <- sceset$pct_counts_MT
+if(mad){
+# Using median absolute deviations
 scater.MT.M <- median(metric)
 scater.MT.MAD <- mad(metric)
+threshold <- scater.MT.M + 2 * scater.MT.MAD
 scater.MT.outliers <- metric > scater.MT.M + 2 * scater.MT.MAD
 table(scater.MT.outliers)
 outlier$MT <- metric > scater.MT.M + 2 * scater.MT.MAD
+} else{
+# Mitochondrial threshold usually 10%, reparametrise in yml file or directly here
+# Total counts threshold larger than
+threshold <- mito_thresh
+}
+scater.MT.outliers <- metric > threshold
+table(scater.MT.outliers)
+outlier$MT <- metric > threshold
 ```
 
 ```{r mt_plot_QC,  echo=FALSE}
@@ -167,6 +199,43 @@ ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts
   )
 ```
 
+Remove cells with total distinct transcripts less than a certain threshold (usuall 500-1000)
+```{r, include = FALSE}
+total_features_by_counts_thresh <- transcript_thresh
+outlier$features <- sce_qc$total_features_by_counts < total_features_by_counts_thresh
+
+```
+
+# Library complexity {#Library_complexity .tabset .tabset-fade}
+
+Library complexity refers to the proportion of assigned reads accounted for by the N most abundant features within each individual sample, with values for N usually ranging from tens to hundreds. It is expected to observe a lower library complexity in single cells relative to bulk samples, due to higher dropout events in single cells, and the union of multiple phenotypes within bulk samples. In contrast, blank samples are expected to have extremely low library complexity, as only 92 ERCC spike-ins sequences are expected in those libraries, in contrast to thousands of genomic features in biological samples.
+
+## Full
+
+```{r full_lib, echo=FALSE}
+# Need to parameterise the generation of these plots
+plotScater(sce, nfeatures = 300, exprs_values = "counts")
+```
+
+# Scater calulate QC metrics
+
+## Calulate single-cell QC
+
+```{r single_QC, include=FALSE}
+if(spike_ins){
+ERCCs <- grep("^ERCC-[[:digit:]]+$", rownames(counts), value = TRUE)
+sceset <- calculateQCMetrics(
+  sce,
+  feature_controls = list(ERCC = ERCCs)
+)
+}
+```
+
+```{r full_QC,  include=FALSE}
+sceset <- calculateQCMetrics(
+  sce
+  )
+```
 
 ## Top proportion of library assigned to most abundant features {.tabset}
 
@@ -262,7 +331,7 @@ outliers.df <- data.frame(lapply(
   function(x){ifelse(get(x), "Fail", "Pass")}
 ))
 colnames(outliers.df) <- gsub(".outliers$", "", outlier.vars)
-rownames(outliers.df) <- colnames(sce.sc)
+rownames(outliers.df) <- colnames(sceset)
 ```
 
 ## Cells passing
@@ -280,7 +349,7 @@ colSums(outliers.df == "Fail")
 
 ## Summary of failures 
 
-This displays the counts for the number of failures for each fature
+This displays the counts for the number of failures for each feature
 
 ```{r count_sc, echo=FALSE}
 table(rowSums(outliers.df == "Fail"))
@@ -313,13 +382,24 @@ dev.off()
 draw(hm)
 ```
 
-
 # Remove cells that fail QC
 
 ```{r pass, cache=FALSE, echo=FALSE}
 sce.pass <- sceset[,idx.pass]
 assay(sce.pass, "log2_counts") <- log2(counts(sceset[,idx.pass]) + 1)
 length(colnames(sce.pass))
+```
+
+```{r, include = FALSE}
+# Recompute size factors, normalisation etc
+sce.pass <- scran::computeSumFactors(sce_qc, BPPARAM = MulticoreParam(10))
+
+sce.pass <- normalize(sce.pass)
+
+sce.pass <- calculateQCMetrics(sce.pass, feature_controls = feature_ctrls)
+plotColData(sce.pass, x = "total_features_by_counts", y = "pct_counts_mito")+  geom_hline(yintercept =10, col ="red") + geom_vline(xintercept = 1000, col = "red")
+# All data points within thresholds, sanity check
+# Can rerun plots with sce.pass
 ```
 
 ```{r}

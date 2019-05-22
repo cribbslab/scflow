@@ -133,6 +133,20 @@ sce:
   # Whether to use gene symbols for SCE or ensembl IDs.
   genesymbol: 1
 
+qc:
+
+  # Set mitochondrial percent maximum threshold (usually 10-20%) 
+  max_mito: 10
+
+  # Or instead use median + 2 median absolute deviations as mitochondrial threshold (0 or 1)
+  mito_median_absolute_deviation: 0
+
+  # Threshold for minimum number of transcripts per cell (usually 500-1000)
+  min_transcripts: 1000
+
+  # Whether spike ins are used, e.g. smart seq data
+  spike_ins: 0
+
 seurat:
   mingenes: 50
 

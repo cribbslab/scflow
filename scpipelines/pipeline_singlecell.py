@@ -515,9 +515,15 @@ def run_qc(infile, outfile):
 
     inf_dir = os.path.dirname(infile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+    species_type = PARAMS['sce_species']
+    mito_mad = PARAMS['qc_mito_median_absolute_deviation']
+    mito_thresh = PARAMS['qc_max_mito']
+    transcript_thresh = PARAMS['qc_min_transcripts']
+    spike_in = PARAMS['qc_spike_ins']
 
     statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8', 
+                   params = list(species = '%(species_type)s', mito_mad = %(mito_mad)s, mito_thresh = %(mito_thresh)s, transcript_thresh = %(transcript_thresh)s, spike_ins = %(spike_in)s ))"'''
 
     P.run(statement)
 
@@ -549,7 +555,7 @@ def qc():
  
 @follows(mkdir("Seurat.dir"))
 @transform(run_qc,
-           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           regex(r"SCE.dir/(\S+)/(\S+)/pass.rds"),
            r"Seurat.dir/\1/\2/seurat.rds")
 def seurat_generate(infile,outfile):
     ''' 
@@ -564,7 +570,7 @@ def seurat_generate(infile,outfile):
     Rscript %(R_ROOT)s/seurat.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
     '''
     
-    job_memory = '10G'
+    job_memory = '30G'
     P.run(statement)
     
 
