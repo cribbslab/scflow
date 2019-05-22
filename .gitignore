@@ -14,3 +14,6 @@ build
 eggs
 doc/_build
 doc/_static
+*.Rhistory
+*.pyc
+*__pycache__*

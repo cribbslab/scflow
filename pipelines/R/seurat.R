@@ -9,8 +9,8 @@ option_list = list(
   make_option(c("-w", "--workingdir"), type="character", default=NULL, 
               help="working directory", metavar="character"),
   make_option(c("-i", "--input"), type="character", default="sce.rds", 
-              help="input file (quants_mat.gz path) [default= %default]", metavar="character"),
-  make_option(c("-o", "--out"), type="character", default="sce.rds", 
+              help="input file (sce.rds path) [default= %default]", metavar="character"),
+  make_option(c("-o", "--out"), type="character", default="seurat.rds", 
               help="output file name [default= %default]", metavar="character")
 ); 
 
