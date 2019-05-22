@@ -99,8 +99,6 @@ def main(argv=sys.argv):
     
     barcodes=np.array(pd.read_csv(bus_dir+'/output.bus.sorted.txt',delimiter='\t',usecols=[0],header=None, dtype=str)).reshape(-1,)
 
-    #ref='Mus_musculus.GRCm38'
-
     counts = collections.Counter(barcodes)
     labels, values = zip(*counts.items())
     # sort the values in descending order
@@ -117,29 +115,22 @@ def main(argv=sys.argv):
     # User specifies how many cells they expect roughly in yml file
 
     t=int(math.floor(exp_cells * 0.1))
+    # Hard threshold. May lose some cell types that have low UMI counts that aren't ambient RNA
     exp_values = np.where(values >= values[t] / 10)
 
     NUM_OF_BARCODES = np.shape(exp_values)[1]
+    # test
+    empty_drops = 1
+    if empty_drops:
+        NUM_OF_BARCODES = len(values) -1
 
-    # Plot diagram of UMIs per barcode
-
-    fig, ax = plt.subplots()
-    ax.plot(indices, (values))
-
-    ax.set_xscale("log", nonposx='clip')
-    ax.set_yscale("log", nonposy='clip')
-    ax.set_ylabel('Number of reads', color='k')
-    ax.set_xlabel('barcode', color='k')
-    ax.set_title('Number of umis per Barcode', color='b')
-    ax.axvline(t, color='gray', linestyle='--',linewidth=.5)
-    ax.axvline(NUM_OF_BARCODES, color='g', linestyle='--',linewidth=2.0)
-    ax.axhline(values[t], color='gray', linestyle='--',linewidth=.5)
-    ax.axhline(values[t]/10, color='red', linestyle='--',linewidth=.5)
-    fig.savefig( bus_dir + '/UMI_barcodes.png')
+    ## PLOT, diagram of UMIs per barcode ##
+    ModuleBus2count.plot_UMI_per_barcode(indices, values, NUM_OF_BARCODES, t, bus_dir)
 
     # No whitelist info, otherwise would incorporate here
     codewords = labels[:NUM_OF_BARCODES]
     f.write("CBs_detected \t %d \n"%len(codewords))
+    E.warn("++++++++++++++ codewords ++++++++++++++")
 
     NUM_OF_UMIS_in_CELL_BARCODES=sum(values[:NUM_OF_BARCODES])
     f.write("NUM_UMIs_in_CBs \t %d \n"%NUM_OF_UMIS_in_CELL_BARCODES)
@@ -192,11 +183,6 @@ def main(argv=sys.argv):
             
             except KeyError: pass  
 
-
-    # from set back to sorted list
-    #for c in range(len(cellsets)):
-     #    cellsets[c]=sorted(list(cellsets[c]),key=lambda x: x[1])
-
     # Intersect ec/UMIs
     
     s2ec = {} #set to ec dict
@@ -207,7 +193,6 @@ def main(argv=sys.argv):
 
     new_cellsets={}
 
-    print("=================================================== in")
     for c in range(len(cellsets)):
         new_cellsets[c]=set()
         cell = cellsets[c]
@@ -244,29 +229,8 @@ def main(argv=sys.argv):
                     s2ec[frozenset(new_ec)] = new_id
                     new_cellsets[c].add((s2ec[frozenset(new_ec)],umi))
     
-    print("out")
-    # figure of cells before and after
-    fig, ax = plt.subplots(2,2,sharex=True)
-    ax = ax.ravel()
-    cnt=0
-    for c in np.random.randint(0,len(codewords),4):
-        labels, values = zip(*collections.Counter([i[0] for i in cellsets[c]]).items())
- 
-        ecdf = ECDF([len(ecs[i]) for i in labels])
-        ax[cnt].plot(ecdf.x,ecdf.y)
-        labels, values = zip(*collections.Counter([i[0] for i in new_cellsets[c]]).items())
- 
-        ecdf = ECDF([len(ecs[i]) for i in labels])
-        ax[cnt].plot(ecdf.x,ecdf.y)
-        plt.xlim([0,30])
-        ax[cnt].set_title( 'cell barcode: {:1}'.format(codewords[c]))
-        ax[cnt].set_xlabel('x: number of tx')
-        ax[cnt].set_ylabel('Pr(ec_size < x)')
-        ax[cnt].legend(['before','after'])
-        cnt+=1
-
-    fig.suptitle("Equivalence classes for 4 random CBs", fontsize=14)
-    fig.savefig(bus_dir + '/ec_intersection_example_cells.png')
+    ## PLOT, figure of cells before and after ##
+    ModuleBus2count.plot_cell_before_after(codewords, cellsets, ecs, labels, new_cellsets, bus_dir)
 
     # Get TCC matrix
     ec_set=set()
@@ -292,28 +256,8 @@ def main(argv=sys.argv):
         data+=values
     A=coo_matrix((data, (row, col)), shape=(len(equivalence_classes),len(codewords)))
     del row,col,data
-    A_large = A.toarray()
 
     f.write("MEDIAN_UMI_COUNTS_TCC \t %d \n"%(int(np.median(np.array(A.sum(axis=0))[0]))))
-
-
-    def g2n_dict(ENSGLIST, species_code):
-        mg = mygene.MyGeneInfo()
-        ginfo = mg.querymany(ENSGLIST, scopes='ensembl.gene',returnall=True, species = species_code )
-
-        g2n = {}
-        count_exept=0
-        for g in ginfo['out']:
-            try:
-                gene_id=str(g['query'])
-                gene_name=str(g['symbol'])
-        
-                g2n[gene_id] = g2n.get(gene_id, [])
-                g2n[gene_id].append(str(g['symbol']))                
-            except KeyError:
-                count_exept+=1
-                g2n[ str(g['query']) ] = [str(g['query'])]
-        return(g2n)
 
     def t2g_dict(infile):
         d={}
@@ -329,7 +273,7 @@ def main(argv=sys.argv):
     trlist = []
     with open(bus_dir+'/transcripts.txt') as f:
         for line in f:
-            trlist.append(line)
+            trlist.append(line.rstrip('\n'))
 
     # Dictionaries for transcript to gene and for gene to gene symbol
     tr2g = t2g_dict(t2gmap)
@@ -342,17 +286,17 @@ def main(argv=sys.argv):
         species = 10090
     
     ENSGLIST = list(np.unique(list(tr2g.values())))
-    g2n = g2n_dict(ENSGLIST, species) 
 
-    # ec to gene names  
-    ec2gn = {ec:frozenset([item for sublist in  [g2n[tr2g[trlist[t][:len_of_ens]]] for t in ecs[ec]]   for item in sublist ]) for ec in equivalence_classes}
+    # EC to ensembl id    
+    ec2gn = {ec:frozenset([item for sublist in  [tr2g[trlist[t][:len_of_ens]] for t in ecs[ec]]   for item in sublist ]) for ec in equivalence_classes}
+    ec2id = {ec:frozenset([tr2g[trlist[t]] for t in ecs[ec]]) for ec in equivalence_classes}
 
     # Stats
     ec_counts=np.array(A.sum(axis=1)).T[0]
     counts_sz =np.zeros(1000)
     for ec in equivalence_classes:
         cnt=ec_counts[tmp[ec]]
-        sz=len(ec2gn[ec])
+        sz=len(ec2id[ec])
         try:
             counts_sz[sz-1]+=cnt
         except:
@@ -367,21 +311,21 @@ def main(argv=sys.argv):
 
     # Write TCC matrix
 
-    mmwrite(bus_dir+'/matrix.tcc.coord.mtx',A)
+    mmwrite(bus_dir+'/TCC.matrix.mtx',A)
     
-    with open(bus_dir+'/matrix_updated.ec','w') as of:
+    with open(bus_dir+'/TCC.matrix.ec','w') as of:
         for ec in equivalence_classes:
             transcripts = ",".join([str(i) for i in ecs[ec]])
             of.write("%s\t%s\n"%(str(ec),transcripts))
 
-    with open(bus_dir+'/matrix.cells','w') as of:
+    with open(bus_dir+'/TCC.matrix.cells','w') as of:
         of.write('\n'.join(codewords))
         of.write('\n')
 
     # Gene counts
     gn2ec={}
     for ec in equivalence_classes:
-        for gn in ec2gn[ec]:
+        for gn in ec2id[ec]:
             try:
                 gn2ec[gn].update([ec])
             except KeyError:
@@ -392,7 +336,7 @@ def main(argv=sys.argv):
 
     for c in range(len(codewords)):
         for ec,umi in new_cellsets[c]:
-            gs=ec2gn[ec]
+            gs=ec2id[ec]
             if len(gs)==1:
                 cell_gene[c][gs] += 1
 
@@ -416,9 +360,8 @@ def main(argv=sys.argv):
         col+= [c] * len(cell_gene[c])
     
     
-    B=coo_matrix((data, (row, col)), shape=(len(genes),len(codewords)))
+    B = coo_matrix((data, (row, col)), shape=(len(genes),len(codewords)))
     del row,col,data
-    B_large = B.toarray()
 
     f = open(bus_dir + "/bus_count.log", "a+")
     f.write('MEDIAN_UMI_COUNTs_GENE \t %d \n'%int(np.median(np.array(B.sum(axis=0))[0])))
@@ -427,29 +370,19 @@ def main(argv=sys.argv):
     # UMI deduplication RATE
     f.write('NUM_DEDUPLICATED_UMIs/TRANSCRIPTOME_ALIGNED_READS_GENES \t{:.1f}% \n'.format(100*B.sum()/num_tx_aligned_reads))
     f.write('NUM_DEDUPLICATED_UMIs/TRANSCRIPTOME_ALIGNED_READS_TCCs  \t{:.1f}% \n'.format(100*A.sum()/num_tx_aligned_reads))
-
-    fig, ax = plt.subplots()
+   
     t=np.sum(np.array(B.mean(axis=1))>0.1)
-    ax.grid()
-    ax.plot(np.sort(np.array(B.mean(axis=1)),axis=0).T[0][::-1],color='r')
-    ax.set_xscale("log", nonposx='clip')
-    ax.set_yscale("log", nonposy='clip')
-    ax.set_ylabel('average umi counts', color='k')
-    ax.set_xlabel('genes', color='k')
-    ax.set_title('reliably detected genes ('+str(t)+')', color='darkgreen')
-    ax.axhline(0.1, color='firebrick', linestyle='--',linewidth=1)
-    ax.axvline(t, color='firebrick', linestyle='--',linewidth=1)
-    ax.plot(np.sort(np.array(B.mean(axis=1)),axis=0).T[0][::-1][:t],color='green',linewidth=2)
-    fig.savefig(bus_dir+'/Mean_gene_counts.png')
 
-
+    ## PLOT mean_gene_counts ##
+    ModuleBus2count.plot_mean_gene_counts(B,t, bus_dir)
+ 
     f.write('RELIABLY_DETECTED_GENES \t %d \n'%t)
     f.close()
 
     ## Write gene matrix ##
 
     # Coordinates
-    mmwrite(bus_dir + 'GCmatrix.coord',B)
+    mmwrite(outfile, B)
     
     regex_match = "frozenset\(\{\'(.*)\'\}\)"
     with open(bus_dir+'/GCmatrix.genes','w') as of:
@@ -463,8 +396,5 @@ def main(argv=sys.argv):
     with open(bus_dir +'/GCmatrix.cells','w') as of:
         of.write('\n'.join(codewords))
         
-   # Save full array
-    np.savetxt(outfile, B_large, delimiter = ',')
-
 if __name__ == "__main__":
     sys.exit(main())

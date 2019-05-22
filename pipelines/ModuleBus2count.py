@@ -21,6 +21,11 @@ import math
 from multiprocessing import Pool, Lock
 from functools import partial
 from itertools import chain, combinations, product, compress
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import collections
+from statsmodels.distributions.empirical_distribution import ECDF
 
 # Get rec_vec, to detect number of CBs to error correct
 def hamdist(s1, s2):
@@ -111,6 +116,67 @@ def get_ret_threads(threads, barcodes, codewords, brc_idx_to_correct):
     p.close()
     p.join()
     return(ret_threads)
+
+## Plots ##
+
+# UMIs per barcode (knee plot)
+def plot_UMI_per_barcode(indices, values, NUM_OF_BARCODES, t, bus_dir):
+    
+    fig, ax = plt.subplots()
+    ax.plot(indices, (values))
+
+    ax.set_xscale("log", nonposx='clip')
+    ax.set_yscale("log", nonposy='clip')
+    ax.set_ylabel('Number of reads', color='k')
+    ax.set_xlabel('barcode', color='k')
+    ax.set_title('Number of umis per Barcode', color='b')
+    ax.axvline(t, color='gray', linestyle='--',linewidth=.5)
+    ax.axvline(NUM_OF_BARCODES, color='g', linestyle='--',linewidth=2.0)
+    ax.axhline(values[t], color='gray', linestyle='--',linewidth=.5)
+    ax.axhline(values[t]/10, color='red', linestyle='--',linewidth=.5)
+    fig.savefig( bus_dir + '/UMI_barcodes.png')
+
+def plot_cell_before_after(codewords, cellsets, ecs, labels, new_cellsets, bus_dir):
+
+    # figure of cells before and after
+    fig, ax = plt.subplots(2,2,sharex=True)
+    ax = ax.ravel()
+    cnt=0
+    for c in np.random.randint(0,len(codewords),4):
+        labels, values = zip(*collections.Counter([i[0] for i in cellsets[c]]).items())
+ 
+        ecdf = ECDF([len(ecs[i]) for i in labels])
+        ax[cnt].plot(ecdf.x,ecdf.y)
+        labels, values = zip(*collections.Counter([i[0] for i in new_cellsets[c]]).items())
+ 
+        ecdf = ECDF([len(ecs[i]) for i in labels])
+        ax[cnt].plot(ecdf.x,ecdf.y)
+        plt.xlim([0,30])
+        ax[cnt].set_title( 'cell barcode: {:1}'.format(codewords[c]))
+        ax[cnt].set_xlabel('x: number of tx')
+        ax[cnt].set_ylabel('Pr(ec_size < x)')
+        ax[cnt].legend(['before','after'])
+        cnt+=1
+
+    fig.suptitle("Equivalence classes for 4 random CBs", fontsize=14)
+    fig.savefig(bus_dir + '/ec_intersection_example_cells.png')
+
+
+def plot_mean_gene_counts(B,t, bus_dir):
+
+    fig, ax = plt.subplots()
+    t=np.sum(np.array(B.mean(axis=1))>0.1)
+    ax.grid()
+    ax.plot(np.sort(np.array(B.mean(axis=1)),axis=0).T[0][::-1],color='r')
+    ax.set_xscale("log", nonposx='clip')
+    ax.set_yscale("log", nonposy='clip')
+    ax.set_ylabel('average umi counts', color='k')
+    ax.set_xlabel('genes', color='k')
+    ax.set_title('reliably detected genes ('+str(t)+')', color='darkgreen')
+    ax.axhline(0.1, color='firebrick', linestyle='--',linewidth=1)
+    ax.axvline(t, color='firebrick', linestyle='--',linewidth=1)
+    ax.plot(np.sort(np.array(B.mean(axis=1)),axis=0).T[0][::-1][:t],color='green',linewidth=2)
+    fig.savefig(bus_dir+'/Mean_gene_counts.png')
 
 if __name__ == "__main__":
     sys.exit(main())

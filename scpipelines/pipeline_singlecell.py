@@ -31,11 +31,11 @@ Overview
 ==================
 
 This pipeline performs alignment free based quantification of drop-seq, 10X and smart-seq2
-single-cell seqeucning analysis. Pseudoalignment is performed on the RNA reads,
+single-cell sequencing analysis. Pseudoalignment is performed on the RNA reads,
 using kallisto or Alevin and the resulting data is quantitatvely and qualitatively analysed.
 
 The pipeline performs the following analyses:
-* Alignment using kallisto or alevin (pert of salmon)
+* Alignment using kallisto or alevin (part of salmon)
 * QC of reads using the scater package
 
 
@@ -55,7 +55,7 @@ Input files
 The pipeline is ran using fastq files that follow the naming convention Read1: Name.fastq.1.gz
 and read2: Name.fastq.2.gz. 
 
- * a fastq file (single /paired end?? - AC:require both (always paired end for drop seq methods and
+ * a fastq file (single /paired end (always paired end for drop seq methods and
 potentially single end or paired end for smartseq2)
  * a GTF geneset
 
@@ -76,16 +76,14 @@ from ruffus import *
 
 import sys
 import os
+import re
 import sqlite3
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
-import ModuleSC
+import scpipelines.ModuleSC as ModuleSC
 
 import pandas as pd
-import cgatcore.pipeline as P
-import cgatcore.experiment as E
-import ModuleSC
 
 import cgat.GTF as GTF
 import cgatcore.iotools as iotools
@@ -273,7 +271,7 @@ if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
             DATADIR, PARAMS["merge_pattern_input"].strip()))
 
     SEQUENCEFILES_KALLISTO_OUTPUT = (
-        r"kallisto.dir/%s/output.bus" % (
+        r"kallisto.dir/%s/bus/output.bus" % (
             PARAMS["merge_pattern_output"].strip()))
 
     SEQUENCEFILES_SALMON_OUTPUT = (
@@ -285,7 +283,7 @@ else:
         "(\S+).(fastq.gz|fastq.1.gz)")
 
     SEQUENCEFILES_KALLISTO_OUTPUT = (
-        r"kallisto.dir/\1/output.bus")
+        r"kallisto.dir/\1/bus/output.bus")
 
     SEQUENCEFILES_SALMON_OUTPUT = (
         r"salmon.dir/\1/alevin/quants_mat.gz")
@@ -324,7 +322,7 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
     job_memory = "30G"
-
+    job_threads = 5
     P.run(statement)
 
 #############################
@@ -357,6 +355,8 @@ def runKallistoBus(infiles, outfile):
     -t %(kallisto_threads)s %(fastqfiles)s
     '''
 
+    job_memory = '20G'
+
     P.run(statement)
 
 #########################
@@ -388,19 +388,26 @@ def busText(infile, outfile):
 
 @transform(busText,
            suffix(".sorted.txt"),
-           r"\1.count")
-def busCount(infile, outfile):
+           add_inputs(getTranscript2GeneMap),
+           r"\1_GCcoordmatrix.mtx")
+def busCount(infiles, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
     ''' 
-
-    folder = infile.rsplit('/', 1)[0]
+    
+    sorted_bus, t2gmap = infiles
+    folder = sorted_bus.rsplit('/', 1)[0]
     sc_directory = PARAMS['sc_dir']
     bus2count = sc_directory + "/pipelines/bus2count.py"
+    exp_cells = PARAMS['kallisto_expectedcells']
+    threads = PARAMS['kallisto_threads']
 
     statement = '''
-    python %(bus2count)s --busdir %(folder)s 
+    rm -rf %(folder)s/bus_count.log;
+    python %(bus2count)s --dir %(folder)s --t2gmap %(t2gmap)s --expectedcells %(exp_cells)s --threads %(threads)s -o %(outfile)s
     '''
+
+    job_memory = "30G"
 
     P.run(statement)
 
@@ -412,31 +419,68 @@ def busCount(infile, outfile):
 @active_if(PARAMS['salmon_alevin'])
 @transform(runSalmonAlevin,
            regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"SCE.dir/\1.rds")
+           r"SCE.dir/\1/alevin/sce.rds")
 def readAlevinSCE(infile,outfile):
     '''
     Collates alevin count matrices for each sample
     Creates a single cell experiment class in R and saves as an r object
     '''
-
     working_dir = os.getcwd()
-    sc_directory = PARAMS['sc_dir']
-    script_loc = sc_directory + "/pipelines/R/sce.R"
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    species = PARAMS['sce_species']
+    gene_name = PARAMS['sce_genesymbol']
+    pseudo = 'alevin'
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(script_loc)s -w %(working_dir)s -i %(infile)s -o %(outfile)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s
     '''
     
     P.run(statement)
+
+
+## Kallisto SCE object
+@follows(mkdir("SCE.dir"))
+@active_if(PARAMS['kallisto_bustools'])
+@transform(busCount,
+           regex("kallisto.dir/(.*)/bus/output.bus_GCcoordmatrix.mtx"),
+           r"SCE.dir/\1/bus/sce.rds")
+def readBusSCE(infile, outfile):
+    ''' 
+    Takes in gene count matrices for each sample
+    Creates a single cell experiment class in R and saves as an r object
+    '''
+
+    working_dir = os.getcwd()
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    species = PARAMS['sce_species']
+    gene_name = PARAMS['sce_genesymbol']
+    pseudo = 'kallisto'
+    
+    job_memory = "10G"
+
+    statement = '''
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s
+    '''
+
+    P.run(statement)
+
+
+@transform((readBusSCE, readAlevinSCE), 
+           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"SCE.dir/\1/\2/sce.rds")
+def combine_alevin_bus(infiles, outfiles):
+    '''
+    dummy task to combine alevin and bus output into one task 
+    '''
 
 #########################
 # Multiqc
 #########################
 
 @follows(mkdir("MultiQC_report.dir"))
-@originate("Mapping_qc.dir/multiqc_report.html")
+@originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
     '''build mulitqc report'''
 
@@ -454,37 +498,25 @@ def build_multiqc(infile):
 
 @follows(build_multiqc)
 @follows(mkdir("QC_report.dir"))
-@transform(readAlevinSCE,
-           suffix(".rds"),
-           "SCE.dir/pass.rds")
+@transform(combine_alevin_bus,
+           regex("(\S+/\S+/\S+)/sce.rds"),
+           r"\1/pass.rds")
 def run_qc(infile, outfile):
     """
     Runs an Rmarkdown report that allows users to visualise and set their
     quality parameters according to the data. The aim is for the pipeline
     to generate default thresholds then the user can open the Rmarkdown in
-    rstudio and re-run the report, modifying parameters changesto suit the
+    rstudio and re-run the report, modifying parameters changes to suit the
     data
     """
 
+    inf_dir = os.path.dirname(infile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
-    #probably just need to knit one document not render_site
-    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd QC_report.dir &&
-                   cd QC_report.dir && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
+    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
 
     P.run(statement)
-
-
-#########################
-# Seurat analysis  
-#########################
-
-# tSNE plotting on saved surat object - a range of perplexity choices
-# plot tSNE perplexity hyper parameters on tSNE layout
-# UMAP analysis
-# Diffusion map
-# find clusters (findMarkers i think the function is called)
-# differential expression of markers in clusters
 
 
 #########################
@@ -511,32 +543,36 @@ def quant():
 def qc():
     pass
 
-
+ 
 @follows(mkdir("Seurat.dir"))
-@transform(readAlevinSCE,
-           regex(r"SCE.dir/(.*).rds"),
-           r"Seurat.dir/\1.rds")
+@transform(run_qc,
+           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/\2/seurat.rds")
 def seurat_generate(infile,outfile):
     ''' 
     Takes sce object and converts it to a seurat object for further analysis
     '''
+
     working_dir = os.getcwd()
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-
+    E.warn(infile)
+   
     statement = '''
     Rscript %(R_ROOT)s/seurat.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
     '''
     
+    job_memory = '10G'
     P.run(statement)
-
+    
 
 @transform(seurat_generate,
-           regex("Seurat.dir/(\S+).rds"),
-           r"Seurat.dir/\1.dim_reduction.rds")
+           regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/\2/\3_dim_reduction.rds")
 def seurat_dimreduction(infile, outfile):
     '''
     Takes a seurate object and computes a PCA-based dimension reduction
     '''
+    working_dir = outfile.replace("seurat.dim_reduction.rds", "")
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
 
     statement = '''Rscript %(R_ROOT)s/seurat_dimreduction.R
@@ -544,40 +580,55 @@ def seurat_dimreduction(infile, outfile):
     				-i %(infile)s
     				-o %(outfile)s
     				--mingenes=%(seurat_mingenes)s
-    				--maxmitopercent=%(seurat_maxmitopercent)s'''
+    				--maxmitopercent=%(seurat_maxmitopercent)s
+                                --npcs=%(seurat_npcs)s
+                                --reductionmethod="pca"
+                                --pccomponents=%(seurat_npcs)s
+                                --resolution=%(seurat_resolution)s
+                                --algorithm=%(seurat_algorithm)s'''
 
     P.run(statement)
 
 
-@transform(seurat_generate,
-           regex("Seurat.dir/(\S+).rds"),
-           r"Seurat.dir/\1.seurat_cluster.rds")
-def seurat_clustering(infile, outfile):
-    '''
-    Takes sce seurat object and creates a series of cluster visualisations
-    over a number of perplexities.
-    '''
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-	
-    statement = '''Rscript %(R_ROOT)s/seurat_cluster.R'''
-
-    P.run(statement)
-
-
-@transform(seurat_clustering,
-           regex("Seurat.dir/(\S+).rds"),
-           r"Seurat.dir/\1.seurat_marker.rds")
+@transform(seurat_dimreduction,
+           regex("Seurat.dir/(\S+)/(\S+)/(\S+)_dim_reduction.rds"),
+           r"Seurat.dir/\1/\2/Seurat_markers.html")
 def run_seurat_markdown(infile, outfile):
-	'''
+    '''
     Takes sce seurat object from clustering and generates
     an Rmarkdown report for running tsne, visualising clusters, finding marker
     genes and creating feature plots
     '''
 
-	R_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-	statement = ''' '''
+    inf_dir = os.path.dirname(infile)
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+    statement = '''cp %(NOTEBOOK_ROOT)s/Seurat_markers.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Seurat_markers.Rmd',encoding = 'UTF-8')" '''
 
-	P.run(statement)
+    P.run(statement)
+
+
+@transform(combine_alevin_bus,
+           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"SCE.dir/\1/\2/Clustering.html")
+def clustering(infile, outfile):
+    '''
+    Perform SC3 clustering analysis and observe the effects of clustering before and after
+    filtering cells based on quality metrics.
+    '''
+
+    inf_dir = os.path.dirname(outfile)
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+
+    statement = '''cp %(NOTEBOOK_ROOT)s/Clustering.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Clustering.Rmd',encoding = 'UTF-8')" '''
+
+    P.run(statement)
+
+
+@follows(clustering, run_seurat_markdown)
+def seurat():
+    pass
 
 
 def main(argv=None):
