@@ -228,9 +228,25 @@ def polyA_trimmer(infile, outfile):
     P.run(statement)
 
 
-@follows(mkdir("star.dir"))
+@follows("fastq_file.dir")
 @transform(trim_starting_sequence,
            regex("(\S+)_ployA_filtered.bam"),
+           r"fastq_file.dir/(\S+).fastq")
+def bam_to_fastq(infile, outfile):
+    """
+    Convert to fastq file so it can be mapped using star
+    """
+
+    statement = """SamToFastq
+                   INPUT=%(infile)s
+                   FASTQ=%(outfile)s"""
+
+    P.run(statement)
+
+
+@follows(mkdir("star.dir"))
+@transform(bam_to_fastq,
+           regex("fastq_file.dir/(\S+).fastq"),
            add_inputs(PARAMS['geneset'],
                       PARAMS['genome']),
            r"star.dir/\1_mapped.bam")
@@ -241,13 +257,20 @@ def star_mapping(infile, outfile):
 
     bamfile, gtffile, genome = infiles
     root, dirs, files = os.walk(outfile)
+    name = infile.replace("fastq_file.dir/","")
+    outfile_name = name.reaplce(".fastq","")
 
     statement = """STAR 
+                   --readFilesIn %(infile)s 
                    --runThreadN 12 
-                   --runMode genomeGenerate 
                    --genomeDir %(root)s
                    --genomeFastaFiles %(genome)s
-                   --sjdbGTFfile %(gtffile)s"""
+                   --outSAMmiltNmax 1
+                   --sjdbGTFfile %(gtffile)s
+                   --outSAMunmapped Within
+                   --outSAMunmapped BAM SortedByCoordinate
+                   --outFileNamePrefix %(outfile_name)s_"""
+
 
     P.run(statement)
 
