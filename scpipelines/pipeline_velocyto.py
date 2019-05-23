@@ -249,6 +249,30 @@ def run_dropest(infiles, outfile):
     P.run(statement)
 
 
+@follows(mkdir("star.dir"))
+@transform(trim_starting_sequence,
+           regex("(\S+)_ployA_filtered.bam"),
+           add_inputs(PARAMS['geneset'],
+                      PARAMS['genome']),
+           r"star.dir/\1_mapped.bam")
+def star_mapping(infile, outfile):
+    """
+    Perform star mapping
+    """
+
+    bamfile, gtffile, genome = infiles
+    root, dirs, files = os.walk(outfile)
+
+    statement = """STAR 
+                   --runThreadN 12 
+                   --runMode genomeGenerate 
+                   --genomeDir %(root)s
+                   --genomeFastaFiles %(genome)s
+                   --sjdbGTFfile %(gtffile)s"""
+
+    P.run(statement)
+
+
 @follows()
 def quant():
     pass
