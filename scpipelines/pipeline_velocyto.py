@@ -57,6 +57,18 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
+try:
+    PARAMS['data']
+except NameError:
+    DATADIR = "."
+else:
+    if PARAMS['data'] == 0:
+        DATADIR = "."
+    elif PARAMS['data'] == 1:
+        DATADIR = "data.dir"
+    else:
+        DATADIR = PARAMS['data']
+
 # Determine the location of the input fastq files
 SEQUENCESUFFIXES = ("*.fastq.1.gz")
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
@@ -89,7 +101,7 @@ def index_genome_star(infiles, outfile):
 
     P.run(statement)
 
-@follows(PARAMS['star_index'] == 0)
+@active_if(PARAMS['star_index'] == 0)
 @mkdir('star_index.dir')
 @originate('star_index.dir/Genome')
 def index_genome_copy(outfile):
@@ -228,7 +240,7 @@ def polyA_trimmer(infile, outfile):
     P.run(statement)
 
 
-@follows("fastq_file.dir")
+@follows(mkdir("fastq_file.dir"))
 @transform(trim_starting_sequence,
            regex("(\S+)_ployA_filtered.bam"),
            r"fastq_file.dir/(\S+).fastq")
@@ -304,11 +316,6 @@ def velocyto(run_dropest):
 
 @follows()
 def loom_generation():
-    pass
-
-
-@follows()
-def velocyto():
     pass
 
 

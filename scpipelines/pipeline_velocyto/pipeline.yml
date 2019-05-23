@@ -98,6 +98,9 @@ salmon:
 
 star:
 
+  # Whether to generate a star index
+  index: 1
+
   # Whether to run star mapping
   run: 1
 
