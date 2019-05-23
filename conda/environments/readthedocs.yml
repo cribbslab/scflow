@@ -1,0 +1,9 @@
+name: trnanalysis
+
+channels:
+ - conda-forge
+ - bioconda
+ - defaults
+
+dependencies:
+ - python

@@ -81,12 +81,9 @@ import sqlite3
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
-import ModuleSC
+import scpipelines.ModuleSC as ModuleSC
 
 import pandas as pd
-import cgatcore.pipeline as P
-import cgatcore.experiment as E
-import ModuleSC
 
 import cgat.GTF as GTF
 import cgatcore.iotools as iotools

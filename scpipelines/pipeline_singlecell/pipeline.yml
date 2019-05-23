@@ -1,26 +1,23 @@
-################################################################
+##########################
 #
-# Pipeline pipeline_single_cell.py configuration file
+# configuration file for pipeline_singlecell
 #
-# This pipeline.yml file lists some configuration options that you
-# need to set before running the pipeline.
-#
-################################################################
+##########################
 
-# genome ID
-genome: mm10
+# genomeID
+genome: hg38
 genome_dir: /ifs/mirror/genomes/index/
 
 # Location of the single cell directory
-sc_dir: '/Users/annajames-bott/Documents/Dphil/Repositories/single-cell'
+sc_dir: '/ifs/projects/adam/single-cell-test/'
 
 # Project name
-projectname: ''
+projectname: test
 
 # Copyright statement
 copyright: Cribbs Group, Botnar Research Centre (2019)
 
-# Location of the data. 0 for current working directory, 1 for data.dir, other= defined path
+# Location of the data. 0 for the current directory
 data: 0
 
 # Provide a reference geneset (suffix= ".gtf.gz")
@@ -42,8 +39,8 @@ merge:
   #
   # choose the following input and output patterns:
   #
-  # pattern_input=(.*)-(S\d)-(\d)-(L\d+)
-  # pattern_output=\1-\2-\3
+  # pattern_input= (.*)-(S\d)-(\d)-(L\d+)
+  # pattern_output= \1-\2-\3
   # Note that the file extension will be added by the pipeline. The
   # pattern must not include this.
 
@@ -52,31 +49,31 @@ merge:
   # hgmm_100_S1_L002_001.fastq.1.gz
   # hgmm_100_S1_L002_001.fastq.2.gz
 
-  # pattern_input: (\S+)_(\d+)_(S\d)_(L\d+)_(\d+)
-  # pattern_output: \1_\2_\3_\5
+  # pattern_input: (\S\d+)-(.*)_(L\d+)
+  # pattern_output: \1_\2_\3_
   # to create:
-  # hgmm_100_S1_001
+  # N70x-cell_lane.fastq.1.gz
 
-  pattern_input: (\S+)_(\d+)_(S\d)_(L\d+)
-  pattern_output: \1_\2_\3
+  pattern_input: ''
+  pattern_output: ''
 
-####################
-# kallisto options
-####################
+#######################
+# Kallisto
+#######################
 
 kallisto:
   # kmer size for kallisto. Default is 31 and max is 31
-  # Used to generate the kallisto indexed
-  # Kallisto will ignore transcripts shorter than This
+  # Used to generate the kallisto index
+  # Kallisto will ignore transcripts shorter than this
   kmer: 31
 
-  # number of threads for kallisto
-  threads: 1
+  # Number of threads for kallisto
+  threads: 5
 
   # Whether to generate a BUStools file
   bustools: 0
-  # Must specify single cell technology to generate bustools file
-  # Allowable sc technology:
+  # Must specify a single cell tchnology to generate bustools file
+  # allowable technology:
   # 10Xv1
   # 10Xv2
   # DropSeq
@@ -84,27 +81,27 @@ kallisto:
   # CELSeq
   # CELSeq2
   # SCRBSeq
-  # Note that 10Xv3 is not supported in version 0.44 of Kallisto
-  sctechnology: 10Xv2
-
+  # Not that 10Xv3 is not supported in version 0.44 of kallisto
+  sctechnology: DropSeq
 
 salmon:
-  # Length of k-mer for indexing.
+
+  # Length of kmer for indexing
   kmer: 31
 
-  # Number of threads that can be used by alevin to perfrom the quantification
+  # Number of threads that can be used by alevin to perform the quantification
   threads: 10
 
-  # Library type must be specified.
-  # ISR recommended for DropSeq and 10xV2 technology
+  # Library type
+  # ISR recommended for DropSeq and 10Xv2 technology
   librarytype: ISR
 
   # Optional options
-  # see https://salmon.readthedocs.io/en/latest/salmon.html#description-of-important-options
+  # See https://salmon.readthedocs.io/en/latest/salmon.html#description-of-important-options
   # for a list of more salmon options
   index_options: ''
 
-  # Whether to run alevin
+  # Wether to run alevin
   alevin: 1
 
   # Single cell technology/protocol to be specified
@@ -113,25 +110,21 @@ salmon:
   # chromium
     # for 10x chromium v2 sc protocol
   # chromiumV3
-  # gemcode - for 10x gemocode v1 sc protocol
+  # gemcode
+    # for 10x gemocode v1 sc protocol
   # celseq
   # celseq2
-  sctechnology: dropseq
-
-  # Optional options for alevin
-  # String format, precede with --
-  # https://salmon.readthedocs.io/en/latest/alevin.html#description-of-important-options
-  alevin_options: ''
+  sctechnology: drposeq
 
 sce:
 
   # Species information for annotation
   # human
   # mouse
-  species: mouse
+  species: human
 
   # Whether to use gene symbols for SCE or ensembl IDs.
-  genesymbol: 1
+  genesymbol: 0
 
 qc:
 
@@ -157,5 +150,3 @@ seurat:
   # resultion for finding seurat clusters
   resolution: 0.8
 
-  # algorithm to use for findClustrs
-  algorithm: 1
