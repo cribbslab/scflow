@@ -227,27 +227,6 @@ def polyA_trimmer(infile, outfile):
 
     P.run(statement)
 
-@follows(mkdir("dropest.dir"))
-@transform(trim_starting_sequence,
-           regex("(\S+)_ployA_filtered.bam"),
-           add_inputs(PARAMS['geneset']),
-           r"dropest.dir/\1_dropEst.rds")
-def run_dropest(infiles, outfile):
-    """
-    runs dropEst on the bam file and generated an rds file as output
-    """
-    bamfile, gtffile = infiles
-    config = PARAMS['dropest_config']
-
-    statement = """dropest -m -V -b -f 
-                   -g %(gtffile)s
-                   -o dropEst_out 
-                   -L eiEIBA 
-                   -c %(config)s 
-                   %(bamfile)s"""
-
-    P.run(statement)
-
 
 @follows(mkdir("star.dir"))
 @transform(trim_starting_sequence,
@@ -272,6 +251,26 @@ def star_mapping(infile, outfile):
 
     P.run(statement)
 
+@follows(mkdir("dropest.dir"))
+@transform(star_mapping,
+           regex("(\S+)_mapped.bam"),
+           add_inputs(PARAMS['geneset']),
+           r"dropest.dir/\1_dropEst.rds")
+def run_dropest(infiles, outfile):
+    """
+    runs dropEst on the bam file and generated an rds file as output
+    """
+    bamfile, gtffile = infiles
+    config = PARAMS['dropest_config']
+
+    statement = """dropest -m -V -b -f 
+                   -g %(gtffile)s
+                   -o dropEst_out 
+                   -L eiEIBA 
+                   -c %(config)s 
+                   %(bamfile)s"""
+
+    P.run(statement)
 
 @follows()
 def quant():
