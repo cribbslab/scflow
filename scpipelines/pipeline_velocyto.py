@@ -58,8 +58,7 @@ PARAMS = P.get_parameters(
      "pipeline.yml"])
 
 # Determine the location of the input fastq files
-SEQUENCESUFFIXES = ("*.fastq.gz",
-		    "*.fastq.1.gz")
+SEQUENCESUFFIXES = ("*.fastq.1.gz")
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
@@ -105,6 +104,27 @@ def index_genome_copy(outfile):
     statement = """cp -R %(star_location)s star_index.dir/ """
 
     P.run(statement)
+
+@follows(mkdir('data.dir'))
+@transform(SEQUENCEFILES,
+           formatter(r"(?P<track>[^/]+).(?P<suffix>fastq.1.gz)"),
+           r"data.dir/{track[0]}_unmapped.bam")
+def fastq_to_bam(infile, outfile):
+    """
+    generate an unmapped bam file for further parsing into dropseq tools
+    """
+
+    second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
+    name = infile.replace(".fastq.1.gz", "")
+
+    statement = """picard FastqToSam 
+                   F1=%(infile)s 
+                   F2=%(second_read)s 
+                   O=%(outfile)s 
+                   SM=%(name)s"""
+
+    P.run(statement)
+
 
 @follows()
 def quant():
