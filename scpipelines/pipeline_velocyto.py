@@ -128,7 +128,7 @@ def fastq_to_bam(infile, outfile):
 
 @transform(fastq_to_bam,
            regex("(\S+)_unmapped.bam"),
-           r"\1_tagged_Cell.bam")
+           r"data.dir/\1_tagged_Cell.bam")
 def cell_barcode_bam(infile, outfile):
     """
     Extracts bases from the cell barcode encoding read
@@ -152,7 +152,7 @@ def cell_barcode_bam(infile, outfile):
 
 @transform(cell_barcode_bam,
            regex("(\S+)_tagged_Cell.bam"),
-           r"\1_tagged_CellMolecular.bam")
+           r"data.dir/\1_tagged_CellMolecular.bam")
 def molecular_barcode_bam(infile, outfile):
     """
 
@@ -176,7 +176,7 @@ def molecular_barcode_bam(infile, outfile):
 
 @transform(molecular_barcode_bam,
            regex("(\S+)_tagged_CellMolecular.bam"),
-           r"\1_tagged_filtered.bam")
+           r"data.dir/\1_tagged_filtered.bam")
 def filter_bam(infile, outfile):
     """
     filter the bam file to regect XQ tag
@@ -191,7 +191,7 @@ def filter_bam(infile, outfile):
 
 @transform(filter_bam,
            regex("(\S+)_tagged_filtered.bam"),
-           r"\1_tagged_trimmed_smart.bam")
+           r"data.dir/\1_tagged_trimmed_smart.bam")
 def trim_starting_sequence(infile, outfile):
     """
     Trim the starting sequence of each read in the bamfile
@@ -206,6 +206,25 @@ def trim_starting_sequence(infile, outfile):
                    SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG 
                    MISMATCHES=0 
                    NUM_BASES=5"""
+
+    P.run(statement)
+
+
+@transform(trim_starting_sequence,
+           regex("(\S+)_tagged_trimmed_smart.bam"),
+           r"data.dir/\1_polyA_filtered.bam")
+def polyA_trimmer(infile, outfile):
+    """
+    Remove the poly A tail from each read
+    """
+
+    statement = """PolyATrimmer 
+                   INPUT=unaligned_tagged_trimmed_smart.bam 
+                   OUTPUT=unaligned_mc_tagged_polyA_filtered.bam 
+                   OUTPUT_SUMMARY=polyA_trimming_report.txt 
+                   MISMATCHES=0 
+                   NUM_BASES=6 
+                   USE_NEW_TRIMMER=true"""
 
     P.run(statement)
 
