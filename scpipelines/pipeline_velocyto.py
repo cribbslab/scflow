@@ -126,6 +126,30 @@ def fastq_to_bam(infile, outfile):
     P.run(statement)
 
 
+@transform(fastq_to_bam,
+           regex("(\S+)_unmapped.bam"),
+           r"\1_tagged_Cell.bam")
+def cell_barcode_bam(infile, outfile):
+    """
+    Extracts bases from the cell barcode encoding read
+    (BARCODED_READ), and creates a new BAM tag with those bases on the genome read.
+    """
+
+    name = infile.replace("_unmapped.bam","")
+
+    statement = """TagBamWithReadSequenceExtended 
+                   INPUT=%(infile)s
+                   OUTPUT=%(outfile)s 
+                   SUMMARY=%(name)s_tagged_Cellular.bam_summary.txt 
+                   BASE_RANGE=1-12 
+                   BASE_QUALITY=10 
+                   BARCODED_READ=1 
+                   DISCARD_READ=False 
+                   TAG_NAME=XC 
+                   NUM_BASES_BELOW_QUALITY=1 """
+
+    P.run(statement)
+
 @follows()
 def quant():
     pass
