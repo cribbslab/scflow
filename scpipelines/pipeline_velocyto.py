@@ -288,15 +288,17 @@ def run_dropest(infiles, outfile):
 
     statement = """dropest -m -V -b -f 
                    -g %(gtffile)s
-                   -o dropEst_out 
+                   -o dropest.dir/dropEst 
                    -L eiEIBA 
                    -c %(config)s 
                    %(bamfile)s"""
 
     P.run(statement)
 
+
+
 @follows()
-def quant():
+def velocyto(run_dropest):
     pass
 
 
