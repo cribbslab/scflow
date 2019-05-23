@@ -150,6 +150,29 @@ def cell_barcode_bam(infile, outfile):
 
     P.run(statement)
 
+@transform(cell_barcode_bam,
+           regex("(\S+)_tagged_Cell.bam"),
+           r"\1_tagged_CellMolecular.bam")
+def molecular_barcode_bam(infile, outfile):
+    """
+
+    """
+
+    name = infile.replace("_tagged_Cell.bam", "")
+
+    statement = """TagBamWithReadSequenceExtended 
+                   INPUT=%(input)s 
+                   OUTPUT=%(outfile)s 
+                   SUMMARY=%(name)s_tagged_Molecular.bam_summary.txt 
+                   BASE_RANGE=13-20 
+                   BASE_QUALITY=10 
+                   BARCODED_READ=1 
+                   DISCARD_READ=True 
+                   TAG_NAME=XM 
+                   NUM_BASES_BELOW_QUALITY=1 """
+
+    P.run(statement)
+
 @follows()
 def quant():
     pass
