@@ -85,8 +85,7 @@ def index_genome_star(infiles, outfile):
                    --runThreadN 12 
                    --runMode genomeGenerate 
                    --genomeDir star_index.dir/
-                   --genomeFastaFiles %(genome)s
-                   --sjdbGTFfile %(gtffile)s"""
+                   --genomeFastaFiles %(genome)s"""
 
     P.run(statement)
 
@@ -227,6 +226,28 @@ def polyA_trimmer(infile, outfile):
                    USE_NEW_TRIMMER=true"""
 
     P.run(statement)
+
+@follows(mkdir("dropest.dir"))
+@transform(trim_starting_sequence,
+           regex("(\S+)_ployA_filtered.bam"),
+           add_inputs(PARAMS['geneset']),
+           r"dropest.dir/\1_dropEst.rds")
+def run_dropest(infiles, outfile):
+    """
+    runs dropEst on the bam file and generated an rds file as output
+    """
+    bamfile, gtffile = infiles
+    config = PARAMS['dropest_config']
+
+    statement = """dropest -m -V -b -f 
+                   -g %(gtffile)s
+                   -o dropEst_out 
+                   -L eiEIBA 
+                   -c %(config)s 
+                   %(bamfile)s"""
+
+    P.run(statement)
+
 
 @follows()
 def quant():
