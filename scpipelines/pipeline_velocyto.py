@@ -189,6 +189,26 @@ def filter_bam(infile, outfile):
 
     P.run(statement)
 
+@transform(filter_bam,
+           regex("(\S+)_tagged_filtered.bam"),
+           r"\1_tagged_trimmed_smart.bam")
+def trim_starting_sequence(infile, outfile):
+    """
+    Trim the starting sequence of each read in the bamfile
+    """
+
+    name = infile.replace("_tagged_filtered.bam", "")
+
+    statement = """TrimStartingSequence 
+                   INPUT=%(infile)s 
+                   OUTPUT=%(outfile)s 
+                   OUTPUT_SUMMARY=%(name)s_adapter_trimming_report.txt 
+                   SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG 
+                   MISMATCHES=0 
+                   NUM_BASES=5"""
+
+    P.run(statement)
+
 @follows()
 def quant():
     pass
