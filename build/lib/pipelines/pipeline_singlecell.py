@@ -482,6 +482,7 @@ def combine_alevin_bus(infiles, outfiles):
 # Multiqc
 #########################
 
+@follows(runFastQC)
 @follows(mkdir("MultiQC_report.dir"))
 @originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
@@ -506,7 +507,6 @@ def build_multiqc(infile):
            r"\1/pass.rds")
 def run_qc(infile, outfile):
     """
-    Runs an Rmarkdown report that allows users to visualise and set their
     quality parameters according to the data. The aim is for the pipeline
     to generate default thresholds then the user can open the Rmarkdown in
     rstudio and re-run the report, modifying parameters changes to suit the
