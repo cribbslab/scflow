@@ -173,6 +173,22 @@ def molecular_barcode_bam(infile, outfile):
 
     P.run(statement)
 
+
+@transform(molecular_barcode_bam,
+           regex("(\S+)_tagged_CellMolecular.bam"),
+           r"\1_tagged_filtered.bam")
+def filter_bam(infile, outfile):
+    """
+    filter the bam file to regect XQ tag
+    """
+
+    statement = """FilterBam 
+                   TAG_REJECT=XQ 
+                   INPUT=%(infile)s 
+                   OUTPUT=%(outfile)s"""
+
+    P.run(statement)
+
 @follows()
 def quant():
     pass
