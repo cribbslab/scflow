@@ -81,7 +81,7 @@ import sqlite3
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
-import scpipelines.ModuleSC as ModuleSC
+import ModuleSC
 
 import pandas as pd
 
@@ -427,6 +427,8 @@ def readAlevinSCE(infile,outfile):
     '''
     working_dir = os.getcwd()
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    E.warn("==========================================")
+    E.warn(R_ROOT)
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'alevin'
