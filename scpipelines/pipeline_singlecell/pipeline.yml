@@ -150,3 +150,5 @@ seurat:
   # resultion for finding seurat clusters
   resolution: 0.8
 
+  algorithm: 3
+

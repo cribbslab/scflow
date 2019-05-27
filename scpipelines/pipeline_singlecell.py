@@ -427,8 +427,6 @@ def readAlevinSCE(infile,outfile):
     '''
     working_dir = os.getcwd()
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-    E.warn("==========================================")
-    E.warn(R_ROOT)
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'alevin'
@@ -519,13 +517,18 @@ def run_qc(infile, outfile):
     mito_thresh = PARAMS['qc_max_mito']
     transcript_thresh = PARAMS['qc_min_transcripts']
     spike_in = PARAMS['qc_spike_ins']
+    
+    job_memory = 'unlimited'
 
     statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8', 
+                   R -e "rmarkdown::render('%(inf_dir)s/Sample_QC.Rmd',encoding = 'UTF-8', 
                    params = list(species = '%(species_type)s', mito_mad = %(mito_mad)s, mito_thresh = %(mito_thresh)s, transcript_thresh = %(transcript_thresh)s, spike_ins = %(spike_in)s ))"'''
 
     P.run(statement)
 
+#'''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
+#                   cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = #'UTF-8', 
+#                   params = list(species = '%(species_type)s', mito_mad = %(mito_mad)s, mito_thresh = %(mito_thresh)s, transcript_thresh = %(transcript_thresh)s, spike_ins = %(spike_in)s ))"'''
 
 #########################
 # Velocity analysis  
@@ -582,6 +585,8 @@ def seurat_dimreduction(infile, outfile):
     '''
     working_dir = outfile.replace("seurat.dim_reduction.rds", "")
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+ 
+    job_memory = 'unlimited' 
 
     statement = '''Rscript %(R_ROOT)s/seurat_dimreduction.R
     				-w %(working_dir)s
