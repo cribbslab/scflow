@@ -81,7 +81,7 @@ import sqlite3
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
-import scpipelines.ModuleSC
+import ModuleSC
 
 import pandas as pd
 
@@ -620,6 +620,45 @@ def run_seurat_markdown(infile, outfile):
 
     P.run(statement)
 
+@collate(seurat_generate,
+         regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
+         r"Seurat.dir/\2_combined_\3.rds")
+def combine_seurat_objects(infiles, outfile):
+    '''
+    Takes all seurat.rds objects and combines them using RunCCA/MergeSeurat/RunMultiCCA
+    into one large seurat object with annotations for each sample, ready for the monocle library.
+    '''
+
+    # Need option for if only 1 sample. Currently only works if more than 1 sample I think (infile[0])
+    pseudoaligner = infiles[0].split("/")[-2]
+    infiles = str(infiles).replace("'", "").replace("(", "").replace(")", "")
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    E.warn(infiles)
+
+    statement = ''' Rscript %(R_ROOT)s/combine_seurat.R -i "%(infiles)s" -p %(pseudoaligner)s 
+                 -o %(outfile)s'''
+
+    job_memory = 'unlimited'
+   
+    P.run(statement)
+
+
+@transform(combine_seurat_objects,
+           regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
+           r"Seurat.dir/\1/\2/monocle_plot.svg")
+def run_monocle(infile, outfile):
+    ''' 
+    Takes seurat object before dimension reduction. Uses the library monocle to regress out treatment so 
+    clusters in tsne plots can be directly compared across samples. Generates plots.
+    '''
+
+    inf_dir = os.path.dirname(infile)
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+    statement = '''cp %(NOTEBOOK_ROOT)s/Monocle.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Monocle.Rmd',encoding = 'UTF-8')" '''
+
+
+    P.run(statement)
 
 @transform(combine_alevin_bus,
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),

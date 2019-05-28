@@ -173,7 +173,8 @@ if(mad){
 scater.MT.M <- median(metric)
 scater.MT.MAD <- mad(metric)
 mt_threshold <- scater.MT.M + 2 * scater.MT.MAD
-scater.MT.outliers <- metric > scater.MT.M + 2 * scater.MT.MAD
+mt_lower_threshold <- scater.MT.M - 2 * scater.MT.MAD
+scater.MT.outliers <- metric > mt_threshold | metric < mt_lower_threshold
 table(scater.MT.outliers)
 outlier$MT <- metric > scater.MT.M + 2 * scater.MT.MAD
 } else{

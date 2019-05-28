@@ -1,0 +1,137 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+library(monocle)
+library(tidyverse)
+library(ComplexHeatmap)
+library(DESeq2)
+library(edgeR)
+library(yaml)
+library(reshape2)
+```
+
+
+# Import from a Seurat object
+
+```{r}
+
+seurat <- importCDS(readRDS("seurat.rds"))
+
+seurat <- estimateSizeFactors(seurat)
+seurat <- estimateDispersions(seurat)
+
+seurat <- detectGenes(seurat, min_expr = 0.1)
+print(head(fData(seurat)))
+
+expressed_genes <- row.names(subset(fData(seurat),
+                                    num_cells_expressed >= 10))
+
+print(head(pData(seurat)))
+
+```
+
+```{r}
+pData(seurat)$Total_mRNAs <- Matrix::colSums(exprs(seurat))
+
+seurat <- seurat[,pData(seurat)$Total_mRNAs < 1e6]
+
+upper_bound <- 10^(mean(log10(pData(seurat)$Total_mRNAs)) +
+                     2*sd(log10(pData(seurat)$Total_mRNAs)))
+lower_bound <- 10^(mean(log10(pData(seurat)$Total_mRNAs)) -
+                     2*sd(log10(pData(seurat)$Total_mRNAs)))
+
+qplot(Total_mRNAs, data = pData(seurat), color = stim, geom =
+        "density") +
+  geom_vline(xintercept = lower_bound) +
+  geom_vline(xintercept = upper_bound)
+
+
+seurat <- seurat[,pData(seurat)$Total_mRNAs > lower_bound &
+                   pData(seurat)$Total_mRNAs < upper_bound]
+seurat <- detectGenes(seurat, min_expr = 0.1)
+```
+
+```{r}
+# Log-transform each value in the expression matrix.
+L <- log(exprs(seurat[expressed_genes,]))
+
+# Standardize each gene, so that they are all on the same scale,
+# Then melt the data with plyr so we can plot it easily
+melted_dens_df <- melt(Matrix::t(scale(Matrix::t(L))))
+
+# Plot the distribution of the standardized gene expression values.
+qplot(value, geom = "density", data = melted_dens_df) +
+  stat_function(fun = dnorm, size = 0.5, color = 'red') +
+  xlab("Standardized log(FPKM)") +
+  ylab("Density")
+
+```
+
+
+```{r}
+disp_table <- dispersionTable(seurat)
+unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
+seurat <- setOrderingFilter(seurat, unsup_clustering_genes$gene_id)
+plot_ordering_genes(seurat)
+
+# HSMM@auxClusteringData[["tSNE"]]$variance_explained <- NULL
+plot_pc_variance_explained(seurat, return_all = F) # norm_method='log'
+
+
+seurat <- reduceDimension(seurat, max_components = 2, num_dim = 6,
+                          reduction_method = 'tSNE', verbose = T)
+seurat <- clusterCells(seurat, num_clusters = 4)
+plot_cell_clusters(seurat, 1, 2, color = "stim",
+                   markers = c("MYF5", "ANPEP"))
+
+
+
+seurat <- reduceDimension(seurat, max_components = 2, num_dim = 6,
+                          reduction_method = 'tSNE',
+                          residualModelFormulaStr = "~stim",
+                          verbose = T)
+
+seurat <- clusterCells(seurat, num_clusters = 2)
+plot_cell_clusters(seurat, 1, 2, color = "stim")
+
+
+seurat <- clusterCells(seurat, num_clusters = 10)
+plot_cell_clusters(seurat, 1, 2, color = "Cluster")
+
+postscript("IL17A_total.eps")
+plot_cell_clusters(seurat, 1, 2, color = "Cluster", markers = "IL17A") +
+  facet_wrap(~stim)
+dev.off()
+test <- pData(seurat)
+postscript("cluster_facet.eps")
+plot_cell_clusters(seurat, 1, 2, color = "Cluster") +
+  facet_wrap(~stim)
+dev.off()
+
+
+library(reshape)
+datm <- melt(cbind(test))
+library(scales)
+p4 <-ggplot(datm,aes(x = stim, y = value,fill = Cluster)) + 
+  geom_bar(position = "fill",stat = "identity") +
+  # or:
+  # geom_bar(position = position_fill(), stat = "identity") 
+  scale_y_continuous(labels = percent_format())
+
+fill <- c("#5F9EA0", "#E1B378", "#fee8c8", "#fdbb84", "#e34a33", "#edf8b1", "#7fcdbb", "#2c7fb8", "#756bb1")
+p4 <- p4 + scale_fill_manual(values=fill)
+
+library(ggplot2)
+c <- ggplot(test, aes(x = stim, y = Cluster, fill=Cluster))
+c + geom_bar(stat = "identity")
+
+
+p4 <- ggplot() + geom_bar(aes(y = percentage, x = stim, fill = Cluster), data = test,
+                          stat="identity")
+p4
+
+```
