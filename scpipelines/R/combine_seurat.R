@@ -31,14 +31,11 @@ sample_name_list <- sapply(input, function(x) unlist(strsplit(x, "/"))[2], USE.N
 
 seurat_list <- vector("list", length(input))
 gene_list <- c()
-for(i in 1:length(input)){
-  seurat_object_path <- input[i]
+for(j in 1:length(input)){
+  seurat_object_path <- input[j]
   seurat_object <- readRDS(seurat_object_path)
   #seurat_object <- UpdateSeuratObject(seurat_object)
-  seurat_object@meta.data$stim <- sample_name_list[i]
-  #seurat_object[[i]] <- NormalizeData(seurat_object[[i]], verbose = FALSE)
-  #seurat_object[[i]] <- FindVariableFeatures(seurat_object[[i]], selection.method = "vst", nfeatures = 2000, 
-  #                                           verbose = FALSE)
+  seurat_object@meta.data$stim <- sample_name_list[j]
   
   # Normalize data
   seurat_object <- NormalizeData(object = seurat_object)
@@ -47,13 +44,13 @@ for(i in 1:length(input)){
 
   # detect highly variable genes
   seurat_object <- FindVariableGenes(object = seurat_object, mean.function = ExpMean, dispersion.function = LogVMR, 
-    x.low.cutoff = 0.0125, x.high.cutoff = 3, y.cutoff = 0.5)
+    x.low.cutoff = 0.0125, x.high.cutoff = 3, y.cutoff = 0.5, do.plot = FALSE)
   g <- head(rownames(seurat_object@hvg.info), 1000)
 
-  gene_list <- unique(gene_list, g)
+  gene_list <- unique(c(gene_list, g))
   gene_list <- intersect(gene_list, rownames(seurat_object@scale.data))
 
-  seurat_list[[i]] <- seurat_object
+  seurat_list[[j]] <- seurat_object
                              
 }
 
