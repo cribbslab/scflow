@@ -430,11 +430,12 @@ def readAlevinSCE(infile,outfile):
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'alevin'
+    downsample = PARAMS['downsample_to']
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s -d %(downsample)s
     '''
     
     P.run(statement)
@@ -633,7 +634,6 @@ def combine_seurat_objects(infiles, outfile):
     pseudoaligner = infiles[0].split("/")[-2]
     infiles = str(infiles).replace("'", "").replace("(", "").replace(")", "")
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-    E.warn(infiles)
 
     statement = ''' Rscript %(R_ROOT)s/combine_seurat.R -i "%(infiles)s" -p %(pseudoaligner)s 
                  -o %(outfile)s'''
