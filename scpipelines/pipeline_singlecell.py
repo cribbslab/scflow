@@ -644,8 +644,8 @@ def combine_seurat_objects(infiles, outfile):
 
 
 @transform(combine_seurat_objects,
-           regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
-           r"Seurat.dir/\1/\2/monocle_plot.svg")
+           regex("Seurat.dir/(\S+).rds"),
+           r"Seurat.dir/cluster_facet.eps")
 def run_monocle(infile, outfile):
     ''' 
     Takes seurat object before dimension reduction. Uses the library monocle to regress out treatment so 
@@ -654,8 +654,12 @@ def run_monocle(infile, outfile):
 
     inf_dir = os.path.dirname(infile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+
+    job_memory = 'unlimited'
+
     statement = '''cp %(NOTEBOOK_ROOT)s/Monocle.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Monocle.Rmd',encoding = 'UTF-8')" '''
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Monocle.Rmd',encoding = 'UTF-8', 
+                   params = list(infile = '%(infile)s'))" '''
 
 
     P.run(statement)

@@ -154,3 +154,14 @@ seurat:
 
 downsample_to: 0
 
+monocle:
+  # Gene of interest to be plotted. Ensembl or symbols depending on genesymbol
+  gene_marker: "ENSG00000164867"
+  
+  max_components: 2
+  
+  num_dim: 6
+
+  # +1 to number of clusters you want
+  num_clusters: 7
+

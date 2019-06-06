@@ -1,10 +1,12 @@
 ---
-title: "Untitled"
+title: "Monocle analysis"
 output: html_document
+params:
+  infile: ""
 ---
 
 
-```{r, include=FALSE}
+```{r setup, include=FALSE}
 library(monocle)
 library(tidyverse)
 library(ComplexHeatmap)
@@ -12,17 +14,26 @@ library(DESeq2)
 library(edgeR)
 library(yaml)
 library(reshape2)
-```
+library(Seurat)
 
+opts <- read_yaml("../pipeline.yml")
+gene_marker <- opts$monocle$gene_marker
+max_components <- opts$monocle$max_components
+num_dim <- opts$monocle$num_dim
+num_clusters <- opts$monocle$num_clusters
+```
 
 # Import from a Seurat object
 
 ```{r}
 
-seurat <- importCDS(readRDS("seurat.rds"))
+seurat <- importCDS(readRDS("alevin_combined_seurat.rds"))
 
 seurat <- estimateSizeFactors(seurat)
-seurat <- estimateDispersions(seurat)
+seurat_temp <- try(estimateDispersions(seurat))
+if(isS4(seurat_temp)){
+  seurat <- seurat_temp
+}
 
 seurat <- detectGenes(seurat, min_expr = 0.1)
 print(head(fData(seurat)))
@@ -73,24 +84,26 @@ qplot(value, geom = "density", data = melted_dens_df) +
 
 
 ```{r}
+if(isS4(seurat_temp)){
 disp_table <- dispersionTable(seurat)
 unsup_clustering_genes <- subset(disp_table, mean_expression >= 0.1)
 seurat <- setOrderingFilter(seurat, unsup_clustering_genes$gene_id)
 plot_ordering_genes(seurat)
+}
 
 # HSMM@auxClusteringData[["tSNE"]]$variance_explained <- NULL
 plot_pc_variance_explained(seurat, return_all = F) # norm_method='log'
 
 
-seurat <- reduceDimension(seurat, max_components = 2, num_dim = 6,
+seurat <- reduceDimension(seurat, max_components = max_components, num_dim = num_dim,
                           reduction_method = 'tSNE', verbose = T)
 seurat <- clusterCells(seurat, num_clusters = 4)
 plot_cell_clusters(seurat, 1, 2, color = "stim",
-                   markers = c("MYF5", "ANPEP"))
+                   markers = gene_marker) # Can change to list of markers
 
 
 
-seurat <- reduceDimension(seurat, max_components = 2, num_dim = 6,
+seurat <- reduceDimension(seurat, max_components = max_components, num_dim = num_dim,
                           reduction_method = 'tSNE',
                           residualModelFormulaStr = "~stim",
                           verbose = T)
@@ -99,13 +112,14 @@ seurat <- clusterCells(seurat, num_clusters = 2)
 plot_cell_clusters(seurat, 1, 2, color = "stim")
 
 
-seurat <- clusterCells(seurat, num_clusters = 10)
+seurat <- clusterCells(seurat, num_clusters = num_clusters)
 plot_cell_clusters(seurat, 1, 2, color = "Cluster")
 
-postscript("IL17A_total.eps")
-plot_cell_clusters(seurat, 1, 2, color = "Cluster", markers = "IL17A") +
+postscript(paste0(gene_marker, "_total.eps", sep = ""))
+plot_cell_clusters(seurat, 1, 2, color = "Cluster", markers = gene_marker) +
   facet_wrap(~stim)
 dev.off()
+
 test <- pData(seurat)
 postscript("cluster_facet.eps")
 plot_cell_clusters(seurat, 1, 2, color = "Cluster") +
