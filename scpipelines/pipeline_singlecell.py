@@ -156,6 +156,7 @@ def buildReferenceTranscriptome(infile, outfile):
 
     P.run(statement)
 
+@active_if(PARAMS['salmon_alevin'])
 @transform(buildReferenceTranscriptome,
            suffix(".fa"),
            ".salmon.index")
@@ -186,6 +187,7 @@ def buildSalmonIndex(infile, outfile):
 
     P.run(statement)
 
+@active_if(PARAMS['kallisto_bustools'])
 @transform(buildReferenceTranscriptome,
            suffix(".fa"),
            ".kallisto.index")
@@ -527,16 +529,6 @@ def run_qc(infile, outfile):
 
     P.run(statement)
 
-#'''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
-#                   cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = #'UTF-8', 
-#                   params = list(species = '%(species_type)s', mito_mad = %(mito_mad)s, mito_thresh = %(mito_thresh)s, transcript_thresh = %(transcript_thresh)s, spike_ins = %(spike_in)s ))"'''
-
-#########################
-# Velocity analysis  
-#########################
-
-# Rmarkdown maybe then users can play around with parameters?
-
 
 #########################
 # Visulalisation of selected data  
@@ -545,15 +537,33 @@ def run_qc(infile, outfile):
 # make violin plots from user selected genes
 # heatmap of lists of genes
 
-@follows(readAlevinSCE, busText)
-def quant():
-    pass
-
 # what about adding a knee plot - how does alevin or kallisto handle the
 # expected number of cells? - check documentation
 @follows(run_qc)
 def qc():
     pass
+
+@follows(run_qc)
+@active_if(PARAMS['DE_run'])
+def DE_wilcoxon_test():
+    '''
+    Test for differential expression using simple non-parametric wilcoxon test. 
+    Use yaml file to specify which 2 samples to compare. 
+    '''
+    
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    species = PARAMS['sce_species']
+    geneset = PARAMS['geneset']
+    sample1 = PARAMS['DE_sample1']
+    sample2 = PARAMS['DE_sample2']
+    
+    job_memory = "30G"
+
+    statement = '''
+    Rscript %(R_ROOT)s/DE_wilcoxon.R --sample1 %(sample1)s --sample2 %(sample2)s --species %(species)s -g %(geneset)s
+    '''
+
+    P.run(statement)
 
  
 @follows(mkdir("Seurat.dir"))
@@ -686,12 +696,15 @@ def clustering(infile, outfile):
 def seurat():
     pass
 
+@follows(buildReferenceTranscriptome, getTranscript2GeneMap, buildKallistoIndex, buildSalmonIndex,
+runFastQC, combine_alevin_bus, run_qc, seurat_generate, combine_seurat_objects, seurat_dimreduction, run_monocle)
+def full():
+    pass
 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
     P.main(argv)
-
 
 if __name__ == "__main__":
     sys.exit(P.main(sys.argv))

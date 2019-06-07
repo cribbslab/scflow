@@ -140,6 +140,16 @@ qc:
   # Whether spike ins are used, e.g. smart seq data
   spike_ins: 0
 
+DE:
+  # 1 or 0, to run or not
+  run: 1
+
+  # Sample name of the control
+  sample1: 'N701_WT'
+
+  # Sample to compare to the control
+  sample2: 'N704_CFZ'
+
 seurat:
   mingenes: 50
 
