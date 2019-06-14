@@ -544,7 +544,7 @@ def qc():
     pass
 
 @follows(run_qc)
-@active_if(PARAMS['DE_run'])
+@active_if(PARAMS['DE_wilcoxon'])
 def DE_wilcoxon_test():
     '''
     Test for differential expression using simple non-parametric wilcoxon test. 
@@ -565,7 +565,25 @@ def DE_wilcoxon_test():
 
     P.run(statement)
 
- 
+@active_if(PARAMS['DE_pseudo_bulk'])
+@collate(run_qc,
+         regex(r"SCE.dir/(\S+)/(\S+)/pass.rds"),
+         "DE.dir/counts.rds") 
+def pseudo_bulk(infiles, outfile):
+    '''
+    Collate SCEs and sum across all cells (passing filter) to give a 'pseudo-bulk' count for further downstream DE analysis with DESeq2 or edgeR.
+    ''' 
+
+    infiles = str(infiles).replace("'", "").replace("(", "").replace(")", "")
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    E.warn(infiles)
+
+    statement = ''' Rscript %(R_ROOT)s/pseudo_bulk.R -i "%(infiles)s" 
+                 -o %(outfile)s'''
+
+    P.run(statement)
+    
+
 @follows(mkdir("Seurat.dir"))
 @transform(run_qc,
            regex(r"SCE.dir/(\S+)/(\S+)/pass.rds"),
