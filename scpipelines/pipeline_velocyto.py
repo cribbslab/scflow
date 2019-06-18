@@ -1,3 +1,30 @@
+##############################################################################
+#
+#   Botnar Resaerch Centre
+#
+#   $Id$
+#
+#   Copyright (C) 2018 Adam Cribbs
+#
+#   This program is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU General Public License
+#   as published by the Free Software Foundation; either version 2
+#   of the License, or (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+###############################################################################
+
+
+# To do:
+# merger reads if over multiple lanes
+
 """
 =================
 Pipeline velocyto
@@ -43,10 +70,16 @@ from ruffus import *
 import sys
 import os
 import sqlite3
-import pandas as pd
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
+import ModuleSC
+
+import pandas as pd
+import cgatcore.pipeline as P
+import cgatcore.experiment as E
+import ModuleSC
+
 import cgat.GTF as GTF
 import cgatcore.iotools as iotools
 
@@ -56,6 +89,8 @@ PARAMS = P.get_parameters(
     ["%s/pipeline.yml" % os.path.splitext(__file__)[0],
      "../pipeline.yml",
      "pipeline.yml"])
+
+# Determine the location of the input fastq files
 
 try:
     PARAMS['data']
@@ -69,8 +104,8 @@ else:
     else:
         DATADIR = PARAMS['data']
 
-# Determine the location of the input fastq files
-SEQUENCESUFFIXES = ("*.fastq.1.gz")
+SEQUENCESUFFIXES = ("*.fastq.gz",
+		    "*.fastq.1.gz")
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
@@ -80,242 +115,57 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 ############################################
 
 
-@active_if(PARAMS['star_index'] == 1)
-@mkdir('star_index.dir')
+@mkdir('geneset.dir')
 @transform(PARAMS['geneset'],
-           suffix(".gtf.gz"),
-           add_inputs(PARAMS['genome']),
-           "star_index.dir/Genome")
-def index_genome_star(infiles, outfile):
-    """
-    Generate a star index if no index is supplied
-    """
+           regex("(\S+).gtf.gz"),
+           r"geneset.dir/\1.fa")
+def buildReferenceTranscriptome(infile, outfile):
+    '''
+    Builds a reference transcriptome from the provided GTF geneset - generates
+    a fasta file containing the sequence of each feature labelled as
+    "exon" in the GTF.
+    --fold-at specifies the line length in the output fasta file
+    Parameters
+    ----------
+    infile: str
+        path to the GTF file containing transcript and gene level annotations
+    genome_dir: str
+        :term: `PARAMS` the directory of the reference genome
+    genome: str
+        :term: `PARAMS` the filename of the reference genome (without .fa)
+    outfile: str
+        path to output file
+    '''
 
-    gtffile, genome = infiles
+    genome_file = os.path.abspath(
+        os.path.join(PARAMS["genome_dir"], PARAMS["genome"] + ".fa"))
 
-    statement = """STAR
-                   --runThreadN 12 
-                   --runMode genomeGenerate 
-                   --genomeDir star_index.dir/
-                   --genomeFastaFiles %(genome)s"""
-
-    P.run(statement)
-
-@active_if(PARAMS['star_index'] == 0)
-@mkdir('star_index.dir')
-@originate('star_index.dir/Genome')
-def index_genome_copy(outfile):
-
-    """
-    If a star index has already been generated then it will be copied
-    to the star_index.dir directory for tracability
-    """
-
-    star_location = PARAMS['star_index_dir']
-    statement = """cp -R %(star_location)s star_index.dir/ """
-
-    P.run(statement)
-
-@follows(mkdir('data.dir'))
-@transform(SEQUENCEFILES,
-           formatter(r"(?P<track>[^/]+).(?P<suffix>fastq.1.gz)"),
-           r"data.dir/{track[0]}_unmapped.bam")
-def fastq_to_bam(infile, outfile):
-    """
-    generate an unmapped bam file for further parsing into dropseq tools
-    """
-
-    second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
-    name = infile.replace(".fastq.1.gz", "")
-
-    statement = """picard FastqToSam 
-                   F1=%(infile)s 
-                   F2=%(second_read)s 
-                   O=%(outfile)s 
-                   SM=%(name)s"""
+    statement = '''
+    zcat %(infile)s |
+    awk '$3=="exon"'|
+    cgat gff2fasta
+    --is-gtf --genome-file=%(genome_file)s --fold-at=60 -v 0
+    --log=%(outfile)s.log > %(outfile)s;
+    samtools faidx %(outfile)s
+    '''
 
     P.run(statement)
 
-
-@transform(fastq_to_bam,
-           regex("(\S+)_unmapped.bam"),
-           r"data.dir/\1_tagged_Cell.bam")
-def cell_barcode_bam(infile, outfile):
-    """
-    Extracts bases from the cell barcode encoding read
-    (BARCODED_READ), and creates a new BAM tag with those bases on the genome read.
-    """
-
-    name = infile.replace("_unmapped.bam","")
-
-    statement = """TagBamWithReadSequenceExtended 
-                   INPUT=%(infile)s
-                   OUTPUT=%(outfile)s 
-                   SUMMARY=%(name)s_tagged_Cellular.bam_summary.txt 
-                   BASE_RANGE=1-12 
-                   BASE_QUALITY=10 
-                   BARCODED_READ=1 
-                   DISCARD_READ=False 
-                   TAG_NAME=XC 
-                   NUM_BASES_BELOW_QUALITY=1 """
-
-    P.run(statement)
-
-@transform(cell_barcode_bam,
-           regex("(\S+)_tagged_Cell.bam"),
-           r"data.dir/\1_tagged_CellMolecular.bam")
-def molecular_barcode_bam(infile, outfile):
-    """
-
-    """
-
-    name = infile.replace("_tagged_Cell.bam", "")
-
-    statement = """TagBamWithReadSequenceExtended 
-                   INPUT=%(input)s 
-                   OUTPUT=%(outfile)s 
-                   SUMMARY=%(name)s_tagged_Molecular.bam_summary.txt 
-                   BASE_RANGE=13-20 
-                   BASE_QUALITY=10 
-                   BARCODED_READ=1 
-                   DISCARD_READ=True 
-                   TAG_NAME=XM 
-                   NUM_BASES_BELOW_QUALITY=1 """
-
-    P.run(statement)
-
-
-@transform(molecular_barcode_bam,
-           regex("(\S+)_tagged_CellMolecular.bam"),
-           r"data.dir/\1_tagged_filtered.bam")
-def filter_bam(infile, outfile):
-    """
-    filter the bam file to regect XQ tag
-    """
-
-    statement = """FilterBam 
-                   TAG_REJECT=XQ 
-                   INPUT=%(infile)s 
-                   OUTPUT=%(outfile)s"""
-
-    P.run(statement)
-
-@transform(filter_bam,
-           regex("(\S+)_tagged_filtered.bam"),
-           r"data.dir/\1_tagged_trimmed_smart.bam")
-def trim_starting_sequence(infile, outfile):
-    """
-    Trim the starting sequence of each read in the bamfile
-    """
-
-    name = infile.replace("_tagged_filtered.bam", "")
-
-    statement = """TrimStartingSequence 
-                   INPUT=%(infile)s 
-                   OUTPUT=%(outfile)s 
-                   OUTPUT_SUMMARY=%(name)s_adapter_trimming_report.txt 
-                   SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG 
-                   MISMATCHES=0 
-                   NUM_BASES=5"""
-
-    P.run(statement)
-
-
-@transform(trim_starting_sequence,
-           regex("(\S+)_tagged_trimmed_smart.bam"),
-           r"data.dir/\1_polyA_filtered.bam")
-def polyA_trimmer(infile, outfile):
-    """
-    Remove the poly A tail from each read
-    """
-
-    statement = """PolyATrimmer 
-                   INPUT=unaligned_tagged_trimmed_smart.bam 
-                   OUTPUT=unaligned_mc_tagged_polyA_filtered.bam 
-                   OUTPUT_SUMMARY=polyA_trimming_report.txt 
-                   MISMATCHES=0 
-                   NUM_BASES=6 
-                   USE_NEW_TRIMMER=true"""
-
-    P.run(statement)
-
-
-@follows(mkdir("fastq_file.dir"))
-@transform(trim_starting_sequence,
-           regex("(\S+)_ployA_filtered.bam"),
-           r"fastq_file.dir/(\S+).fastq")
-def bam_to_fastq(infile, outfile):
-    """
-    Convert to fastq file so it can be mapped using star
-    """
-
-    statement = """SamToFastq
-                   INPUT=%(infile)s
-                   FASTQ=%(outfile)s"""
-
-    P.run(statement)
-
-
-@follows(mkdir("star.dir"))
-@transform(bam_to_fastq,
-           regex("fastq_file.dir/(\S+).fastq"),
-           add_inputs(PARAMS['geneset'],
-                      PARAMS['genome']),
-           r"star.dir/\1_mapped.bam")
-def star_mapping(infile, outfile):
-    """
-    Perform star mapping
-    """
-
-    bamfile, gtffile, genome = infiles
-    root, dirs, files = os.walk(outfile)
-    name = infile.replace("fastq_file.dir/","")
-    outfile_name = name.reaplce(".fastq","")
-
-    statement = """STAR 
-                   --readFilesIn %(infile)s 
-                   --runThreadN 12 
-                   --genomeDir %(root)s
-                   --genomeFastaFiles %(genome)s
-                   --outSAMmiltNmax 1
-                   --sjdbGTFfile %(gtffile)s
-                   --outSAMunmapped Within
-                   --outSAMunmapped BAM SortedByCoordinate
-                   --outFileNamePrefix %(outfile_name)s_"""
-
-
-    P.run(statement)
-
-@follows(mkdir("dropest.dir"))
-@transform(star_mapping,
-           regex("(\S+)_mapped.bam"),
-           add_inputs(PARAMS['geneset']),
-           r"dropest.dir/\1_dropEst.rds")
-def run_dropest(infiles, outfile):
-    """
-    runs dropEst on the bam file and generated an rds file as output
-    """
-    bamfile, gtffile = infiles
-    config = PARAMS['dropest_config']
-
-    statement = """dropest -m -V -b -f 
-                   -g %(gtffile)s
-                   -o dropest.dir/dropEst 
-                   -L eiEIBA 
-                   -c %(config)s 
-                   %(bamfile)s"""
-
-    P.run(statement)
 
 
 
 @follows()
-def velocyto(run_dropest):
+def quant():
     pass
 
 
 @follows()
 def loom_generation():
+    pass
+
+
+@follows()
+def velocyto():
     pass
 
 
