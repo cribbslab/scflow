@@ -81,7 +81,7 @@ import sqlite3
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
-import scpipelines.ModuleSC as ModuleSC
+import ModuleSC
 
 import pandas as pd
 
@@ -156,6 +156,7 @@ def buildReferenceTranscriptome(infile, outfile):
 
     P.run(statement)
 
+@active_if(PARAMS['salmon_alevin'])
 @transform(buildReferenceTranscriptome,
            suffix(".fa"),
            ".salmon.index")
@@ -186,6 +187,7 @@ def buildSalmonIndex(infile, outfile):
 
     P.run(statement)
 
+@active_if(PARAMS['kallisto_bustools'])
 @transform(buildReferenceTranscriptome,
            suffix(".fa"),
            ".kallisto.index")
@@ -430,11 +432,12 @@ def readAlevinSCE(infile,outfile):
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'alevin'
+    downsample = PARAMS['downsample_to']
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s -d %(downsample)s
     '''
     
     P.run(statement)
@@ -512,18 +515,19 @@ def run_qc(infile, outfile):
 
     inf_dir = os.path.dirname(infile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+    species_type = PARAMS['sce_species']
+    mito_mad = PARAMS['qc_mito_median_absolute_deviation']
+    mito_thresh = PARAMS['qc_max_mito']
+    transcript_thresh = PARAMS['qc_min_transcripts']
+    spike_in = PARAMS['qc_spike_ins']
+    
+    job_memory = 'unlimited'
 
     statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Sample_QC.Rmd',encoding = 'UTF-8')"'''
+                   R -e "rmarkdown::render('%(inf_dir)s/Sample_QC.Rmd',encoding = 'UTF-8', 
+                   params = list(species = '%(species_type)s', mito_mad = %(mito_mad)s, mito_thresh = %(mito_thresh)s, transcript_thresh = %(transcript_thresh)s, spike_ins = %(spike_in)s ))"'''
 
     P.run(statement)
-
-
-#########################
-# Velocity analysis  
-#########################
-
-# Rmarkdown maybe then users can play around with parameters?
 
 
 #########################
@@ -533,20 +537,56 @@ def run_qc(infile, outfile):
 # make violin plots from user selected genes
 # heatmap of lists of genes
 
-@follows(readAlevinSCE, busText)
-def quant():
-    pass
-
 # what about adding a knee plot - how does alevin or kallisto handle the
 # expected number of cells? - check documentation
 @follows(run_qc)
 def qc():
     pass
 
- 
+@follows(run_qc)
+@active_if(PARAMS['DE_wilcoxon'])
+def DE_wilcoxon_test():
+    '''
+    Test for differential expression using simple non-parametric wilcoxon test. 
+    Use yaml file to specify which 2 samples to compare. 
+    '''
+    
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    species = PARAMS['sce_species']
+    geneset = PARAMS['geneset']
+    sample1 = PARAMS['DE_sample1']
+    sample2 = PARAMS['DE_sample2']
+    
+    job_memory = "30G"
+
+    statement = '''
+    Rscript %(R_ROOT)s/DE_wilcoxon.R --sample1 %(sample1)s --sample2 %(sample2)s --species %(species)s -g %(geneset)s
+    '''
+
+    P.run(statement)
+
+@active_if(PARAMS['DE_pseudo_bulk'])
+@collate(run_qc,
+         regex(r"SCE.dir/(\S+)/(\S+)/pass.rds"),
+         "DE.dir/counts.rds") 
+def pseudo_bulk(infiles, outfile):
+    '''
+    Collate SCEs and sum across all cells (passing filter) to give a 'pseudo-bulk' count for further downstream DE analysis with DESeq2 or edgeR.
+    ''' 
+
+    infiles = str(infiles).replace("'", "").replace("(", "").replace(")", "")
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    E.warn(infiles)
+
+    statement = ''' Rscript %(R_ROOT)s/pseudo_bulk.R -i "%(infiles)s" 
+                 -o %(outfile)s'''
+
+    P.run(statement)
+    
+
 @follows(mkdir("Seurat.dir"))
 @transform(run_qc,
-           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
+           regex(r"SCE.dir/(\S+)/(\S+)/pass.rds"),
            r"Seurat.dir/\1/\2/seurat.rds")
 def seurat_generate(infile,outfile):
     ''' 
@@ -561,7 +601,7 @@ def seurat_generate(infile,outfile):
     Rscript %(R_ROOT)s/seurat.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
     '''
     
-    job_memory = '10G'
+    job_memory = '30G'
     P.run(statement)
     
 
@@ -574,6 +614,8 @@ def seurat_dimreduction(infile, outfile):
     '''
     working_dir = outfile.replace("seurat.dim_reduction.rds", "")
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+ 
+    job_memory = 'unlimited' 
 
     statement = '''Rscript %(R_ROOT)s/seurat_dimreduction.R
     				-w %(working_dir)s
@@ -607,6 +649,48 @@ def run_seurat_markdown(infile, outfile):
 
     P.run(statement)
 
+@collate(seurat_generate,
+         regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
+         r"Seurat.dir/\2_combined_\3.rds")
+def combine_seurat_objects(infiles, outfile):
+    '''
+    Takes all seurat.rds objects and combines them using RunCCA/MergeSeurat/RunMultiCCA
+    into one large seurat object with annotations for each sample, ready for the monocle library.
+    '''
+
+    # Need option for if only 1 sample. Currently only works if more than 1 sample I think (infile[0])
+    pseudoaligner = infiles[0].split("/")[-2]
+    infiles = str(infiles).replace("'", "").replace("(", "").replace(")", "")
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+
+    statement = ''' Rscript %(R_ROOT)s/combine_seurat.R -i "%(infiles)s" -p %(pseudoaligner)s 
+                 -o %(outfile)s'''
+
+    job_memory = 'unlimited'
+   
+    P.run(statement)
+
+
+@transform(combine_seurat_objects,
+           regex("Seurat.dir/(\S+).rds"),
+           r"Seurat.dir/cluster_facet.eps")
+def run_monocle(infile, outfile):
+    ''' 
+    Takes seurat object before dimension reduction. Uses the library monocle to regress out treatment so 
+    clusters in tsne plots can be directly compared across samples. Generates plots.
+    '''
+
+    inf_dir = os.path.dirname(infile)
+    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
+
+    job_memory = 'unlimited'
+
+    statement = '''cp %(NOTEBOOK_ROOT)s/Monocle.Rmd %(inf_dir)s &&
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Monocle.Rmd',encoding = 'UTF-8', 
+                   params = list(infile = '%(infile)s'))" '''
+
+
+    P.run(statement)
 
 @transform(combine_alevin_bus,
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
@@ -630,12 +714,15 @@ def clustering(infile, outfile):
 def seurat():
     pass
 
+@follows(buildReferenceTranscriptome, getTranscript2GeneMap, buildKallistoIndex, buildSalmonIndex,
+runFastQC, combine_alevin_bus, run_qc, seurat_generate, combine_seurat_objects, seurat_dimreduction, run_monocle)
+def full():
+    pass
 
 def main(argv=None):
     if argv is None:
         argv = sys.argv
     P.main(argv)
-
 
 if __name__ == "__main__":
     sys.exit(P.main(sys.argv))

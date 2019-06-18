@@ -118,8 +118,62 @@ salmon:
 
 sce:
 
-  # Species for annotation
+  # Species information for annotation
+  # human
+  # mouse
   species: human
 
-  # Whether to use gene symbols for SCE or ensembl IDs
+  # Whether to use gene symbols for SCE or ensembl IDs.
   genesymbol: 0
+
+qc:
+
+  # Set mitochondrial percent maximum threshold (usually 10-20%) 
+  max_mito: 10
+
+  # Or instead use median + 2 median absolute deviations as mitochondrial threshold (0 or 1)
+  mito_median_absolute_deviation: 0
+
+  # Threshold for minimum number of transcripts per cell (usually 500-1000)
+  min_transcripts: 1000
+
+  # Whether spike ins are used, e.g. smart seq data
+  spike_ins: 0
+
+DE:
+  # 1 or 0, to run or not
+  wilcoxon: 1
+
+  # Sample name of the control
+  sample1: 'N701_WT'
+
+  # Sample to compare to the control
+  sample2: 'N704_CFZ'
+
+  pseudo_bulk: 1
+
+seurat:
+  mingenes: 50
+
+  maxmitopercent: 0.1
+
+  npcs: 5
+
+  # resultion for finding seurat clusters
+  resolution: 0.8
+
+  algorithm: 3
+
+downsample_to: 0
+
+monocle:
+  # Gene of interest to be plotted. Ensembl or symbols depending on genesymbol
+  gene_marker: "ENSG00000164867"
+  
+  max_components: 2
+  
+  num_dim: 6
+
+  # +1 to number of clusters you want
+  num_clusters: 7
+
