@@ -246,8 +246,8 @@ def getTranscript2GeneMap(outfile):
 
 @follows(mkdir("fastqc_pre.dir"))
 @transform(SEQUENCEFILES,
-           formatter(r"(?P<track>[^/]+).(?P<suffix>fastq.1.gz|fastq.gz)"),
-           r"fastqc_pre.dir/{track[0]}.fastqc")
+           regex("(\S+).fastq.(\d).gz"),
+           r"fastqc_pre.dir/\1.fastq.\2_fastqc.html")
 def runFastQC(infile, outfile):
     '''
     Fastqc is ran to determine the quality of the reads from the sequencer
@@ -432,12 +432,15 @@ def readAlevinSCE(infile,outfile):
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'alevin'
-    downsample = PARAMS['downsample_to']
+    if PARAMS['downsample_active']:
+        downsample = "-d" + PARAMS['downsample_to']
+    else:
+        downsample = ""
     
     job_memory = "10G"
 
     statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s -d %(downsample)s
+    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s %(downsample)s
     '''
     
     P.run(statement)

@@ -129,13 +129,13 @@ sce:
 qc:
 
   # Set mitochondrial percent maximum threshold (usually 10-20%) 
-  max_mito: 10
+  max_mito: 5
 
   # Or instead use median + 2 median absolute deviations as mitochondrial threshold (0 or 1)
-  mito_median_absolute_deviation: 0
+  mito_median_absolute_deviation: 1
 
   # Threshold for minimum number of transcripts per cell (usually 500-1000)
-  min_transcripts: 1000
+  min_transcripts: 100
 
   # Whether spike ins are used, e.g. smart seq data
   spike_ins: 0
@@ -164,6 +164,8 @@ seurat:
 
   algorithm: 3
 
+# Specifying this value will downsample the number of cells
+downsample_active: 0
 downsample_to: 0
 
 monocle:
