@@ -55,21 +55,18 @@ if(species == "mouse"){
   ensembl_data <- "mmusculus_gene_ensembl"
 }
 
-#mart <-biomaRt::useMart(biomart = "ENSEMBL_MART_ENSEMBL", dataset = ensembl_data, host = "www.ensembl.org", ensemblRedirect = FALSE)
-#sce <- biomaRt::getBM(sce, filters = "ensembl_gene_id", attributes = c("ensembl_gene_id", symbol, "chromosome_name"), mart = mart)
+sce <- scater::getBMFeatureAnnos(sce, filters = "ensembl_gene_id", attributes = c("ensembl_gene_id", symbol, "chromosome_name"), dataset = ensembl_data, host = "uswest.ensembl.org")
 
-#sce <- scater::getBMFeatureAnnos(sce, filters = "ensembl_gene_id", attributes = c("ensembl_gene_id", symbol, "chromosome_name"), dataset = ensembl_data)
+# Use mitochondrial and ribosomal DNA as feature controls
+mt_genes <- which(rowData(sce)$chromosome_name == "MT")
+ribo_genes <- grepl("^RP[LS]", rowData(sce)$hgnc_symbol)
 
-isSpike(sce, "MT") <- rownames(sce) %in% 
-    c("ENSG00000198899", "ENSG00000198727", "ENSG00000198888",
-    "ENSG00000198886", "ENSG00000212907", "ENSG00000198786",
-    "ENSG00000198695", "ENSG00000198712", "ENSG00000198804",
-    "ENSG00000198763", "ENSG00000228253", "ENSG00000198938",
-    "ENSG00000198840")
+feature_ctrls <- list(mito = rownames(sce)[mt_genes], ribo = rownames(sce)[ribo_genes])
 
-sce <- calculateQCMetrics(sce,
-                             feature_controls = list( 
-        MT = isSpike(sce, "MT")))
+lapply(feature_ctrls, head)
+
+# Calculate metrics
+sce <- calculateQCMetrics(sce, feature_controls = feature_ctrls)
 
 colnames(colData(sce))
 ```
@@ -84,28 +81,12 @@ outlier <- data.frame(row.names = colnames(sce))
 
 # **Scater**
 
-```{r, include=FALSE}
-# Use mitochondrial and ribosomal DNA as feature controls
-#mt_genes <- which(rowData(sce)$chromosome_name == "MT")
-#ribo_genes <- grepl("^RP[LS]", rowData(sce)$hgnc_symbol)
-
-#feature_ctrls <- list(mito = rownames(sce)[mt_genes], ribo = rownames(sce)[ribo_genes])
-
-#lapply(feature_ctrls, head)
-
-# Calculate metrics
-#sce <- calculateQCMetrics(sce, feature_controls = feature_ctrls)
-
-#colnames(colData(sce))
-```
-
 # Examining the most highly expressed genes
 
 We look at a plot that shows the top 50 (by default) most-expressed features. Each row in the plot below corresponds to a gene, and each bar corresponds to the expression of a gene in a single cell. The circle indicates the median expression of each gene, with which genes are sorted.
 
 ```{r, echo=FALSE}
-plotHighestExprs(sce, exprs_values = "counts") 
-# feature_names_to_plot = symbol
+plotHighestExprs(sce, exprs_values = "counts", feature_names_to_plot = symbol)
 ```
 # Library size
 
@@ -178,7 +159,7 @@ scater.MT.outliers <- metric > mt_threshold | metric < mt_lower_threshold
 table(scater.MT.outliers)
 outlier$MT <- metric > scater.MT.M + 2 * scater.MT.MAD
 } else{
-# Mitochondrial threshold usually 10%, reparametrise in yml file or directly here
+# Mitochondrial threshold usually 10%, change parameter in yml file or directly here
 # Total counts threshold larger than
 mt_threshold <- mito_thresh
 }
