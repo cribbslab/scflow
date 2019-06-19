@@ -90,7 +90,7 @@ In addition to ensuring sufficient sequencing depth for each sample, we also wan
 
 ```{r, echo=FALSE, warning=FALSE}
 hist(
-    sce$log10_total_features_by_counts,
+    as.numeric(sce$log10_total_features_by_counts),
     breaks = 100
 )
 abline(v = 2, col = "red")

@@ -607,7 +607,7 @@ def run_seurat_markdown(infile, outfile):
 
     P.run(statement)
 
-
+@follows(run_qc)
 @transform(combine_alevin_bus,
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
            r"SCE.dir/\1/\2/Clustering.html")

@@ -120,7 +120,7 @@ if(gene_name){
     emsembl_species <- "mmusculus_gene_ensembl"
     symbol <- "mgi_symbol"
   }
-  mart <- useDataset(emsembl_species, useMart("ensembl"))
+  mart <- useDataset(emsembl_species, useMart("ensembl", host="uswest.ensembl.org", ensemblRedirect = FALSE))
   genes <- rownames(df)
   G_list <- getBM(filters= "ensembl_gene_id", attributes=c("ensembl_gene_id",symbol),values=genes,mart= mart)
   df <- merge(as.data.frame(df),G_list,by.x="row.names",by.y="ensembl_gene_id")
