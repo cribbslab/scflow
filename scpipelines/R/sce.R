@@ -19,7 +19,7 @@ option_list = list(
               help="Logical. Whether to use gene names/symbols instead of ensembl IDs in SCE object  [default = %default]", metavar="integer"),
   make_option(c("-p", "--pseudoaligner"), type="character", default="alevin", 
               help="Pseudoaligner used, kallisto or alevin [default = %default]", metavar="character"),
-  make_option(c("-d", "--downsample"), type="integer", default="0", 
+  make_option(c("-d", "--downsample"), type="integer", default=NULL, 
               help="Number of cells to randomly downsample to [default = %default]", metavar="character")
   ); 
 
@@ -34,6 +34,7 @@ out <- opt$out
 input <- opt$input
 pseudo <- opt$pseudoaligner 
 downsample <- opt$downsample
+
 
 readAlevin <- function(files) {
   dir <- sub("/alevin$","",dirname(files))
@@ -53,7 +54,7 @@ readAlevin <- function(files) {
   num.cells <- length(cell.names)
   num.genes <- length(gene.names)
   
-  if(downsample){
+  if(!is.null(downsample)){
     if(downsample > length(cell.names) ){ downsample <- num.cells}
     downsample_list <- sort(sample(1:length(cell.names), downsample, replace = F))
   }
@@ -65,7 +66,10 @@ readAlevin <- function(files) {
     mat[,j] <- readBin(con, double(), endian = "little", n=num.genes)
   }
   close(con)
-  mat <- mat[,downsample_list]
+
+  if(!is.null(downsample)){
+  		 mat <- mat[,downsample_list]
+  }
 
   # if inferential replicate variance exists:
   if (file.exists(var.file)) {
@@ -133,7 +137,7 @@ if(gene_name){
     emsembl_species <- "mmusculus_gene_ensembl"
     symbol <- "mgi_symbol"
   }
-  mart <- useDataset(emsembl_species, useMart("ensembl"))
+  mart <- useDataset(emsembl_species, useMart("ensembl", host="uswest.ensembl.org", ensemblRedirect = FALSE))
   genes <- rownames(df)
   G_list <- getBM(filters= "ensembl_gene_id", attributes=c("ensembl_gene_id",symbol),values=genes,mart= mart)
   df <- merge(as.data.frame(df),G_list,by.x="row.names",by.y="ensembl_gene_id")
