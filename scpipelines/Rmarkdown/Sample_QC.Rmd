@@ -1,12 +1,6 @@
 ---
 title: "Sample QC"
 output: html_document
-params:
-  species: ""
-  mito_mad: ""
-  mito_thresh: ""
-  transcript_thresh: ""
-  spike_ins: ""
 ---
 
 This page sets out the quality control analysis for the single cells. It will be used to remove "Bad" cells before progressing for downstream analysis. Tested using version 1.10.1 of scater.
@@ -24,17 +18,22 @@ library(SingleCellExperiment)
 library(limma)
 library(pheatmap)
 options(stringsAsFactors = FALSE)
-```
+library(yaml)
 
-```{r setup_cont, include =  FALSE}
-species <- params$species
-transcript_thresh <- params$transcript_thresh
-spike_ins <- params$spike_ins
-if(params$mito_mad){
-mad <- params$mito_mad
+opts <- read_yaml("../../../pipeline.yml")
+species <- opts$sce$species
+mito_mad <- opts$qc$mito_median_absolute_deviation
+spike_ins <- opts$qc$spike_ins
+transcript_thresh <- opts$qc$min_transcripts
+
+print(mito_mad)
+print(typeof(mito_mad))
+
+if(mito_mad){
+mad <- mito_mad
 } else{
 mad <- 0
-mito_thresh <- params$mito_thresh
+mito_thresh <- mito_mad <- opts$qc$mito_thresh
 }
 ```
 

@@ -518,17 +518,11 @@ def run_qc(infile, outfile):
 
     inf_dir = os.path.dirname(infile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-    species_type = PARAMS['sce_species']
-    mito_mad = PARAMS['qc_mito_median_absolute_deviation']
-    mito_thresh = PARAMS['qc_max_mito']
-    transcript_thresh = PARAMS['qc_min_transcripts']
-    spike_in = PARAMS['qc_spike_ins']
     
     job_memory = 'unlimited'
 
     statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
-                   R -e "rmarkdown::render('%(inf_dir)s/Sample_QC.Rmd',encoding = 'UTF-8', 
-                   params = list(species = '%(species_type)s', mito_mad = %(mito_mad)s, mito_thresh = %(mito_thresh)s, transcript_thresh = %(transcript_thresh)s, spike_ins = %(spike_in)s ))"'''
+                   R -e "rmarkdown::render('%(inf_dir)s/Sample_QC.Rmd',encoding = 'UTF-8')"'''
 
     P.run(statement)
 
