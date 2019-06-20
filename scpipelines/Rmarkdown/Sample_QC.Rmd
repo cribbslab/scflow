@@ -148,7 +148,7 @@ plotColData(sce, x = "total_features_by_counts",
 
 Mitochondrial percentage threshold
 ```{r, include = FALSE}
-metric <- sce$pct_counts_MT
+metric <- sce$pct_counts_mito
 if(mad){
 # Using median absolute deviations
 scater.MT.M <- median(metric)
@@ -172,7 +172,7 @@ Have a look at spread of cells with high % mito
 High mitochondrial genes indicate improper lysing of the single cells and are indicitive of poor RNA capture.
 ```{r, echo = FALSE}
 
-plotColData(sce, x = "total_features_by_counts", y = "pct_counts_MT") + geom_hline(yintercept = mt_threshold, col ="red") + geom_vline(xintercept = transcript_thresh, col = "red")
+plotColData(sce, x = "total_features_by_counts", y = "pct_counts_mito") + geom_hline(yintercept = mt_threshold, col ="red") + geom_vline(xintercept = transcript_thresh, col = "red")
 ```
 Typically retain cells with <10% mito transcripts and >1000 or >500 transcripts per cell
 i.e Bottom right quadrant, but look at data
@@ -183,12 +183,12 @@ Minimum number of transcripts per cell threshold shown here of `r transcript_thr
 
 ## PCA plot coloured by percent of mitochondrial dna
 ```{r, echo = FALSE}
-plotPCA(sce, colour_by = "pct_counts_MT")
+plotPCA(sce, colour_by = "pct_counts_mito")
 ```
 
 ```{r mt_plot_QC,  echo=FALSE}
 if(mad){
-ggplot(as.data.frame(colData(sce)), aes(rownames(colData(sce)), pct_counts_MT)) +
+ggplot(as.data.frame(colData(sce)), aes(rownames(colData(sce)), pct_counts_mito)) +
   geom_point() +
   geom_hline(
     yintercept = scater.MT.M + 2 * c(-1,1) * scater.MT.MAD,
@@ -400,7 +400,7 @@ sce.pass <- scran::computeSumFactors(sce.pass, BPPARAM = MulticoreParam(10))
 sce.pass <- normalize(sce.pass)
 
 sce.pass <- calculateQCMetrics(sce.pass)
-plotColData(sce.pass, x = "total_features_by_counts", y = "pct_counts_MT")+  geom_hline(yintercept =10, col ="red") + geom_vline(xintercept = 1000, col = "red")
+plotColData(sce.pass, x = "total_features_by_counts", y = "pct_counts_mito")+  geom_hline(yintercept =10, col ="red") + geom_vline(xintercept = 1000, col = "red")
 # All data points within thresholds, sanity check
 # Can rerun plots with sce.pass
 ```
