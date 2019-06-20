@@ -22,18 +22,15 @@ library(yaml)
 
 opts <- read_yaml("../../../pipeline.yml")
 species <- opts$sce$species
-mito_mad <- opts$qc$mito_median_absolute_deviation
-spike_ins <- opts$qc$spike_ins
+mito_mad <- as.logical(opts$qc$mito_median_absolute_deviation)
+spike_ins <- as.logical(opts$qc$spike_ins)
 transcript_thresh <- opts$qc$min_transcripts
-
-print(mito_mad)
-print(typeof(mito_mad))
 
 if(mito_mad){
 mad <- mito_mad
 } else{
 mad <- 0
-mito_thresh <- mito_mad <- opts$qc$mito_thresh
+mito_thresh <- opts$qc$max_mito
 }
 ```
 
@@ -58,7 +55,7 @@ sce <- scater::getBMFeatureAnnos(sce, filters = "ensembl_gene_id", attributes = 
 
 # Use mitochondrial and ribosomal DNA as feature controls
 mt_genes <- which(rowData(sce)$chromosome_name == "MT")
-ribo_genes <- grepl("^RP[LS]", rowData(sce)$hgnc_symbol)
+ribo_genes <- grepl("^RP[LS]", rowData(sce)[[symbol]])
 
 feature_ctrls <- list(mito = rownames(sce)[mt_genes], ribo = rownames(sce)[ribo_genes])
 
@@ -84,9 +81,10 @@ outlier <- data.frame(row.names = colnames(sce))
 
 We look at a plot that shows the top 50 (by default) most-expressed features. Each row in the plot below corresponds to a gene, and each bar corresponds to the expression of a gene in a single cell. The circle indicates the median expression of each gene, with which genes are sorted.
 
-```{r, echo=FALSE}
+```{r HighestExprs, echo=FALSE}
 plotHighestExprs(sce, exprs_values = "counts", feature_names_to_plot = symbol)
 ```
+
 # Library size
 
 Next we consider the total number of reads per sample. Wells with few reads/molecules are likely to have been broken or failed to capture a cell, and should thus be removed.
