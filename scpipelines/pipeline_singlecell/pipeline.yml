@@ -118,9 +118,7 @@ salmon:
 
 sce:
 
-  # Species information for annotation
-  # human
-  # mouse
+  # Species for annotation
   species: human
 
   # Whether to use gene symbols for SCE or ensembl IDs.

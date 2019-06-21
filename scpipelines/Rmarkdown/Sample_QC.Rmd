@@ -3,9 +3,10 @@ title: "Sample QC"
 output: html_document
 ---
 
-This page sets out the quality control analysis for the single cells. It will be used to remove "Bad" cells before progressing for downstream analysis. Tested using version 1.10.1 of scater.
+This page sets out the quality control analysis for the single cells. It will be used to remove "Bad" cells before progressing for downstream analysis.
 
 ```{r setup, include=FALSE}
+#source('functions.R')
 library(scran)
 library(ggplot2)
 library(RColorBrewer)
@@ -38,7 +39,6 @@ mito_thresh <- opts$qc$max_mito
 
 ```{r}
 sce <- readRDS("sce.rds")
-```
 
 ```{r, include = FALSE}
 rowData(sce)$ensembl_gene_id <- rownames(sce)
@@ -81,6 +81,7 @@ outlier <- data.frame(row.names = colnames(sce))
 
 We look at a plot that shows the top 50 (by default) most-expressed features. Each row in the plot below corresponds to a gene, and each bar corresponds to the expression of a gene in a single cell. The circle indicates the median expression of each gene, with which genes are sorted.
 
+
 ```{r HighestExprs, echo=FALSE}
 plotHighestExprs(sce, exprs_values = "counts", feature_names_to_plot = symbol)
 ```
@@ -90,15 +91,11 @@ plotHighestExprs(sce, exprs_values = "counts", feature_names_to_plot = symbol)
 Next we consider the total number of reads per sample. Wells with few reads/molecules are likely to have been broken or failed to capture a cell, and should thus be removed.
 
 ```{r, echo=FALSE}
-par(mfrow =c(1,2))
-hist(sce$total_counts, xlab = "Library sizes", main ="", breaks=20,
-     col = "grey80", ylab = "Number of cells")
+hist(
+    sce$total_counts,
+    breaks = 100
+)
 abline(v = 100, col = "red")
-```
-
-```{r, echo = FALSE}
-hist(sce$total_features_by_counts, xlab = "Number of expressed genes", col ="grey80",
-     breaks = 10, ylab = "Number of cells", main ="")
 
 filter_by_total_counts.outliers <- (sce$total_counts < 100)
 table(filter_by_total_counts.outliers)
@@ -117,7 +114,7 @@ In addition to ensuring sufficient sequencing depth for each sample, we also wan
 
 ```{r, echo=FALSE, warning=FALSE}
 hist(
-    sce$log10_total_features_by_counts,
+    as.numeric(sce$log10_total_features_by_counts),
     breaks = 100
 )
 abline(v = 2, col = "red")
@@ -171,12 +168,6 @@ High mitochondrial genes indicate improper lysing of the single cells and are in
 
 plotColData(sce, x = "total_features_by_counts", y = "pct_counts_mito") + geom_hline(yintercept = mt_threshold, col ="red") + geom_vline(xintercept = transcript_thresh, col = "red")
 ```
-Typically retain cells with <10% mito transcripts and >1000 or >500 transcripts per cell
-i.e Bottom right quadrant, but look at data
-However tumour cells typically have greater metabolic burden so can usually filter <20% 
-Maximum mitochondrial percentage threshold shown here of `r mt_threshold`%
-Minimum number of transcripts per cell threshold shown here of `r transcript_thresh`.
-
 
 ## PCA plot coloured by percent of mitochondrial dna
 ```{r, echo = FALSE}
@@ -199,10 +190,8 @@ ggplot(as.data.frame(colData(sce)), aes(rownames(colData(sce)), pct_counts_mito)
 }
 ```
 
-Remove cells with total distinct transcripts less than a certain threshold (usuall 500-1000)
-```{r, include = FALSE}
-total_features_by_counts_thresh <- transcript_thresh
-outlier$features <- sce$total_features_by_counts < total_features_by_counts_thresh
+```{r, echo=FALSE}
+plotExprsFreqVsMean(sce)
 
 ```
 
@@ -217,18 +206,19 @@ Library complexity refers to the proportion of assigned reads accounted for by t
 plotScater(sce, nfeatures = 300, exprs_values = "counts")
 ```
 
-# Scater calulate QC metrics
+# scater calulate QC metrics
 
 ## Calulate single-cell QC
 
 ```{r single_QC, include=FALSE}
-if(spike_ins){
+
+# parameterise with if statement
+
 ERCCs <- grep("^ERCC-[[:digit:]]+$", rownames(counts), value = TRUE)
-sceset <- calculateQCMetrics(
+sce.sc <- calculateQCMetrics(
   sce,
   feature_controls = list(ERCC = ERCCs)
 )
-}
 ```
 
 ```{r full_QC,  include=FALSE}
@@ -237,12 +227,41 @@ sceset <- calculateQCMetrics(
   )
 ```
 
+
+# MT gene content
+
+High mitochronrial genes indicate improper lysing of the single cells and are indicitive of poor RNA capture.
+
+```{r}
+metric <- sceset$pct_counts_MT
+scater.MT.M <- median(metric)
+scater.MT.MAD <- mad(metric)
+scater.MT.outliers <- metric > scater.MT.M + 2 * scater.MT.MAD
+table(scater.MT.outliers)
+outlier$MT <- metric > scater.MT.M + 2 * scater.MT.MAD
+```
+
+```{r mt_plot_QC,  echo=FALSE}
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_MT)) +
+  geom_point() +
+  geom_hline(
+    yintercept = scater.MT.M + 2 * c(-1,1) * scater.MT.MAD,
+    colour = "red", linetype = 2:1
+  ) +
+  geom_hline(yintercept = scater.MT.M) +
+  theme(
+    axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+    legend.position = "bottom", legend.box = "vertical"
+  )
+```
+
+
 ## Top proportion of library assigned to most abundant features {.tabset}
 
 ### Top 50
 
 ```{r Top50,  echo=FALSE}
-metric <- sceset$pct_counts_in_top_50_features
+metric <- sceset$pct_counts_top_50_features
 scater.top50.M <- median(metric)
 scater.top50.MAD <- mad(metric)
 scater.top50.outliers <-
@@ -253,7 +272,7 @@ outlier$Top50 <- metric > scater.top50.M + 4 * scater.top50.MAD
 ```
 
 ```{r Top50_plot,  echo=FALSE}
-ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_50_features)) +
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_top_50_features)) +
   geom_point() +
   geom_hline(
     yintercept = scater.top50.M + 4 * c(-1,1) * scater.top50.MAD,
@@ -270,7 +289,7 @@ ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts
 ### Top 100
 
 ```{r Top100,  echo=FALSE}
-metric <- sceset$pct_counts_in_top_100_features
+metric <- sceset$pct_counts_top_100_features
 scater.top100.M <- median(metric)
 scater.top100.MAD <- mad(metric)
 scater.top100.outliers <-
@@ -282,7 +301,7 @@ outlier$Top100 <- metric > scater.top100.M + 4 * scater.top100.MAD
 
 
 ```{r Top100_plot, echo=FALSE}
-ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_100_features)) +
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_top_100_features)) +
   geom_point() +
   geom_hline(
     yintercept = scater.top100.M + 3 * c(-1,1) * scater.top100.MAD,
@@ -298,7 +317,7 @@ ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts
 ### Top 200
 
 ```{r Top200,  echo=FALSE}
-metric <- sceset$pct_counts_in_top_200_features
+metric <- sceset$pct_counts_top_200_features
 scater.top200.M <- median(metric)
 scater.top200.MAD <- mad(metric)
 scater.top200.outliers <-
@@ -308,7 +327,7 @@ outlier$Top200 <- metric > scater.top100.M + 4 * scater.top100.MAD
 ```
 
 ```{r Top200_plot,  echo=FALSE}
-ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_in_top_200_features)) +
+ggplot(as.data.frame(colData(sceset)), aes(rownames(colData(sceset)), pct_counts_top_200_features)) +
   geom_point() +
   geom_hline(
     yintercept = scater.top200.M + 3 * c(-1,1) * scater.top200.MAD,
@@ -331,7 +350,7 @@ outliers.df <- data.frame(lapply(
   function(x){ifelse(get(x), "Fail", "Pass")}
 ))
 colnames(outliers.df) <- gsub(".outliers$", "", outlier.vars)
-rownames(outliers.df) <- colnames(sceset)
+rownames(outliers.df) <- colnames(sce.sc)
 ```
 
 ## Cells passing
@@ -349,7 +368,7 @@ colSums(outliers.df == "Fail")
 
 ## Summary of failures 
 
-This displays the counts for the number of failures for each feature
+This displays the counts for the number of failures for each fature
 
 ```{r count_sc, echo=FALSE}
 table(rowSums(outliers.df == "Fail"))
@@ -382,6 +401,7 @@ dev.off()
 draw(hm)
 ```
 
+
 # Remove cells that fail QC
 
 ```{r pass, cache=FALSE, echo=FALSE}
@@ -389,6 +409,7 @@ sce.pass <- sceset[,idx.pass]
 assay(sce.pass, "log2_counts") <- log2(counts(sceset[,idx.pass]) + 1)
 length(colnames(sce.pass))
 ```
+
 
 ```{r, include = FALSE}
 # Recompute size factors, normalisation etc
@@ -401,6 +422,7 @@ plotColData(sce.pass, x = "total_features_by_counts", y = "pct_counts_mito")+  g
 # All data points within thresholds, sanity check
 # Can rerun plots with sce.pass
 ```
+
 
 ```{r}
 saveRDS(sce.pass, file="pass.rds")

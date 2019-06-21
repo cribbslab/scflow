@@ -21,8 +21,8 @@ option_list = list(
               help="Pseudoaligner used, kallisto or alevin [default = %default]", metavar="character"),
   make_option(c("-d", "--downsample"), type="integer", default=NULL, 
               help="Number of cells to randomly downsample to [default = %default]", metavar="character")
+              help="Pseudoaligner used, kallisto or alevin [default = %default]", metavar="character")
   ); 
-
 
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
@@ -33,7 +33,6 @@ setwd(wd)
 out <- opt$out
 input <- opt$input
 pseudo <- opt$pseudoaligner 
-downsample <- opt$downsample
 
 
 readAlevin <- function(files) {
@@ -61,7 +60,6 @@ readAlevin <- function(files) {
   
   mat <- matrix(nrow=num.genes, ncol=num.cells, dimnames=list(gene.names, cell.names))
   con <- gzcon(file(matrix.file, "rb"))
-  
   for (j in seq_len(num.cells)) {
     mat[,j] <- readBin(con, double(), endian = "little", n=num.genes)
   }
