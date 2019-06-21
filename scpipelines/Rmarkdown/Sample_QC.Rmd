@@ -100,8 +100,8 @@ abline(v = 100, col = "red")
 hist(sce$total_features_by_counts, xlab = "Number of expressed genes", col ="grey80",
      breaks = 10, ylab = "Number of cells", main ="")
 
-filter_by_total_counts <- (sce$total_counts >= 100)
-table(filter_by_total_counts)
+filter_by_total_counts.outliers <- (sce$total_counts < 100)
+table(filter_by_total_counts.outliers)
 outlier$total_counts <- (sce$total_counts < 100)
 
 
@@ -122,7 +122,7 @@ hist(
 )
 abline(v = 2, col = "red")
 
-filter_by_detected_genes <- (sce$log10_total_features_by_counts >= 2)
+filter_by_detected_genes.outliers <- (sce$log10_total_features_by_counts < 2)
 outlier$detected_genes <- (sce$log10_total_features_by_counts < 2)
 ```
 
@@ -406,5 +406,50 @@ plotColData(sce.pass, x = "total_features_by_counts", y = "pct_counts_mito")+  g
 saveRDS(sce.pass, file="pass.rds")
 ```
 
+```{r log_file, include = FALSE}
 
+species_log <- paste(c("species", species), collapse = "\t")
+spike_ins_log <- paste(c("spike_ins", spike_ins), collapse = "\t")
+spike_ins <- as.logical(opts$qc$spike_ins)
+transcript_thresh_log <- paste(c("transcript_min_threshold", transcript_thresh), collapse = "\t")
+if(mad){
+  mito_thresh <- "NA"
+}else{
+  mt_lower_threshold <- "NA"
+  mt_threshold <- "NA"
+}
+
+mito_thresh_log <- paste(c("mitochondrial_percentage_hard_upper_threshold", mito_thresh), collapse = "\t")  
+mito_mad_thresh_low_log <- paste(c("mitochondrial_percentage_mad_lower_threshold", mt_lower_threshold), collapse = "\t") 
+mito_mad_thresh_high_log <- paste(c("mitochondrial_percentage_mad_upper_threshold", mt_threshold), collapse = "\t") 
+total_cell_log <- paste(c("total_cells_in", total_cells), collapse = "\t") 
+total_umis_log <- paste(c("total_UMIs", total_umis), collapse = "\t") 
+cells_passing <- sum(idx.pass)
+cells_failing <- total_cells - cells_passing
+total_cell_pass_log <- paste(c("total_cells_passing_qc", cells_passing), collapse = "\t") 
+total_cell_fail_log <- paste(c("total_cells_failing_qc", cells_failing), collapse = "\t") 
+
+
+cells_failing_detected_genes <- sum(outliers.df$filter_by_detected_genes == "Fail")
+cells_failing_detected_genes_log <- paste(c("cells_failing_number_detected_genes", cells_failing_detected_genes), collapse = "\t")
+cells_failing_filter_by_total_counts <- sum(outliers.df$filter_by_total_counts == "Fail")
+cells_failing_filter_by_total_counts_log <- paste(c("cells_failing_total_counts", cells_failing_filter_by_total_counts), collapse = "\t")
+cells_failing_MT <- sum(outliers.df$scater.MT == "Fail")
+cells_failing_MT_log <- paste(c("cells_failing_MT", cells_failing_MT), collapse = "\t")
+cells_failing_top50 <- sum(outliers.df$scater.top50 == "Fail")
+cells_failing_top50_log <- paste(c("cells_failing_top50", cells_failing_top50), collapse = "\t")
+cells_failing_top100 <- sum(outliers.df$scater.top100 == "Fail")
+cells_failing_top100_log <- paste(c("cells_failing_top100", cells_failing_top100), collapse = "\t")
+cells_failing_top200 <- sum(outliers.df$scater.top200 == "Fail")
+cells_failing_top200_log <- paste(c("cells_failing_top200", cells_failing_top200), collapse = "\t")
+
+
+
+labs <-  c("species", "spike_ins", "transcript_min_threshold", "mitochondrial_percentage_hard_upper_threshold", "mitochondrial_percentage_mad_lower_threshold", "mitochondrial_percentage_mad_upper_threshold", "total_cells_in", "total_UMIs", "total_cells_passing_qc", "total_cells_failing_qc", "cells_failing_number_detected_genes", "cells_failing_total_counts", "cells_failing_MT_percent", "cells_failing_top50", "cells_failing_top100", "cells_failing_top200")
+tib <- tibble(labels = labs)
+tib$values <- c(species, spike_ins, transcript_thresh, mito_thresh, mt_lower_threshold, mt_threshold, total_cells, total_umis, cells_passing, cells_failing, cells_failing_detected_genes, cells_failing_filter_by_total_counts, cells_failing_MT, cells_failing_top50, cells_failing_top100,cells_failing_top200 )
+
+write_tsv(tib, "./run_qc_log.txt", col_names = FALSE)
+
+```
 
