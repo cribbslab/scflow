@@ -18,8 +18,11 @@ option_list = list(
   make_option(c("-g", "--genesymbol"), type="integer", default="0", 
               help="Logical. Whether to use gene names/symbols instead of ensembl IDs in SCE object  [default = %default]", metavar="integer"),
   make_option(c("-p", "--pseudoaligner"), type="character", default="alevin", 
-              help="Pseudoaligner used, kallisto or alevin [default = %default]", metavar="character")
+              help="Pseudoaligner used, kallisto or alevin [default = %default]", metavar="character"),
+  make_option(c("-d", "--downsample"), type="integer", default=NULL, 
+              help="Number of cells to randomly downsample to [default = %default]", metavar="character")
   ); 
+
 
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
@@ -30,6 +33,8 @@ setwd(wd)
 out <- opt$out
 input <- opt$input
 pseudo <- opt$pseudoaligner 
+downsample <- opt$downsample
+
 
 readAlevin <- function(files) {
   dir <- sub("/alevin$","",dirname(files))
@@ -48,12 +53,24 @@ readAlevin <- function(files) {
   gene.names <- readLines(gene.file)
   num.cells <- length(cell.names)
   num.genes <- length(gene.names)
+  
+  if(!is.null(downsample)){
+    if(downsample > length(cell.names) ){ downsample <- num.cells}
+    downsample_list <- sort(sample(1:length(cell.names), downsample, replace = F))
+  }
+  
   mat <- matrix(nrow=num.genes, ncol=num.cells, dimnames=list(gene.names, cell.names))
   con <- gzcon(file(matrix.file, "rb"))
+  
   for (j in seq_len(num.cells)) {
     mat[,j] <- readBin(con, double(), endian = "little", n=num.genes)
   }
   close(con)
+
+  if(!is.null(downsample)){
+  		 mat <- mat[,downsample_list]
+  }
+
   # if inferential replicate variance exists:
   if (file.exists(var.file)) {
     counts.mat <- mat
