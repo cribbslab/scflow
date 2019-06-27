@@ -84,6 +84,8 @@ kallisto:
   # Not that 10Xv3 is not supported in version 0.44 of kallisto
   sctechnology: DropSeq
 
+  expectedcells: 1500
+
 salmon:
 
   # Length of kmer for indexing
