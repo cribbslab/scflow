@@ -320,7 +320,7 @@ def runSalmonAlevin(infiles, outfile):
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
-    --tgMap %(t2gmap)s --dumpCsvCounts
+    --tgMap %(t2gmap)s
     '''
 
     job_memory = "30G"
@@ -370,8 +370,8 @@ def runKallistoBus(infiles, outfile):
 
 @active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
-           suffix(".bus"),
-           r"\1.bus.sorted.txt")
+           regex("kallisto.dir/./(\S+)/bus/output.bus"),
+           r"kallisto.dir/\1/bus/\1.bus.sorted.txt")
 def busText(infile, outfile):
     '''
     Sort the bus file produced by kallisto and then convert it to a text file.
@@ -380,6 +380,7 @@ def busText(infile, outfile):
     tmp_bus  = P.get_temp_filename(".")
 
     statement = '''
+    sleep 10
     bustools sort -o %(tmp_bus)s %(infile)s ;
     bustools text -o %(outfile)s %(tmp_bus)s
     '''
@@ -399,8 +400,8 @@ def busCount(infiles, outfile):
     
     sorted_bus, t2gmap = infiles
     folder = sorted_bus.rsplit('/', 1)[0]
-    sc_directory = PARAMS['sc_dir']
-    bus2count = sc_directory + "/pipelines/bus2count.py"
+    ROOT = os.path.dirname(__file__)
+    bus2count = ROOT + "/bus2count.py"
     exp_cells = PARAMS['kallisto_expectedcells']
     threads = PARAMS['kallisto_threads']
 
@@ -486,6 +487,7 @@ def combine_alevin_bus(infiles, outfiles):
 #########################
 
 @follows(mkdir("MultiQC_report.dir"))
+@follows(runFastQC)
 @originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
     '''build mulitqc report'''
