@@ -370,7 +370,7 @@ def runKallistoBus(infiles, outfile):
 
 @active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
-           suffix(".bus"),
+           suffix(".bus"),                                                          
            r"\1.bus.sorted.txt")
 def busText(infile, outfile):
     '''
@@ -378,6 +378,8 @@ def busText(infile, outfile):
     '''
 
     tmp_bus  = P.get_temp_filename(".")
+
+    job_memory = '10G'
 
     statement = '''
     bustools sort -o %(tmp_bus)s %(infile)s ;
