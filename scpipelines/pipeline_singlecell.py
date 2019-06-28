@@ -370,17 +370,17 @@ def runKallistoBus(infiles, outfile):
 
 @active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
-           regex("kallisto.dir/./(\S+)/bus/output.bus"),
-           r"kallisto.dir/\1/bus/\1.bus.sorted.txt")
+           regex("kallisto.dir/(\S+)/bus/output.bus"),
+           r"kallisto.dir/\1/bus/output.bus.sorted.txt")
 def busText(infile, outfile):
     '''
     Sort the bus file produced by kallisto and then convert it to a text file.
     '''
 
     tmp_bus  = P.get_temp_filename(".")
+    job_memory = '10G'
 
     statement = '''
-    sleep 10
     bustools sort -o %(tmp_bus)s %(infile)s ;
     bustools text -o %(outfile)s %(tmp_bus)s
     '''
@@ -451,7 +451,7 @@ def readAlevinSCE(infile,outfile):
 @follows(mkdir("SCE.dir"))
 @active_if(PARAMS['kallisto_bustools'])
 @transform(busCount,
-           regex("kallisto.dir/(.*)/bus/output.bus_GCcoordmatrix.mtx"),
+           regex("kallisto.dir/(\S+)/bus/output.bus_GCcoordmatrix.mtx"),
            r"SCE.dir/\1/bus/sce.rds")
 def readBusSCE(infile, outfile):
     ''' 
@@ -473,8 +473,34 @@ def readBusSCE(infile, outfile):
 
     P.run(statement)
 
+## Kallisto SCE object using BUSpaRse R package and emptydrops (DropletUtils function)
+@follows(mkdir("SCE.dir"))
+@active_if(PARAMS['kallisto_bustools'])
+@transform(busText,
+           regex("kallisto.dir/(\S+)/bus/output.bus.sorted.txt"),
+           add_inputs(PARAMS['geneset']),
+           r"SCE.dir/\1/bus/sce.rds")
+def BUSpaRse(infiles, outfile):
+    ''' 
+    Create kallisto SCE object. Use BUSpaRse package to read in bus file and convert to TCC and gene counts matrix. 
+    Create knee plot and use point of inflection to estimate number of empty droplets and cells. 
+    Or use emptyDrops function from DropletUtils package to compare to the ambient profile.
+    '''
 
-@transform((readBusSCE, readAlevinSCE), 
+    bus_text, gtf = infiles
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    est_cells = 400
+
+    job_memory = '20G'
+
+    statement = '''
+    Rscript %(R_ROOT)s/BUSPaRse.R -i %(bus_text)s -g %(gtf)s -o %(outfile)s --estcells %(est_cells)s
+    '''
+
+    P.run(statement)
+    
+
+@transform((BUSpaRse, readAlevinSCE), 
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
            r"SCE.dir/\1/\2/sce.rds")
 def combine_alevin_bus(infiles, outfiles):
