@@ -79,13 +79,14 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 # Build indexes
 ############################################
 
+genome_fasta = PARAMS['genome_dir'] + PARAMS['genome'] + ".fa"
 
 @active_if(PARAMS['star_index'] == 1)
 @mkdir('star_index.dir')
 @transform(PARAMS['geneset'],
-           suffix(".gtf.gz"),
-           add_inputs(PARAMS['genome']),
-           "star_index.dir/Genome")
+           regex("(\S+).gtf.gz"),
+           add_inputs(genome_fasta),
+           r"star_index.dir/Genome")
 def index_genome_star(infiles, outfile):
     """
     Generate a star index if no index is supplied
@@ -94,10 +95,12 @@ def index_genome_star(infiles, outfile):
     gtffile, genome = infiles
 
     statement = """STAR
-                   --runThreadN 12 
+                   --runThreadN 16 
                    --runMode genomeGenerate 
                    --genomeDir star_index.dir/
                    --genomeFastaFiles %(genome)s"""
+
+    job_memory = 'unlimited'
 
     P.run(statement)
 
@@ -128,18 +131,21 @@ def fastq_to_bam(infile, outfile):
     second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
     name = infile.replace(".fastq.1.gz", "")
 
+    job_memory = '10G'
+
     statement = """picard FastqToSam 
                    F1=%(infile)s 
                    F2=%(second_read)s 
                    O=%(outfile)s 
                    SM=%(name)s"""
-
+    
+    job_memory = '20G'
     P.run(statement)
 
 
 @transform(fastq_to_bam,
            regex("(\S+)_unmapped.bam"),
-           r"data.dir/\1_tagged_Cell.bam")
+           r"\1_tagged_Cell.bam")
 def cell_barcode_bam(infile, outfile):
     """
     Extracts bases from the cell barcode encoding read
@@ -159,20 +165,24 @@ def cell_barcode_bam(infile, outfile):
                    TAG_NAME=XC 
                    NUM_BASES_BELOW_QUALITY=1 """
 
+
+    job_memory = '30G'
+
     P.run(statement)
 
 @transform(cell_barcode_bam,
            regex("(\S+)_tagged_Cell.bam"),
-           r"data.dir/\1_tagged_CellMolecular.bam")
+           r"\1_tagged_CellMolecular.bam")
 def molecular_barcode_bam(infile, outfile):
     """
-
+    Extracts bases from UMI barcode encoding read (fastq.1.gz)
+    Creates a new BAM tag with those bases on the genome read.
     """
 
     name = infile.replace("_tagged_Cell.bam", "")
 
     statement = """TagBamWithReadSequenceExtended 
-                   INPUT=%(input)s 
+                   INPUT=%(infile)s 
                    OUTPUT=%(outfile)s 
                    SUMMARY=%(name)s_tagged_Molecular.bam_summary.txt 
                    BASE_RANGE=13-20 
@@ -182,27 +192,31 @@ def molecular_barcode_bam(infile, outfile):
                    TAG_NAME=XM 
                    NUM_BASES_BELOW_QUALITY=1 """
 
+    job_memory = '30G' 
+
     P.run(statement)
 
 
 @transform(molecular_barcode_bam,
            regex("(\S+)_tagged_CellMolecular.bam"),
-           r"data.dir/\1_tagged_filtered.bam")
+           r"\1_tagged_filtered.bam")
 def filter_bam(infile, outfile):
     """
-    filter the bam file to regect XQ tag
+    filter the bam file to reject XQ tag
     """
 
     statement = """FilterBam 
                    TAG_REJECT=XQ 
                    INPUT=%(infile)s 
                    OUTPUT=%(outfile)s"""
+    
+    job_memory = '10G'
 
     P.run(statement)
 
 @transform(filter_bam,
            regex("(\S+)_tagged_filtered.bam"),
-           r"data.dir/\1_tagged_trimmed_smart.bam")
+           r"\1_tagged_trimmed_smart.bam")
 def trim_starting_sequence(infile, outfile):
     """
     Trim the starting sequence of each read in the bamfile
@@ -217,73 +231,90 @@ def trim_starting_sequence(infile, outfile):
                    SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG 
                    MISMATCHES=0 
                    NUM_BASES=5"""
+    
+    job_memory  ='10G'
 
     P.run(statement)
 
 
 @transform(trim_starting_sequence,
            regex("(\S+)_tagged_trimmed_smart.bam"),
-           r"data.dir/\1_polyA_filtered.bam")
+           r"\1_polyA_filtered.bam")
 def polyA_trimmer(infile, outfile):
     """
     Remove the poly A tail from each read
     """
 
+    name = infile.replace("_tagged_trimmed_smart.bam", "")
+
     statement = """PolyATrimmer 
-                   INPUT=unaligned_tagged_trimmed_smart.bam 
-                   OUTPUT=unaligned_mc_tagged_polyA_filtered.bam 
-                   OUTPUT_SUMMARY=polyA_trimming_report.txt 
+                   INPUT=%(infile)s
+                   OUTPUT=%(outfile)s
+                   OUTPUT_SUMMARY=%(name)s_polyA_trimming_report.txt 
                    MISMATCHES=0 
                    NUM_BASES=6 
                    USE_NEW_TRIMMER=true"""
+  
+    job_memory = '20G'
 
     P.run(statement)
 
 
 @follows(mkdir("fastq_file.dir"))
-@transform(trim_starting_sequence,
-           regex("(\S+)_ployA_filtered.bam"),
-           r"fastq_file.dir/(\S+).fastq")
+@transform(polyA_trimmer,
+           regex("data.dir/(\S+)_polyA_filtered.bam"),
+           r"fastq_file.dir/\1.fastq")
 def bam_to_fastq(infile, outfile):
     """
     Convert to fastq file so it can be mapped using star
     """
 
-    statement = """SamToFastq
+    statement = """picard SamToFastq
                    INPUT=%(infile)s
                    FASTQ=%(outfile)s"""
+    
+    job_memory = '20G'
 
     P.run(statement)
 
+@follows(bam_to_fastq)
+def clear_temps():
+    """
+    Clears temporary files
+    """
+
+    statement = """ rm ctmp* """
+
+    P.run(statement)
 
 @follows(mkdir("star.dir"))
+#@follows(clear_temps)
 @transform(bam_to_fastq,
            regex("fastq_file.dir/(\S+).fastq"),
            add_inputs(PARAMS['geneset'],
-                      PARAMS['genome']),
+                      genome_fasta),
            r"star.dir/\1_mapped.bam")
-def star_mapping(infile, outfile):
+def star_mapping(infiles, outfile):
     """
     Perform star mapping
     """
 
     bamfile, gtffile, genome = infiles
-    root, dirs, files = os.walk(outfile)
-    name = infile.replace("fastq_file.dir/","")
-    outfile_name = name.reaplce(".fastq","")
+    dirs, files = os.path.split(outfile)
+    name = bamfile.replace("fastq_file.dir/","")
+    outfile_name = name.replace(".fastq","")
+    tmp_geneset_unzip = P.get_temp_filename(".")
 
     statement = """STAR 
-                   --readFilesIn %(infile)s 
+                   --readFilesIn %(bamfile)s 
                    --runThreadN 12 
-                   --genomeDir %(root)s
-                   --genomeFastaFiles %(genome)s
-                   --outSAMmiltNmax 1
-                   --sjdbGTFfile %(gtffile)s
+                   --genomeDir star_index.dir
+                   --outSAMmultNmax 1
                    --outSAMunmapped Within
-                   --outSAMunmapped BAM SortedByCoordinate
-                   --outFileNamePrefix %(outfile_name)s_"""
+                   --outSAMtype BAM SortedByCoordinate
+                   --outFileNamePrefix star.dir/%(outfile_name)s_"""
 
-
+    job_memory = 'unlimited'
     P.run(statement)
 
 @follows(mkdir("dropest.dir"))

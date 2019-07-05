@@ -101,6 +101,8 @@ star:
   # Whether to generate a star index
   index: 1
 
+  index_dir: ''
+
   # Whether to run star mapping
   run: 1
 
