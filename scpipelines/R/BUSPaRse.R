@@ -27,9 +27,6 @@ bus_folder <- dirname(bus_text)
 
 tr2g <- tr2g_gtf(file= geneset)
 
-#tr2g <- transcript2gene(kallisto_out_path = bus_folder, ensembl_version = 94, fasta_file = geneset)
-
-
 TCC <- make_sparse_matrix(bus_text, tr2g = tr2g, est_ncells = estcells, est_ngenes = nrow(tr2g), whitelist = NULL, TCC = TRUE, gene_count = FALSE)
 TCC_file <- paste(c(bus_folder, "TCC.mat"), collapse = "/")
 saveRDS(TCC, file=TCC_file)
@@ -44,8 +41,8 @@ summary(tot_counts2)
 bc_rank <- barcodeRanks(GC_mat)
 
 # Rotated knee plot
-knee_plot_file <- paste(c(bus_folder, "knee_plot.ps"), collapse = "/")
-postscript(knee_plot_file)
+knee_plot_file <- paste(c(bus_folder, "knee_plot.png"), collapse = "/")
+png(knee_plot_file)
 qplot(bc_rank$total, bc_rank$rank, geom = "line") + 
   geom_vline(xintercept = bc_rank$knee, color = "blue", linetype = 2) +
   geom_vline(xintercept = bc_rank$inflection, color = "green", linetype = 2) +
@@ -71,8 +68,8 @@ sum(is.cell, na.rm = TRUE)
 is.cell_logical <- is.cell %>% replace_na(FALSE)
 GC_mat_filt2 <- GC_mat[,is.cell_logical]
 
-logprob_plot_file <- paste(c(bus_folder, "log_probability_plot.ps"), collapse = "/")
-postscript(logprob_plot_file)
+logprob_plot_file <- paste(c(bus_folder, "log_probability_plot.png"), collapse = "/")
+png(logprob_plot_file)
 plot(e.out$Total, -e.out$LogProb, col=ifelse(is.cell, "red", "black"), xlab = "Total UMI Count", ylab = "-Log Probability")
 dev.off()
 #table(Limited = e.out$Limited, Significant = is.cell)
