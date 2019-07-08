@@ -293,7 +293,7 @@ def clear_temps():
            regex("fastq_file.dir/(\S+).fastq"),
            add_inputs(PARAMS['geneset'],
                       genome_fasta),
-           r"star.dir/\1_mapped.bam")
+           r"star.dir/\1_Aligned.sortedByCoord.out.bam")
 def star_mapping(infiles, outfile):
     """
     Perform star mapping
@@ -316,6 +316,68 @@ def star_mapping(infiles, outfile):
 
     job_memory = 'unlimited'
     P.run(statement)
+
+## Merge bam files after mapping 
+
+if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
+    merge_pattern = True
+    if "merge_pattern_output" not in PARAMS or \
+       not PARAMS["merge_pattern_output"]:
+        raise ValueError(
+            "no output pattern 'merge_pattern_output' specified")
+else: 
+    merge_pattern = False
+
+@active_if(merge_pattern)
+@collate(star_mapping,
+     regex("%s_(\S+)\.bam" % PARAMS["merge_pattern_input"].strip()),
+     # the last expression counts number of groups in pattern_input
+     r"%s.\%i.bam" % (PARAMS["merge_pattern_output"].strip(),
+                      PARAMS["merge_pattern_input"].count("(") + 1),
+     )
+def mergeBAMFiles(infiles, outfile):
+    '''merge BAM files from the same experiment using user-defined regex
+    For the mapping stages it is beneficial to perform mapping
+    seperately for each sequence read infile(s) per sample so that
+    the consistency can be checked. However, for downstream tasks,
+    the merged :term:`bam` alignment files are required.
+    Parameters
+    ----------
+    infiles : list
+       list of :term:`bam` format alignment files
+    outfile : str
+       Output filename in :term:`bam` format
+    '''
+
+    if len(infiles) == 1:
+        if not os.path.isfile(os.path.join(infiles[0], outfile)):
+            E.info(
+                "%(outfile)s: only one file for merging - creating "
+                "softlink" % locals())
+            os.symlink(os.path.basename(infiles[0]), outfile)
+            os.symlink(os.path.basename(infiles[0]) + ".bai", outfile + ".bai")
+            return
+        else:
+            E.info(
+                "%(outfile)s: only one file for merging - softlink "
+                "already exists" % locals())
+            return
+
+    infiles = " ".join(infiles)
+    #tmp_bam = "ctmp_merge_" + os.path.split(outfile)[1]
+    tmp_bam  = P.get_temp_filename(".")
+
+    # sort might make --outSAMtype SortedByCoordinate redundant in previous step
+    statement = '''
+    samtools merge %(tmp_bam)s %(infiles)s >& %(outfile)s_merge.log &&
+    samtools index %(tmp_bam)s && 
+    samtools sort %(tmp_bam)s -o %(outfile)s
+    '''
+
+    job_memory = '20G'
+
+    P.run(statement)
+
 
 @follows(mkdir("dropest.dir"))
 @transform(star_mapping,
