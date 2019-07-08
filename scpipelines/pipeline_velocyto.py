@@ -246,6 +246,7 @@ def polyA_trimmer(infile, outfile):
     """
 
     name = infile.replace("_tagged_trimmed_smart.bam", "")
+    
 
     statement = """PolyATrimmer 
                    INPUT=%(infile)s
@@ -277,23 +278,13 @@ def bam_to_fastq(infile, outfile):
 
     P.run(statement)
 
-@follows(bam_to_fastq)
-def clear_temps():
-    """
-    Clears temporary files
-    """
-
-    statement = """ rm ctmp* """
-
-    P.run(statement)
 
 @follows(mkdir("star.dir"))
-#@follows(clear_temps)
 @transform(bam_to_fastq,
            regex("fastq_file.dir/(\S+).fastq"),
            add_inputs(PARAMS['geneset'],
                       genome_fasta),
-           r"star.dir/\1_Aligned.sortedByCoord.out.bam")
+           r"star.dir/\1_Aligned.out.bam")
 def star_mapping(infiles, outfile):
     """
     Perform star mapping
@@ -303,7 +294,6 @@ def star_mapping(infiles, outfile):
     dirs, files = os.path.split(outfile)
     name = bamfile.replace("fastq_file.dir/","")
     outfile_name = name.replace(".fastq","")
-    tmp_geneset_unzip = P.get_temp_filename(".")
 
     statement = """STAR 
                    --readFilesIn %(bamfile)s 
@@ -311,10 +301,54 @@ def star_mapping(infiles, outfile):
                    --genomeDir star_index.dir
                    --outSAMmultNmax 1
                    --outSAMunmapped Within
-                   --outSAMtype BAM SortedByCoordinate
+                   --outSAMtype BAM Unsorted
                    --outFileNamePrefix star.dir/%(outfile_name)s_"""
 
     job_memory = 'unlimited'
+    P.run(statement)
+
+
+@transform(star_mapping,
+           regex("star.dir/(\S+)_Aligned.out.bam"),
+           r"star.dir/\1_Aligned.sorted_qn.out.bam")
+def sort_query_name(infile,outfile):
+    """
+    Sort bam file using picard program SortSam.
+    MergeBamAlignment requires sam/bam files sorted by query name
+    """
+
+    statement = """ picard SortSam 
+                    INPUT=%(infile)s
+                    OUTPUT=%(outfile)s
+                    SORT_ORDER=queryname """
+
+    job_memory = '20G'
+    P.run(statement)
+
+
+@transform(sort_query_name,
+           regex("star.dir/(\S+)_Aligned.sorted_qn.out.bam"),
+           add_inputs(genome_fasta),
+           r"star.dir/\1_Aligned.tagged.sorted_qn.out.bam")
+def recover_tags(infiles, outfile):
+    """
+    MergeBamAlignment merges the sorted aligned output from STAR with the unaligned BAM that has been tagged with cellular and molecular barcodes (XC/XM).
+    """
+
+    mapped_bam, genome_fasta = infiles
+    unmapped_bam = "data.dir/" + os.path.split(mapped_bam)[1].replace("Aligned.sorted_qn.out.bam", "polyA_filtered.bam")
+
+    # include_secondary_alignments? true/false not sure
+    statement = """ picard MergeBamAlignment 
+                    REFERENCE_SEQUENCE=%(genome_fasta)s
+      		    UNMAPPED_BAM=%(unmapped_bam)s
+      		    ALIGNED_BAM=%(mapped_bam)s
+                    OUTPUT=%(outfile)s
+                    INCLUDE_SECONDARY_ALIGNMENTS=true 
+                    PAIRED_RUN=false """
+
+    job_memory ='20G'
+
     P.run(statement)
 
 ## Merge bam files after mapping 
@@ -378,6 +412,47 @@ def mergeBAMFiles(infiles, outfile):
 
     P.run(statement)
 
+@follows(mkdir("velocyto.dir"))
+@transform(mergeBAMFiles,
+           regex("star.dir/(\S+).Aligned\.sortedByCoord\.out\.bam"),
+           r"velocyto.dir/cellsorted_\1.bam")
+def CB_sort(infile, outfile):
+    ''' 
+    First step of velocyto is to sort using samtools by CB. 
+    Doing this step first helps with parellelisation when running bulk jobs
+    Avoids runtimes errors using velocyto run.
+    '''
+    
+    bam_file_old = os.path.split(infile)[1]
+    new_bam = bam_file_old.replace("Aligned.sortedByCoord.out.", "")
+
+    statement = '''
+    cp %(infile)s velocyto.dir/%(new_bam)s && 
+    samtools sort -t CB -O BAM -o velocyto.dir/cellsorted_%(new_bam)s velocyto.dir/%(new_bam)s
+    '''
+
+    P.run(statement)
+
+
+@transform(CB_sort,
+           suffix(".bam"),
+           add_inputs(PARAMS['geneset']),
+           ".loom")
+def loom_generation(infiles, outfile):
+    ''' 
+    Velocyto run (run on any technique)
+    Bam already sorted by CB.  
+    '''
+
+    sorted_bam_file, geneset = infiles
+
+    # option: -m rep_mask.gtf (gtf file containing intervals to mask)
+    # option: -b, file of valid barcodes (could get this from sc pipeline, need to see format of bcfile).
+    statement = '''
+    velocyto run -o ./veloctyo.dir %(sorted_bam_file)s %(geneset)s
+    '''
+
+    P.run(statement)
 
 @follows(mkdir("dropest.dir"))
 @transform(star_mapping,
@@ -406,11 +481,15 @@ def run_dropest(infiles, outfile):
 def velocyto(run_dropest):
     pass
 
-
 @follows()
-def loom_generation():
-    pass
+def clear_temps():
+    """
+    Clears temporary files
+    """
 
+    statement = """ rm ctmp* """
+
+    P.run(statement)
 
 def main(argv=None):
     if argv is None:
