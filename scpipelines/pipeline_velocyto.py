@@ -345,19 +345,10 @@ def recover_tags(infiles, outfile):
 
     P.run(statement)
 
-## Merge bam files after mapping 
+## Merge lanes
 
-if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
-    merge_pattern = True
-    if "merge_pattern_output" not in PARAMS or \
-       not PARAMS["merge_pattern_output"]:
-        raise ValueError(
-            "no output pattern 'merge_pattern_output' specified")
-else: 
-    merge_pattern = False
-
-@active_if(merge_pattern)
-@collate(star_mapping,
+@active_if(PARAMS["merge_pattern_input"])
+@collate(recover_tags,
      regex("%s_(\S+)\.bam" % PARAMS["merge_pattern_input"].strip()),
      # the last expression counts number of groups in pattern_input
      r"%s.\%i.bam" % (PARAMS["merge_pattern_output"].strip(),
@@ -377,6 +368,11 @@ def mergeBAMFiles(infiles, outfile):
        Output filename in :term:`bam` format
     '''
 
+    if "merge_pattern_output" not in PARAMS or \
+       not PARAMS["merge_pattern_output"]:
+        raise ValueError(
+            "no output pattern 'merge_pattern_output' specified")
+
     if len(infiles) == 1:
         if not os.path.isfile(os.path.join(infiles[0], outfile)):
             E.info(
@@ -392,24 +388,23 @@ def mergeBAMFiles(infiles, outfile):
             return
 
     infiles = " ".join(infiles)
-    #tmp_bam = "ctmp_merge_" + os.path.split(outfile)[1]
     tmp_bam  = P.get_temp_filename(".")
 
-    # sort might make --outSAMtype SortedByCoordinate redundant in previous step
     statement = '''
     samtools merge %(tmp_bam)s %(infiles)s >& %(outfile)s_merge.log &&
-    samtools index %(tmp_bam)s && 
-    samtools sort %(tmp_bam)s -o %(outfile)s
+    samtools sort %(tmp_bam)s -o %(outfile)s &&
+    samtools index %(outfile)s 
     '''
 
     job_memory = '20G'
 
     P.run(statement)
 
+
 @follows(mkdir("velocyto.dir"))
 @transform(mergeBAMFiles,
-           regex("star.dir/(\S+).Aligned\.sortedByCoord\.out\.bam"),
-           r"velocyto.dir/cellsorted_\1.bam")
+           regex("star.dir/(\S+).Aligned\.tagged\.sorted_qn\.out\.bam"),
+           r"velocyto.dir/\1.bam")
 def CB_sort(infile, outfile):
     ''' 
     First step of velocyto is to sort using samtools by CB. 
@@ -418,7 +413,7 @@ def CB_sort(infile, outfile):
     '''
     
     bam_file_old = os.path.split(infile)[1]
-    new_bam = bam_file_old.replace("Aligned.sortedByCoord.out.", "")
+    new_bam = bam_file_old.replace("Aligned.tagged.sorted_qn.out.", "")
 
     statement = '''
     cp %(infile)s velocyto.dir/%(new_bam)s && 
@@ -446,6 +441,7 @@ def loom_generation(infiles, outfile):
     velocyto run -o ./veloctyo.dir %(sorted_bam_file)s %(geneset)s
     '''
 
+    job_memory = '30G'
     P.run(statement)
 
 @follows(mkdir("dropest.dir"))
