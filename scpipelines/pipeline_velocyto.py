@@ -313,8 +313,7 @@ def star_mapping(infiles, outfile):
            r"star.dir/\1_Aligned.sorted_qn.out.bam")
 def sort_query_name(infile,outfile):
     """
-    Sort bam file using picard program SortSam.
-    MergeBamAlignment requires sam/bam files sorted by query name
+    Sort bam file using picard program SortSam
     """
 
     statement = """ picard SortSam 
@@ -332,22 +331,17 @@ def sort_query_name(infile,outfile):
            r"star.dir/\1_Aligned.tagged.sorted_qn.out.bam")
 def recover_tags(infiles, outfile):
     """
-    MergeBamAlignment merges the sorted aligned output from STAR with the unaligned BAM that has been tagged with cellular and molecular barcodes (XC/XM).
+    Script using pysam to merge the sorted aligned output from STAR with the unaligned BAM that has been tagged with cellular and molecular barcodes (XC/XM).
     """
 
     mapped_bam, genome_fasta = infiles
     unmapped_bam = "data.dir/" + os.path.split(mapped_bam)[1].replace("Aligned.sorted_qn.out.bam", "polyA_filtered.bam")
+    ROOT = os.path.dirname(__file__)
+    mergebam = ROOT + "/MergeBam.py"
 
-    # include_secondary_alignments? true/false not sure
-    statement = """ picard MergeBamAlignment 
-                    REFERENCE_SEQUENCE=%(genome_fasta)s
-      		    UNMAPPED_BAM=%(unmapped_bam)s
-      		    ALIGNED_BAM=%(mapped_bam)s
-                    OUTPUT=%(outfile)s
-                    INCLUDE_SECONDARY_ALIGNMENTS=true 
-                    PAIRED_RUN=false """
+    statement = ''' python %(mergebam)s --unmapped %(unmapped_bam)s --aligned %(mapped_bam)s -o %(outfile)s '''
 
-    job_memory ='20G'
+    job_memory ='10G'
 
     P.run(statement)
 
