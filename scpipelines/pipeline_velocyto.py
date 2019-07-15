@@ -74,7 +74,6 @@ SEQUENCESUFFIXES = ("*.fastq.1.gz")
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
-
 ############################################
 # Build indexes
 ############################################
@@ -422,10 +421,20 @@ def CB_sort(infile, outfile):
 
     P.run(statement)
 
+@follows(CB_sort)
+@transform(PARAMS['geneset'],
+           suffix(".gtf.gz"),
+           ".gtf")
+def extract_geneset(infile, outfile):
+    ''' Gunzip geneset gtf file '''
+
+    statement = '''gunzip -c %(infile)s > %(outfile)s'''
+           
+    P.run(statement)
 
 @transform(CB_sort,
            suffix(".bam"),
-           add_inputs(PARAMS['geneset']),
+           add_inputs(extract_geneset),
            ".loom")
 def loom_generation(infiles, outfile):
     ''' 
@@ -434,14 +443,19 @@ def loom_generation(infiles, outfile):
     '''
 
     sorted_bam_file, geneset = infiles
+    sample_name = os.path.split(sorted_bam_file)[1].replace(".bam","")
 
-    # option: -m rep_mask.gtf (gtf file containing intervals to mask)
-    # option: -b, file of valid barcodes (could get this from sc pipeline, need to see format of bcfile).
+    if PARAMS['velocyto_whitelist_active']:
+        barcode_file = sorted_bam_file.replace(".bam", PARAMS['velocyto_whitelist_suffix'])
+        whitelist = "-b " + barcode_file
+    else:
+        whitelist = ""
+
     statement = '''
-    velocyto run -o ./veloctyo.dir %(sorted_bam_file)s %(geneset)s
+    velocyto run %(whitelist)s -o ./velocyto.dir -e %(sample_name)s -m hg38_rmsk.gtf %(sorted_bam_file)s %(geneset)s
     '''
 
-    job_memory = '30G'
+    job_memory = '50G'
     P.run(statement)
 
 @follows(mkdir("dropest.dir"))
