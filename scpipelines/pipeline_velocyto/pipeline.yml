@@ -113,4 +113,15 @@ star:
 
   # The RAM limit 
   RAM_limit: 87779818880
+
+#########################
+# RNA Velocity
+#########################
+
+
+velocyto:
   
+  whitelist_active: 1
+    
+  # Whitelist file to be located in velocyto.dir, <sample_name> followed by suffix
+  whitelist_suffix: '_barcodes.tsv'
