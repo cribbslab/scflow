@@ -289,13 +289,13 @@ def star_mapping(infiles, outfile):
     Perform star mapping
     """
 
-    bamfile, gtffile, genome = infiles
+    fastq, gtffile, genome = infiles
     dirs, files = os.path.split(outfile)
-    name = bamfile.replace("fastq_file.dir/","")
+    name = fastq.replace("fastq_file.dir/","")
     outfile_name = name.replace(".fastq","")
 
     statement = """STAR 
-                   --readFilesIn %(bamfile)s 
+                   --readFilesIn %(fastq)s 
                    --runThreadN 12 
                    --genomeDir star_index.dir
                    --outSAMmultNmax 1
@@ -350,9 +350,7 @@ def recover_tags(infiles, outfile):
 @collate(recover_tags,
      regex("%s_(\S+)\.bam" % PARAMS["merge_pattern_input"].strip()),
      # the last expression counts number of groups in pattern_input
-     r"%s.\%i.bam" % (PARAMS["merge_pattern_output"].strip(),
-                      PARAMS["merge_pattern_input"].count("(") + 1),
-     )
+     r"%s.merged.aligned.coord.bam" % (PARAMS["merge_pattern_output"]))
 def mergeBAMFiles(infiles, outfile):
     '''merge BAM files from the same experiment using user-defined regex
     For the mapping stages it is beneficial to perform mapping
@@ -403,7 +401,7 @@ def mergeBAMFiles(infiles, outfile):
 @follows(mkdir("velocyto.dir"))
 @transform(mergeBAMFiles,
            regex("star.dir/(\S+).Aligned\.tagged\.sorted_qn\.out\.bam"),
-           r"velocyto.dir/\1.bam")
+           r"velocyto.dir/\1/\1.bam")
 def CB_sort(infile, outfile):
     ''' 
     First step of velocyto is to sort using samtools by CB. 
@@ -412,11 +410,13 @@ def CB_sort(infile, outfile):
     '''
     
     bam_file_old = os.path.split(infile)[1]
+
+    bam_path_new = os.path.split(outfile)[0]
     new_bam = bam_file_old.replace("Aligned.tagged.sorted_qn.out.", "")
 
     statement = '''
-    cp %(infile)s velocyto.dir/%(new_bam)s && 
-    samtools sort -t CB -O BAM -o velocyto.dir/cellsorted_%(new_bam)s velocyto.dir/%(new_bam)s
+    cp %(infile)s %(outfile)s && 
+    samtools sort -t CB -O BAM -o %(bam_path_new)s/cellsorted_%(new_bam)s %(outfile)s
     '''
 
     P.run(statement)
@@ -458,27 +458,79 @@ def loom_generation(infiles, outfile):
     job_memory = '50G'
     P.run(statement)
 
-@follows(mkdir("dropest.dir"))
-@transform(star_mapping,
-           regex("(\S+)_mapped.bam"),
-           add_inputs(PARAMS['geneset']),
-           r"dropest.dir/\1_dropEst.rds")
+
+@transform(CB_sort,
+           regex("velocyto.dir/(\S+)/(\S+).bam"),
+           add_inputs(extract_geneset),
+           r"\1.tagged.bam")
 def run_dropest(infiles, outfile):
     """
-    runs dropEst on the bam file and generated an rds file as output
+    Make new config file with location of whitelisted barcodes.
+    Runs dropEst on the bam file and generate an rds file as output.
     """
-    bamfile, gtffile = infiles
-    config = PARAMS['dropest_config']
 
-    statement = """dropest -m -V -b -f 
-                   -g %(gtffile)s
-                   -o dropest.dir/dropEst 
-                   -L eiEIBA 
-                   -c %(config)s 
-                   %(bamfile)s"""
+    bamfile, gtffile = infiles
+    generic_config_path = PARAMS['velocyto_dropest_config']
+    barcode_suffix = PARAMS['velocyto_whitelist_suffix']
+    new_config = bamfile.replace(".bam", "_config_desc.xml")
+
+    dropEst_out = bamfile.replace(".bam", "_dropEst")
+
+    ROOT = os.path.dirname(__file__)
+    config_file = ROOT + "/BarcodeFileDropest.py"
+
+
+    statement = """python %(config_file)s --input %(bamfile)s --barcode_suffix %(barcode_suffix)s --config %(generic_config_path)s &&
+                   dropest -m -V -f -F -L eiEIBA -g %(gtffile)s -o %(dropEst_out)s -c %(new_config)s %(bamfile)s"""
+
+    job_memory = '50G'
 
     P.run(statement)
 
+@transform(run_dropest,
+           regex("(\S+).tagged.bam"),
+           r"velocyto.dir/\1/\1.tagged.corrected.bam")
+def dropest_bc_correct(infile, outfile): 
+    """
+    Velocyto tools to make a new error corrected bam file
+    """
+
+    sample_name = infile.replace(".tagged.bam", "")
+    #bam_path = "./velocyto.dir/" + sample_name + "/" + infile
+    rds_path = "velocyto.dir/" + sample_name + "/" + sample_name + "_dropEst.rds" 
+    # not sure if right rds file, could be _dropEst.matrices.rds
+ 
+    statement = """velocyto tools dropest-bc-correct -o  %(outfile)s %(infile)s %(rds_path)s"""
+    
+    job_memory = '20G'
+
+    P.run(statement)
+
+@transform(dropest_bc_correct,
+           suffix(".tagged.corrected.bam"),
+           add_inputs(extract_geneset),
+           ".loom")
+def velocyto_run_dropest(infiles, outfile):
+    """
+    Generate a loom file using BAM file preprocessed with dropEst tools.
+    """
+
+    bamfile, gtf_file = infiles
+    output_folder = os.path.split(bamfile)[0]
+    sample_name = os.path.split(bamfile)[1].replace(".tagged.corrected.bam", "")
+
+    if PARAMS['velocyto_whitelist_active']:
+        barcode_file = bamfile.replace(".tagged.corrected.bam", PARAMS['velocyto_whitelist_suffix'])
+        whitelist = "-b " + barcode_file
+    else:
+        whitelist = ""
+
+    statement = """ velocyto run-dropest %(whitelist)s -o %(output_folder)s  -e %(sample_name)s -m hg38_rmsk.gtf %(bamfile)s %(gtf_file)s"""
+    # Parameterise mask gtf file
+
+    job_memory = '50G'
+
+    P.run(statement)
 
 
 @follows()

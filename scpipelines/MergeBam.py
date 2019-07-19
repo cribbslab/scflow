@@ -25,12 +25,12 @@ for read_map, read_unmap in zip(mapped_bamfile.fetch(until_eof=True), unmapped_b
     barcode_tags = read_unmap.get_tags()
 
     # XM/XC tags needed for picard. Replace XC for CB and XM for UB for downstream steps
-    CB_XC = [tuple(s if s!= "XC" else "CB" for s in tup) for tup in barcode_tags]
-    new_barcode_tags = [tuple(s if s!= "XM" else "UB" for s in tup) for tup in CB_XC]
+    #CB_XC = [tuple(s if s!= "XC" else "CB" for s in tup) for tup in barcode_tags]
+    #barcode_tags = [tuple(s if s!= "XM" else "UB" for s in tup) for tup in CB_XC]
 
     existing_tags = read_map.get_tags()
 
-    read_map.set_tags(existing_tags + new_barcode_tags)
+    read_map.set_tags(existing_tags + barcode_tags)
 
     merged_reads.write(read_map)
 
