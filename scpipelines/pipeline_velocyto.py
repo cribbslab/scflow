@@ -398,6 +398,87 @@ def mergeBAMFiles(infiles, outfile):
     P.run(statement)
 
 
+@active_if(not PARAMS["merge_pattern_input"] or "merge_pattern_input" not in PARAMS)
+@transform(recover_tags,
+           suffix("_Aligned.tagged.sorted_qn.out.bam"),
+           ".merged.aligned.coord.bam")
+def cpBAMFile(infile, outfile):
+    ''' Non-merged files have the same file name for next task'''
+
+    statement = '''cp %(infile)s %(outfile)s'''
+
+    P.run(statement)
+
+@follows(cpBAMFile)
+@transform(PARAMS['geneset'],
+           suffix(".gtf.gz"),
+           ".gtf")
+def extract_geneset(infile, outfile):
+    ''' Gunzip geneset gtf file '''
+
+    statement = '''gunzip -c %(infile)s > %(outfile)s'''
+           
+    P.run(statement)
+
+@follows(mkdir('dropest.dir'))
+@follows(cpBAMFile)
+@follows(mergeBAMFiles)
+@transform(mergeBAMFiles,
+           regex("star.dir/(\S+).bam"),
+           add_inputs(extract_geneset),
+           r"dropest.dir/\1.filtered.bam")
+def run_dropest(infiles, outfile):
+    """
+    Make new config file with location of whitelisted barcodes.
+    Runs dropEst on the bam file and generate an rds file as output.
+    """
+
+    bamfile, gtffile = infiles
+    generic_config_path = PARAMS['velocyto_dropest_config']
+    barcode_suffix = PARAMS['velocyto_whitelist_suffix']
+
+    sample_name = os.path.basename(bamfile).replace(".merged.aligned.coord.bam", "")
+    new_config = "dropest.dir/" + sample_name + "_config_desc.xml"
+
+    dropEst_out = "dropest.dir/" + sample_name + "_dropEst"
+    # dropEst dumps filtered bam file in current directory, move to dropest.dir
+    bam_out = sample_name + ".merged.aligned.coord.filtered.bam" 
+
+    ROOT = os.path.dirname(__file__)
+    config_file = ROOT + "/BarcodeFileDropest.py"
+
+    # Not sure if -f (lowercase) is giving the problems. When removed struggled with UMIs. Try without
+
+    statement = """python %(config_file)s --input %(bamfile)s --barcode_suffix %(barcode_suffix)s --config %(generic_config_path)s &&
+                   dropest -m -f -F -L eiEIBA -g %(gtffile)s -o %(dropEst_out)s -c %(new_config)s %(bamfile)s && 
+                   mv -T %(bam_out)s %(outfile)s"""
+
+    job_memory = '50G'
+
+    P.run(statement)
+
+
+# Is this needed??? dropEst seems to barcode correct- jupyter notebook. barcodes change between CR and XC
+@follows(mkdir('velocyto.dir'))
+@transform(run_dropest,
+           regex("dropest.dir/(\S+)\.merged\.aligned\.coord\.filtered\.bam"),
+           r"velocyto.dir/\1/correct_\1.bam")
+def dropest_bc_correct(infile, outfile): 
+    """
+    Velocyto tools to make a new error corrected bam file
+    """
+
+    sample_name = infile.replace(".merged.aligned.coord.filtered.bam", "")
+    #bam_path = "./velocyto.dir/" + sample_name + "/" + infile
+    rds_path = sample_name + "_dropEst.rds" 
+    # not sure if right rds file, could be _dropEst.matrices.rds
+ 
+    statement = """velocyto tools dropest-bc-correct -o  %(outfile)s %(infile)s %(rds_path)s"""
+    
+    job_memory = '20G'
+
+    P.run(statement)
+
 @follows(mkdir("velocyto.dir"))
 @transform(mergeBAMFiles,
            regex("star.dir/(\S+).Aligned\.tagged\.sorted_qn\.out\.bam"),
@@ -421,16 +502,6 @@ def CB_sort(infile, outfile):
 
     P.run(statement)
 
-@follows(CB_sort)
-@transform(PARAMS['geneset'],
-           suffix(".gtf.gz"),
-           ".gtf")
-def extract_geneset(infile, outfile):
-    ''' Gunzip geneset gtf file '''
-
-    statement = '''gunzip -c %(infile)s > %(outfile)s'''
-           
-    P.run(statement)
 
 @transform(CB_sort,
            suffix(".bam"),
@@ -459,52 +530,8 @@ def loom_generation(infiles, outfile):
     P.run(statement)
 
 
-@transform(CB_sort,
-           regex("velocyto.dir/(\S+)/(\S+).bam"),
-           add_inputs(extract_geneset),
-           r"\1.tagged.bam")
-def run_dropest(infiles, outfile):
-    """
-    Make new config file with location of whitelisted barcodes.
-    Runs dropEst on the bam file and generate an rds file as output.
-    """
-
-    bamfile, gtffile = infiles
-    generic_config_path = PARAMS['velocyto_dropest_config']
-    barcode_suffix = PARAMS['velocyto_whitelist_suffix']
-    new_config = bamfile.replace(".bam", "_config_desc.xml")
-
-    dropEst_out = bamfile.replace(".bam", "_dropEst")
-
-    ROOT = os.path.dirname(__file__)
-    config_file = ROOT + "/BarcodeFileDropest.py"
 
 
-    statement = """python %(config_file)s --input %(bamfile)s --barcode_suffix %(barcode_suffix)s --config %(generic_config_path)s &&
-                   dropest -m -V -f -F -L eiEIBA -g %(gtffile)s -o %(dropEst_out)s -c %(new_config)s %(bamfile)s"""
-
-    job_memory = '50G'
-
-    P.run(statement)
-
-@transform(run_dropest,
-           regex("(\S+).tagged.bam"),
-           r"velocyto.dir/\1/\1.tagged.corrected.bam")
-def dropest_bc_correct(infile, outfile): 
-    """
-    Velocyto tools to make a new error corrected bam file
-    """
-
-    sample_name = infile.replace(".tagged.bam", "")
-    #bam_path = "./velocyto.dir/" + sample_name + "/" + infile
-    rds_path = "velocyto.dir/" + sample_name + "/" + sample_name + "_dropEst.rds" 
-    # not sure if right rds file, could be _dropEst.matrices.rds
- 
-    statement = """velocyto tools dropest-bc-correct -o  %(outfile)s %(infile)s %(rds_path)s"""
-    
-    job_memory = '20G'
-
-    P.run(statement)
 
 @transform(dropest_bc_correct,
            suffix(".tagged.corrected.bam"),

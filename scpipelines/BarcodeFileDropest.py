@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from optparse import OptionParser
+import os
 
 parser = OptionParser()
 parser.add_option("--input", dest = "input_bam",
@@ -16,9 +17,9 @@ input_bam = options.input_bam
 barcode_suffix = options.barcode_suffix
 generic_xml_file = options.config
 
-sample_name = input_bam.replace(".bam", "")
+sample_name = os.path.basename(input_bam).replace(".merged.aligned.coord.bam", "")
 barcode_whitelist = "./" + sample_name + barcode_suffix
-sample_config = sample_name + "_config_desc.xml"
+sample_config = "dropest.dir/" + sample_name + "_config_desc.xml"
 
 
 with open(generic_xml_file, 'r+') as fin:
