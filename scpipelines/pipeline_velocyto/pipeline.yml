@@ -123,5 +123,5 @@ velocyto:
   
   whitelist_active: 1
     
-  # Whitelist file to be located in velocyto.dir, <sample_name> followed by suffix
+  # Whitelist file to be located in current directory, <sample_name> followed by suffix
   whitelist_suffix: '_barcodes.tsv'
