@@ -480,30 +480,22 @@ def dropest_bc_correct(infile, outfile):
     P.run(statement)
 
 @follows(mkdir("velocyto.dir"))
-@transform(mergeBAMFiles,
-           regex("star.dir/(\S+).Aligned\.tagged\.sorted_qn\.out\.bam"),
-           r"velocyto.dir/\1/\1.bam")
+@transform(dropest_bc_correct,
+           regex("velocyto.dir/(\S+)/correct_(\S+).bam"),
+           r"velocyto.dir/\1/cellsorted_correct_\1.bam")
 def CB_sort(infile, outfile):
     ''' 
     First step of velocyto is to sort using samtools by CB. 
-    Doing this step first helps with parellelisation when running bulk jobs
+    Doing this step first helps with parellelisation when running bulk jobs.
     Avoids runtimes errors using velocyto run.
     '''
-    
-    bam_file_old = os.path.split(infile)[1]
 
-    bam_path_new = os.path.split(outfile)[0]
-    new_bam = bam_file_old.replace("Aligned.tagged.sorted_qn.out.", "")
-
-    statement = '''
-    cp %(infile)s %(outfile)s && 
-    samtools sort -t CB -O BAM -o %(bam_path_new)s/cellsorted_%(new_bam)s %(outfile)s
-    '''
+    statement = '''samtools sort -t CB -O BAM -o %(outfile)s %(infile)s'''
 
     P.run(statement)
 
-
-@transform(CB_sort,
+@follows(CB_sort)
+@transform(dropest_bc_correct,
            suffix(".bam"),
            add_inputs(extract_geneset),
            ".loom")
@@ -513,17 +505,18 @@ def loom_generation(infiles, outfile):
     Bam already sorted by CB.  
     '''
 
-    sorted_bam_file, geneset = infiles
-    sample_name = os.path.split(sorted_bam_file)[1].replace(".bam","")
+    bam_file, geneset = infiles
+
+    sample_name = os.path.basename(bam_file).replace(".bam","").replace("correct_", "")
 
     if PARAMS['velocyto_whitelist_active']:
-        barcode_file = sorted_bam_file.replace(".bam", PARAMS['velocyto_whitelist_suffix'])
+        barcode_file = sample_name + PARAMS['velocyto_whitelist_suffix']
         whitelist = "-b " + barcode_file
     else:
         whitelist = ""
 
     statement = '''
-    velocyto run %(whitelist)s -o ./velocyto.dir -e %(sample_name)s -m hg38_rmsk.gtf %(sorted_bam_file)s %(geneset)s
+    velocyto run %(whitelist)s -o ./velocyto.dir -e %(sample_name)s -m hg38_rmsk.gtf %(bam_file)s %(geneset)s
     '''
 
     job_memory = '50G'
@@ -532,9 +525,9 @@ def loom_generation(infiles, outfile):
 
 
 
-
+@follows(CB_sort)
 @transform(dropest_bc_correct,
-           suffix(".tagged.corrected.bam"),
+           suffix(".bam"),
            add_inputs(extract_geneset),
            ".loom")
 def velocyto_run_dropest(infiles, outfile):
@@ -544,10 +537,11 @@ def velocyto_run_dropest(infiles, outfile):
 
     bamfile, gtf_file = infiles
     output_folder = os.path.split(bamfile)[0]
-    sample_name = os.path.split(bamfile)[1].replace(".tagged.corrected.bam", "")
+
+    sample_name = os.path.basename(bamfile).replace(".bam","").replace("correct_", "")
 
     if PARAMS['velocyto_whitelist_active']:
-        barcode_file = bamfile.replace(".tagged.corrected.bam", PARAMS['velocyto_whitelist_suffix'])
+        barcode_file = sample_name + PARAMS['velocyto_whitelist_suffix']
         whitelist = "-b " + barcode_file
     else:
         whitelist = ""
