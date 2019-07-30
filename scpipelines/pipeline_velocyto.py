@@ -490,7 +490,7 @@ def CB_sort(infile, outfile):
     Avoids runtimes errors using velocyto run.
     '''
 
-    statement = '''samtools sort -t CB -O BAM -o %(outfile)s %(infile)s'''
+    statement = """samtools sort -t CB -O BAM -o %(outfile)s %(infile)s"""
 
     P.run(statement)
 
@@ -516,8 +516,13 @@ def velocyto_run_dropest(infiles, outfile):
     else:
         whitelist = ""
 
-    statement = """ velocyto run-dropest %(whitelist)s -o %(output_folder)s  -e %(sample_name)s -m hg38_rmsk.gtf %(bamfile)s %(gtf_file)s > %(sample_name)s_loom.log"""
-    # Parameterise mask gtf file
+    if PARAMS['velocyto_mask_active']:
+        mask = "-m " + PARAMS['velocyto_mask_file']
+    else:
+        mask = ""
+
+    statement = """ velocyto run-dropest %(whitelist)s -o %(output_folder)s  -e %(sample_name)s %(mask)s %(bamfile)s %(gtf_file)s > 
+    %(sample_name)s_loom.log"""
 
     job_memory = '50G'
 

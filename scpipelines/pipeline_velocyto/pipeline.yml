@@ -125,3 +125,8 @@ velocyto:
     
   # Whitelist file to be located in current directory, <sample_name> followed by suffix
   whitelist_suffix: '_barcodes.tsv'
+
+  mask_active: 1
+
+  # Should be located in current working directory and extracted, e.g. hg38_rmsk.gtf
+  mask_file: hg38_rmsk.gtf
