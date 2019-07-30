@@ -494,42 +494,12 @@ def CB_sort(infile, outfile):
 
     P.run(statement)
 
-@follows(CB_sort)
-@transform(dropest_bc_correct,
-           suffix(".bam"),
-           add_inputs(extract_geneset),
-           ".loom")
-def loom_generation(infiles, outfile):
-    ''' 
-    Velocyto run (run on any technique)
-    Bam already sorted by CB.  
-    '''
-
-    bam_file, geneset = infiles
-
-    sample_name = os.path.basename(bam_file).replace(".bam","").replace("correct_", "")
-
-    if PARAMS['velocyto_whitelist_active']:
-        barcode_file = sample_name + PARAMS['velocyto_whitelist_suffix']
-        whitelist = "-b " + barcode_file
-    else:
-        whitelist = ""
-
-    statement = '''
-    velocyto run %(whitelist)s -o ./velocyto.dir -e %(sample_name)s -m hg38_rmsk.gtf %(bam_file)s %(geneset)s
-    '''
-
-    job_memory = '50G'
-    P.run(statement)
-
-
-
 
 @follows(CB_sort)
 @transform(dropest_bc_correct,
-           suffix(".bam"),
+           regex("velocyto.dir/(\S+)/correct_(\S+).bam"),
            add_inputs(extract_geneset),
-           ".loom")
+           r"velocyto.dir/\1/\2.loom")
 def velocyto_run_dropest(infiles, outfile):
     """
     Generate a loom file using BAM file preprocessed with dropEst tools.
@@ -546,13 +516,30 @@ def velocyto_run_dropest(infiles, outfile):
     else:
         whitelist = ""
 
-    statement = """ velocyto run-dropest %(whitelist)s -o %(output_folder)s  -e %(sample_name)s -m hg38_rmsk.gtf %(bamfile)s %(gtf_file)s"""
+    statement = """ velocyto run-dropest %(whitelist)s -o %(output_folder)s  -e %(sample_name)s -m hg38_rmsk.gtf %(bamfile)s %(gtf_file)s > %(sample_name)s_loom.log"""
     # Parameterise mask gtf file
 
     job_memory = '50G'
 
     P.run(statement)
 
+@transform(velocyto_run_dropest,
+         suffix(".loom"),
+         "_cell_velocity.png")
+def loom_analysis(infile, outfile):
+    '''
+    Takes all seurat.rds objects and combines them using RunCCA/MergeSeurat/RunMultiCCA
+    into one large seurat object with annotations for each sample, ready for the monocle library.
+    '''
+
+
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+
+    statement = """ Rscript %(R_ROOT)s/velocyto_analysis.R -l %(infile)s """
+
+    job_memory = '10G'
+   
+    P.run(statement)
 
 @follows()
 def velocyto(run_dropest):
