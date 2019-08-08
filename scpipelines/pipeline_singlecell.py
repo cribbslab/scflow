@@ -320,7 +320,7 @@ def runSalmonAlevin(infiles, outfile):
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
-    --tgMap %(t2gmap)s
+    --tgMap %(t2gmap)s --dumpFeatures
     '''
 
     job_memory = "30G"
@@ -696,22 +696,23 @@ def combine_seurat_objects(infiles, outfile):
     P.run(statement)
 
 
+@follows(mkdir("Monocle.dir"))
 @transform(combine_seurat_objects,
            regex("Seurat.dir/(\S+).rds"),
-           r"Seurat.dir/cluster_facet.eps")
+           r"Monocle.dir/cluster_facet.eps")
 def run_monocle(infile, outfile):
     ''' 
     Takes seurat object before dimension reduction. Uses the library monocle to regress out treatment so 
     clusters in tsne plots can be directly compared across samples. Generates plots.
     '''
 
-    inf_dir = os.path.dirname(infile)
+    out_dir = os.path.dirname(outfile)
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
     job_memory = 'unlimited'
 
-    statement = '''cp %(NOTEBOOK_ROOT)s/Monocle.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Monocle.Rmd',encoding = 'UTF-8', 
+    statement = '''cp %(NOTEBOOK_ROOT)s/Monocle.Rmd %(out_dir)s &&
+                   cd %(out_dir)s && R -e "rmarkdown::render('Monocle.Rmd',encoding = 'UTF-8', 
                    params = list(infile = '%(infile)s'))" '''
 
 
@@ -730,7 +731,7 @@ def clustering(infile, outfile):
     NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
 
     statement = '''cp %(NOTEBOOK_ROOT)s/Clustering.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Clustering.Rmd',encoding = 'UTF-8')" '''
+                   cd %(inf_dir)s && R -e "rmarkdown::render('Clustering.Rmd,encoding = 'UTF-8')" '''
 
     P.run(statement)
 
