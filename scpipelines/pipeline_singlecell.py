@@ -320,7 +320,7 @@ def runSalmonAlevin(infiles, outfile):
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
-    --tgMap %(t2gmap)s --dumpFeatures
+    --tgMap %(t2gmap)s --dumpFeatures --dumpUmiGraph
     '''
 
     job_memory = "30G"
