@@ -116,7 +116,7 @@ salmon:
     # for 10x gemocode v1 sc protocol
   # celseq
   # celseq2
-  sctechnology: drposeq
+  sctechnology: dropseq
 
 sce:
 
