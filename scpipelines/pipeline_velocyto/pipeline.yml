@@ -28,7 +28,6 @@ data: 0
 # Geneset should be located in working directory
 geneset: geneset_all.gtf.gz
 
-
 ################################################################
 ## merge options
 ################################################################
@@ -63,36 +62,6 @@ merge:
   pattern_output: \1_\2_\3
 
 #########################
-# Barcode correction and annotation
-#########################
-
-# Salmon alevin
-
-salmon:
-  # Length of k-mer for indexing.
-  kmer: 31
-
-  # Number of threads that can be used by alevin to perform the quantification
-  threads: 10
-
-  # Library type must be specified.
-  # ISR recommended for DropSeq and 10xV2 technology
-  librarytype: ISR
-
-  # Whether to run alevin
-  alevin: 1
-
-  sctechnology: chromium
-
-  # Whether to use chromium defualts (16 CB + 10 UMI)
-  default_barcodes: 1
-
-  # Otherwise these values used
-  barcode_length: 7
-  umi_length: 9
-  end: 5
-
-#########################
 # Mapping 
 #########################
 
@@ -103,21 +72,13 @@ star:
 
   index_dir: ''
 
-  # Whether to run star mapping
-  run: 1
-
   # The number of threads for genome generation
   threads: 32
 
-  memory: unlimited
-
-  # The RAM limit 
-  RAM_limit: 87779818880
 
 #########################
 # RNA Velocity
 #########################
-
 
 velocyto:
   
@@ -125,6 +86,8 @@ velocyto:
     
   # Whitelist file to be located in current directory, <sample_name> followed by suffix
   whitelist_suffix: '_barcodes.tsv'
+
+  dropest_config: config_desc.xml
 
   mask_active: 1
 
