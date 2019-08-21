@@ -101,6 +101,8 @@ star:
   # Whether to generate a star index
   index: 1
 
+  index_dir: ''
+
   # Whether to run star mapping
   run: 1
 
@@ -111,4 +113,20 @@ star:
 
   # The RAM limit 
   RAM_limit: 87779818880
+
+#########################
+# RNA Velocity
+#########################
+
+
+velocyto:
   
+  whitelist_active: 1
+    
+  # Whitelist file to be located in current directory, <sample_name> followed by suffix
+  whitelist_suffix: '_barcodes.tsv'
+
+  mask_active: 1
+
+  # Should be located in current working directory and extracted, e.g. hg38_rmsk.gtf
+  mask_file: hg38_rmsk.gtf

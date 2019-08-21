@@ -320,7 +320,7 @@ def runSalmonAlevin(infiles, outfile):
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
-    --tgMap %(t2gmap)s
+    --tgMap %(t2gmap)s --dumpFeatures --dumpUmiGraph
     '''
 
     job_memory = "30G"
@@ -370,19 +370,19 @@ def runKallistoBus(infiles, outfile):
 
 @active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
-           regex("kallisto.dir/./(\S+)/bus/output.bus"),
-           r"kallisto.dir/\1/bus/\1.bus.sorted.txt")
+           regex("kallisto.dir/(\S+)/bus/output.bus"),
+           r"kallisto.dir/\1/bus/output.bus.sorted.txt")
 def busText(infile, outfile):
     '''
     Sort the bus file produced by kallisto and then convert it to a text file.
     '''
 
     tmp_bus  = P.get_temp_filename(".")
+    job_memory = '10G'
 
     job_memory = '10G'
 
     statement = '''
-    sleep 10
     bustools sort -o %(tmp_bus)s %(infile)s ;
     bustools text -o %(outfile)s %(tmp_bus)s
     '''
@@ -453,7 +453,7 @@ def readAlevinSCE(infile,outfile):
 @follows(mkdir("SCE.dir"))
 @active_if(PARAMS['kallisto_bustools'])
 @transform(busCount,
-           regex("kallisto.dir/(.*)/bus/output.bus_GCcoordmatrix.mtx"),
+           regex("kallisto.dir/(\S+)/bus/output.bus_GCcoordmatrix.mtx"),
            r"SCE.dir/\1/bus/sce.rds")
 def readBusSCE(infile, outfile):
     ''' 
@@ -475,8 +475,34 @@ def readBusSCE(infile, outfile):
 
     P.run(statement)
 
+## Kallisto SCE object using BUSpaRse R package and emptydrops (DropletUtils function)
+@follows(mkdir("SCE.dir"))
+@active_if(PARAMS['kallisto_bustools'])
+@transform(busText,
+           regex("kallisto.dir/(\S+)/bus/output.bus.sorted.txt"),
+           add_inputs(PARAMS['geneset']),
+           r"SCE.dir/\1/bus/sce.rds")
+def BUSpaRse(infiles, outfile):
+    ''' 
+    Create kallisto SCE object. Use BUSpaRse package to read in bus file and convert to TCC and gene counts matrix. 
+    Create knee plot and use point of inflection to estimate number of empty droplets and cells. 
+    Or use emptyDrops function from DropletUtils package to compare to the ambient profile.
+    '''
 
-@transform((readBusSCE, readAlevinSCE), 
+    bus_text, gtf = infiles
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    est_cells = 400
+
+    job_memory = '20G'
+
+    statement = '''
+    Rscript %(R_ROOT)s/BUSPaRse.R -i %(bus_text)s -g %(gtf)s -o %(outfile)s --estcells %(est_cells)s
+    '''
+
+    P.run(statement)
+    
+
+@transform((BUSpaRse, readAlevinSCE), 
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
            r"SCE.dir/\1/\2/sce.rds")
 def combine_alevin_bus(infiles, outfiles):
@@ -530,193 +556,7 @@ def run_qc(infile, outfile):
 
     P.run(statement)
 
-
-#########################
-# Visulalisation of selected data  
-#########################
-
-# make violin plots from user selected genes
-# heatmap of lists of genes
-
-# what about adding a knee plot - how does alevin or kallisto handle the
-# expected number of cells? - check documentation
 @follows(run_qc)
-def qc():
-    pass
-
-@follows(run_qc)
-@active_if(PARAMS['DE_wilcoxon'])
-def DE_wilcoxon_test():
-    '''
-    Test for differential expression using simple non-parametric wilcoxon test. 
-    Use yaml file to specify which 2 samples to compare. 
-    '''
-    
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-    species = PARAMS['sce_species']
-    geneset = PARAMS['geneset']
-    sample1 = PARAMS['DE_sample1']
-    sample2 = PARAMS['DE_sample2']
-    
-    job_memory = "30G"
-
-    statement = '''
-    Rscript %(R_ROOT)s/DE_wilcoxon.R --sample1 %(sample1)s --sample2 %(sample2)s --species %(species)s -g %(geneset)s
-    '''
-
-    P.run(statement)
-
-@active_if(PARAMS['DE_pseudo_bulk'])
-@collate(run_qc,
-         regex(r"SCE.dir/(\S+)/(\S+)/pass.rds"),
-         "DE.dir/counts.rds") 
-def pseudo_bulk(infiles, outfile):
-    '''
-    Collate SCEs and sum across all cells (passing filter) to give a 'pseudo-bulk' count for further downstream DE analysis with DESeq2 or edgeR.
-    ''' 
-
-    infiles = str(infiles).replace("'", "").replace("(", "").replace(")", "")
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-    E.warn(infiles)
-
-    statement = ''' Rscript %(R_ROOT)s/pseudo_bulk.R -i "%(infiles)s" 
-                 -o %(outfile)s'''
-
-    P.run(statement)
-    
-
-@follows(mkdir("Seurat.dir"))
-@transform(run_qc,
-           regex(r"SCE.dir/(\S+)/(\S+)/pass.rds"),
-           r"Seurat.dir/\1/\2/seurat.rds")
-def seurat_generate(infile,outfile):
-    ''' 
-    Takes sce object and converts it to a seurat object for further analysis
-    '''
-
-    working_dir = os.getcwd()
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-    E.warn(infile)
-   
-    statement = '''
-    Rscript %(R_ROOT)s/seurat.R -w %(working_dir)s -i %(infile)s -o %(outfile)s
-    '''
-    
-    job_memory = '30G'
-    P.run(statement)
-    
-
-@transform(seurat_generate,
-           regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
-           r"Seurat.dir/\1/\2/\3_dim_reduction.rds")
-def seurat_dimreduction(infile, outfile):
-    '''
-    Takes a seurate object and computes a PCA-based dimension reduction
-    '''
-    working_dir = outfile.replace("seurat.dim_reduction.rds", "")
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
- 
-    job_memory = 'unlimited' 
-
-    statement = '''Rscript %(R_ROOT)s/seurat_dimreduction.R
-    				-w %(working_dir)s
-    				-i %(infile)s
-    				-o %(outfile)s
-    				--mingenes=%(seurat_mingenes)s
-    				--maxmitopercent=%(seurat_maxmitopercent)s
-                                --npcs=%(seurat_npcs)s
-                                --reductionmethod="pca"
-                                --pccomponents=%(seurat_npcs)s
-                                --resolution=%(seurat_resolution)s
-                                --algorithm=%(seurat_algorithm)s'''
-
-    P.run(statement)
-
-
-@transform(seurat_dimreduction,
-           regex("Seurat.dir/(\S+)/(\S+)/(\S+)_dim_reduction.rds"),
-           r"Seurat.dir/\1/\2/Seurat_markers.html")
-def run_seurat_markdown(infile, outfile):
-    '''
-    Takes sce seurat object from clustering and generates
-    an Rmarkdown report for running tsne, visualising clusters, finding marker
-    genes and creating feature plots
-    '''
-
-    inf_dir = os.path.dirname(infile)
-    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-    statement = '''cp %(NOTEBOOK_ROOT)s/Seurat_markers.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Seurat_markers.Rmd',encoding = 'UTF-8')" '''
-
-    P.run(statement)
-
-@collate(seurat_generate,
-         regex("Seurat.dir/(\S+)/(\S+)/(\S+).rds"),
-         r"Seurat.dir/\2_combined_\3.rds")
-def combine_seurat_objects(infiles, outfile):
-    '''
-    Takes all seurat.rds objects and combines them using RunCCA/MergeSeurat/RunMultiCCA
-    into one large seurat object with annotations for each sample, ready for the monocle library.
-    '''
-
-    # Need option for if only 1 sample. Currently only works if more than 1 sample I think (infile[0])
-    pseudoaligner = infiles[0].split("/")[-2]
-    infiles = str(infiles).replace("'", "").replace("(", "").replace(")", "")
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-
-    statement = ''' Rscript %(R_ROOT)s/combine_seurat.R -i "%(infiles)s" -p %(pseudoaligner)s 
-                 -o %(outfile)s'''
-
-    job_memory = 'unlimited'
-   
-    P.run(statement)
-
-
-@transform(combine_seurat_objects,
-           regex("Seurat.dir/(\S+).rds"),
-           r"Seurat.dir/cluster_facet.eps")
-def run_monocle(infile, outfile):
-    ''' 
-    Takes seurat object before dimension reduction. Uses the library monocle to regress out treatment so 
-    clusters in tsne plots can be directly compared across samples. Generates plots.
-    '''
-
-    inf_dir = os.path.dirname(infile)
-    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-
-    job_memory = 'unlimited'
-
-    statement = '''cp %(NOTEBOOK_ROOT)s/Monocle.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Monocle.Rmd',encoding = 'UTF-8', 
-                   params = list(infile = '%(infile)s'))" '''
-
-
-    P.run(statement)
-
-@transform(combine_alevin_bus,
-           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
-           r"SCE.dir/\1/\2/Clustering.html")
-def clustering(infile, outfile):
-    '''
-    Perform SC3 clustering analysis and observe the effects of clustering before and after
-    filtering cells based on quality metrics.
-    '''
-
-    inf_dir = os.path.dirname(outfile)
-    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-
-    statement = '''cp %(NOTEBOOK_ROOT)s/Clustering.Rmd %(inf_dir)s &&
-                   cd %(inf_dir)s && R -e "rmarkdown::render('Clustering.Rmd',encoding = 'UTF-8')" '''
-
-    P.run(statement)
-
-
-@follows(clustering, run_seurat_markdown)
-def seurat():
-    pass
-
-@follows(buildReferenceTranscriptome, getTranscript2GeneMap, buildKallistoIndex, buildSalmonIndex,
-runFastQC, combine_alevin_bus, run_qc, seurat_generate, combine_seurat_objects, seurat_dimreduction, run_monocle)
 def full():
     pass
 
