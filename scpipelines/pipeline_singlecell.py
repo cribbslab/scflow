@@ -114,7 +114,6 @@ SEQUENCESUFFIXES = ("*.fastq.gz",
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
-
 ############################################
 # Build indexes
 ############################################
@@ -365,8 +364,8 @@ def runKallistoBus(infiles, outfile):
 # Process bus file
 #########################
 
-# Must have bustools installed
-# https://github.com/BUStools/bustools
+# Must have bustools installed
+#https://github.com/BUStools/bustools
 
 @active_if(PARAMS['kallisto_bustools'])
 @transform(runKallistoBus,
@@ -440,7 +439,7 @@ def readAlevinSCE(infile,outfile):
     else:
         downsample = ""
     
-    job_memory = "10G"
+    job_memory = "40G"
 
     statement = '''
     Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s %(downsample)s
@@ -477,10 +476,11 @@ def readBusSCE(infile, outfile):
 
 ## Kallisto SCE object using BUSpaRse R package and emptydrops (DropletUtils function)
 @follows(mkdir("SCE.dir"))
+@follows(busText)
 @active_if(PARAMS['kallisto_bustools'])
 @transform(busText,
            regex("kallisto.dir/(\S+)/bus/output.bus.sorted.txt"),
-           add_inputs(PARAMS['geneset']),
+           add_inputs(PARAMS['geneset'], getTranscript2GeneMap),
            r"SCE.dir/\1/bus/sce.rds")
 def BUSpaRse(infiles, outfile):
     ''' 
@@ -489,14 +489,14 @@ def BUSpaRse(infiles, outfile):
     Or use emptyDrops function from DropletUtils package to compare to the ambient profile.
     '''
 
-    bus_text, gtf = infiles
+    bus_text, gtf, t2gmap = infiles
     R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-    est_cells = 400
+    est_cells = PARAMS['kallisto_expectedcells']
 
-    job_memory = '20G'
+    job_memory = '50G'
 
     statement = '''
-    Rscript %(R_ROOT)s/BUSPaRse.R -i %(bus_text)s -g %(gtf)s -o %(outfile)s --estcells %(est_cells)s
+    Rscript %(R_ROOT)s/BUSPaRse.R -i %(bus_text)s -o %(outfile)s --estcells %(est_cells)s --t2g %(t2gmap)s -g %(gtf)s
     '''
 
     P.run(statement)

@@ -6,26 +6,41 @@ library("optparse")
 
 
 option_list = list(
-  make_option(c("-g", "--geneset"), type="character", default = "geneset_all.gtf.gz",
-              help="Name of geneset file, [default= %default]", metavar="character"),
   make_option(c("-i", "--infile"), type="character", 
               help="Sorted bus text file", metavar="character"),
   make_option(c("--estcells"), type="integer", default = 1000,
               help="Estimated number of cells, [default= %default]", metavar="character"),
   make_option(c("-o", "--outfile"), type="character", 
-              help="Output file. SCE object", metavar="character")
+              help="Output file. SCE object", metavar="character"),
+  make_option(c("-t", "--t2g"), type="character", default = "transcript2geneMap.tsv",
+              help="Transcript to gene file.", metavar="character"),
+  make_option(c("-g", "--geneset"), type="character", default = "geneset_all.gtf.gz",
+              help="Name of geneset file, [default= %default]", metavar="character")
 ); 
+
+# make_option(c("-g", "--geneset"), type="character", default = "geneset_all.gtf.gz",
+#              help="Name of geneset file, [default= %default]", metavar="character"),
 
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
 
 geneset <- opt$geneset
 bus_text <- opt$infile
+t2gmap <- opt$t2g 
 outfile <- opt$outfile
 estcells <- opt$estcells
 bus_folder <- dirname(bus_text)
 
-tr2g <- tr2g_gtf(file= geneset)
+if (!file.exists("t2g_rename.tsv")){
+tr2g_tsv <- read_tsv(t2gmap, col_names = TRUE) %>% as.data.frame()
+colnames(tr2g_tsv) <- c("transcript", "gene")
+write_tsv(tr2g_tsv, "t2g_rename.tsv")
+}
+
+
+#tr2g <- tr2g_gtf(file= geneset, transcript_version = NULL, gene_version = NULL, gene_name = NULL)
+tr2g <- sort_tr2g(file = "t2g_rename.tsv", kallisto_out_path = bus_folder, verbose = FALSE)
+
 
 TCC <- make_sparse_matrix(bus_text, tr2g = tr2g, est_ncells = estcells, est_ngenes = nrow(tr2g), whitelist = NULL, TCC = TRUE, gene_count = FALSE)
 TCC_file <- paste(c(bus_folder, "TCC.mat"), collapse = "/")
@@ -57,8 +72,12 @@ dev.off()
 # This is assumed to represent the difference between empty droplets with little RNA and cell-containing dropleta with more RNA. More sophisticated method below:
 
 # Threshold using point of inflection
-#GC_mat_filt <- GC_mat[, tot_counts2 > bc_rank$inflection]
+GC_mat_filt <- GC_mat[, tot_counts2 > bc_rank$inflection]
 #dim(GC_mat_filt)
+v_1 <- log2(GC_mat_filt + 1)
+sce_inflection <- SingleCellExperiment(assays = list(counts = GC_mat_filt, logcounts = v_1))
+out_inflection <- paste0(dirname(outfile), "/inflection_sce.rds")
+saveRDS(sce_inflection, file= out_inflection)
 
 set.seed(100)
 e.out <- emptyDrops(GC_mat)
