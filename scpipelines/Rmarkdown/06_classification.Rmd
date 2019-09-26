@@ -1,0 +1,40 @@
+---
+title: "Classification"
+output: html_document
+---
+
+Classification of your clusters in single cell datasets is a very important task as it allows you to make interpretable relationships between cell heterogeneity and your biological question or experiment. This task has historically been quite challenging to do for new data and relies on shutting a bunch of PhD students in a locked room and not letting them out until they have looked at the gene expression patterns of all the cells and related this back to literature.
+
+However, more recently there has been an explosion on the number of models that have been developed to allow you to accurately classify your cells of interest. A list of some of the available software can be found here:
+* https://academic.oup.com/nar/article/47/8/e48/5364134
+* https://www.biorxiv.org/content/10.1101/532093v1
+* https://www.biorxiv.org/content/10.1101/369538v2
+
+In this tutroial we will use the scClassify method that was recently published as a pre-print: https://www.biorxiv.org/content/10.1101/776948v1 
+
+Navigate to the following link to download the PBMC classifier .rds object: https://sydneybiox.github.io/scClassify/
+
+Today because of time constraints we will only go through how to predict cells, however in your own time, if you have your own data you can train a classifier.  
+
+# Load and import the data 
+
+We will use the log-transformed (size-factor normalized) matrices as query datasets, where each row refers to a gene and each column a cell.The output can then be combined within the seurat object and visualised.
+
+```{r setup, include=FALSE}
+library(scClassify)
+
+# Load the pre-trained classifier
+classifier <- readRDS("jointPBMCClass.rds")
+
+knitr::opts_chunk$set(echo = TRUE)
+
+
+load("data/scClassify_example.rda")
+wang_cellTypes <- scClassify_example$wang_cellTypes
+exprsMat_wang_subset <- scClassify_example$exprsMat_wang_subset
+exprsMat_wang_subset <- as(exprsMat_wang_subset, "dgCMatrix")
+```
+
+
+
+
