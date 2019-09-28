@@ -322,7 +322,7 @@ def runSalmonAlevin(infiles, outfile):
     --tgMap %(t2gmap)s --dumpFeatures --dumpUmiGraph
     '''
 
-    job_memory = "30G"
+    job_memory = PARAMS["salmon_job_memory"]
     job_threads = 5
     P.run(statement)
 
