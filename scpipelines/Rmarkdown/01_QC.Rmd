@@ -1,0 +1,369 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(Seurat)
+library(tidyverse)
+library(SingleCellExperiment)
+library(Matrix)
+library(AnnotationHub)
+library(ensembldb)
+library(cowplot)
+library(ggplot2)
+library(scales)
+library(tximport)
+```
+
+```{r}
+# Import count matrix
+txi <- tximport("salmon.dir/pbmc_1k_v3_S1/alevin/quants_mat.gz", type="alevin")
+# Import barcodes
+cell_ids <- read_tsv("salmon.dir/pbmc_1k_v3_S1/alevin/raw_cb_frequency.txt", col_names = FALSE)$X1
+# Import genes
+genes <- read_tsv("salmon.dir/pbmc_1k_v3_S1/alevin/quants_mat_cols.txt", col_names = FALSE)$X1
+```
+
+# Convert to a sparse matrix for more efficient computation
+
+```{r}
+counts <- as(txi$counts, "dgCMatrix")
+```
+
+Creating metadata object with some QC metrics
+
+Now that we have a counts matrix with the genes as row names and cells as columns, we can create our metadata with information about the different metrics to evaluate during quality control assessment.
+
+We will create the metadata with only the cell IDs:
+
+```{r}
+metadata <- data.frame(row.names = colnames(counts), cells = colnames(counts), stringsAsFactors = F)
+```
+
+Then, we can add information about the number of UMIs per cell,
+
+# Add number of UMIs for each gene per cell to metadata
+
+```{r}
+metadata$nUMI <- Matrix::colSums(counts)
+```
+
+the number of genes identified per cell,
+
+# Add number of genes detected per cell to metadata
+```{r}
+metadata$nGene <- Matrix::colSums(counts > 0)
+```
+
+the number of genes per UMI for each cell,
+
+# Add number of UMIs per gene for each cell to metadata
+
+```{r}
+metadata$log10GenesPerUMI <- log10(metadata$nGene) / log10(metadata$nUMI)
+```
+
+and the sample names. However, with this dataset we only have a single sample.
+
+# Add sample name associated with each cell to metadata 
+
+we only have one sample, so more important when you have multiple samples
+
+```{r}
+metadata$sample <- "pbmcs"
+```
+
+Using annotations file to generate additional QC metrics
+
+We will be using AnnotationHub, which allows accession to a wide variety of online databases and other resources, to query Ensembl annotations made available through ensembldb. Ensembldb is a package that retrieves annotation for the databases directly from the Ensembl Perl API.
+
+The main reason for using AnnotationHub is because it has one of the best gene annotations when compared to other R applications/frameworks to tap into annotations. 
+
+```{r}
+# Connect to AnnotationHub
+ah <- AnnotationHub()
+
+# Access the Ensembl database for organism
+ahDb <- query(ah, 
+              pattern = c("Homo sapiens", "EnsDb"), 
+              ignore.case = TRUE)
+```
+
+```{r}
+# Check versions of databases available
+ahDb %>% 
+  mcols()
+```
+
+```{r}
+# Acquire the latest annotation files
+id <- ahDb %>%
+  mcols() %>%
+  rownames() %>%
+  tail(n = 1)
+edb <- ah[[id]]
+
+# Extract gene-level information from database
+annotations <- genes(edb, 
+                     return.type = "data.frame")
+                     
+View(annotations) 
+```
+
+# Select annotations of interest
+
+```{r}
+annotations <- annotations %>%
+  dplyr::select(gene_id, gene_name, gene_biotype, seq_name, description, entrezid)
+```
+
+# Extract IDs for mitochondrial genes
+
+```{r}
+mt <- annotations %>% 
+  dplyr::filter(seq_name == "MT") %>%
+  dplyr::pull(gene_id)
+```
+
+Adding metrics to metadata
+
+Now that we have information about which genes are mitochondrial, we can quanitify whether we have contamination.
+
+```{r}
+# Number of UMIs assigned to mitochondrial genes
+metadata$mtUMI <- Matrix::colSums(counts[which(rownames(counts) %in% mt),], na.rm = T)
+
+# Ensure all NAs receive zero counts
+metadata$mtUMI[is.na(metadata$mtUMI)] <- 0
+
+# Calculate of mitoRatio per cell
+metadata$mitoRatio <- metadata$mtUMI/metadata$nUMI
+```
+
+# Filtering!!!
+
+This is very important to get correct as any "bad cells" will ultimately end up ruining your downstream analysis.
+
+Initial filtering
+
+Prior to assessing our metrics, we are going to perform a very minimal filtering of those cells with less than 100 UMIs to get rid of the cells that are clearly junk, containing less than 100 UMIs.
+
+```{r}
+# Keep cells with nUMI greater than 100
+idx <- which(metadata$nUMI > 100)
+
+# Extract the counts for those cells
+counts_c <- counts[, idx]
+
+# Extract the metadata for those cells
+metadata_c <- metadata[idx,]
+```
+
+# Saving metrics to single cell experiment
+
+Before we assess our metrics we are going to save all of the work we have done thus far to a single cell experiment object, which is a standard object for single cell data in R (https://www.bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html).
+
+```{r}
+# Save data to single cell experiment variable
+se <- SingleCellExperiment(assays=list(counts=counts), 
+                           colData = metadata)
+                           
+# Create .RData object to load at any time
+saveRDS(se, "raw_se.rds")
+```
+
+Assessing the quality metrics
+Now that we have generated the various metrics to assess, we can explore them with visualizations. We will create our metrics file from the metadata stored in the single cell experiments.
+
+```{r}
+# Create a data frame containing the metrics for visualizations
+metrics <- colData(se) %>%
+  as.data.frame
+```
+
+We will explore the following metrics through visualizations to decide on which cells are low quality and should be removed from the analysis:
+
+* Cell counts
+* UMI counts per cell
+* Genes detected per cell
+* UMIs vs. genes detected
+* Mitochondrial counts ratio
+* Novelty
+
+
+```{r}
+# Visualize the number of cell counts per cell
+metrics %>% 
+  ggplot(aes(x=sample, fill=sample)) + 
+  geom_bar() + 
+  ggtitle("Number of Cells")
+```
+
+# UMI counts (transcripts) per cell
+
+The UMI counts per cell should generally be above 500, although usable, it’s still low if between 500-1000 counts. If UMIs per cell is 500-1000 counts, then the cells probably should have been sequenced more deeply.
+
+```{r}
+# Visualize the number UMIs/transcripts per cell
+metrics %>% 
+        ggplot(aes(color=sample, x=nUMI, fill= sample)) + 
+        geom_density() + 
+        scale_x_log10() + 
+        ylab("log10 cell density") +
+        geom_vline(xintercept = 1500)
+```
+
+# Genes detected per cell
+
+Seeing gene detection in the range of 500-5000 is normal for inDrop analysis. Similar expectations for gene detection as for UMI detection, although may be a bit lower than UMIs.
+
+```{r}
+# Visualize the distribution of genes detected per cell via histogram
+metrics %>% 
+        ggplot(aes(color=sample, x=nGene, fill= sample)) + 
+        geom_density() + 
+        scale_x_log10() + 
+        geom_vline(xintercept = 600)
+```
+
+```{r}
+# Visualize the distribution of genes detected per cell via boxplot
+metrics %>% 
+        ggplot(aes(x=sample, y=log10(nGene), fill=sample)) + 
+        geom_boxplot() + 
+        ggtitle("NCells vs NGenes")
+```
+
+
+# UMIs vs. genes detected
+
+Poor quality cells are likely to have low genes and UMIs per cell. Therefore, a poor sample is likely to have cells in the lower left of the graph. Good cells should exhibit both higher number of genes per cell and higher numbers of UMIs. We also expect similar lines with similar slopes for all samples.
+
+```{r}
+# Visualize the correlation between genes detected and number of UMIs and determine whether strong presence of cells with low numbers of genes/UMIs
+metrics %>% 
+  ggplot(aes(x=nUMI, y=nGene, color=mitoRatio)) + 
+  geom_point() + 
+  stat_smooth(method=lm) +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  geom_vline(xintercept = 800) +
+  facet_wrap(~sample)
+```
+
+
+Mitochondrial counts ratio
+
+This metric can identify whether there is a large amount of mitochondrial contamination from dead or dying cells. Poor quality samples for mitochondrial counts would have larger peaks above the 0.1 mitochondrial ratio mark, unless it is expected based on sample type.
+
+```{r}
+# Visualize the distribution of mitochondrial gene expression detected per cell
+metrics %>% 
+        ggplot(aes(color=sample, x=mitoRatio, fill=sample)) + 
+        geom_density() + 
+        scale_x_log10() + 
+        geom_vline(xintercept = 0.5)
+```
+
+# Novelty
+
+We can see the samples where we sequenced each cell less have a higher overall novelty, that is because we have not started saturating the sequencing for any given gene for these samples. Outlier cells in these samples might be cells that have a less complex RNA species than other cells. Sometimes we can detect contamination with low complexity cell types like red blood cells via this metric. Generally, we expect the novelty score to be above 0.80.
+
+```{r}
+# Visualize the overall novelty of the gene expression by visualizing the genes detected per UMI
+metrics %>%
+        ggplot(aes(x=log10GenesPerUMI, color = sample, fill=sample)) +
+        geom_density()
+```
+
+
+# Filtering
+
+Now that we have visualized the various metrics, we can decide on the thresholds to use to remoe the low quality. Often the recommendations mentioned earlier are a rough guideline, but the specific experiment needs to inform the exact thresholds chosen. We will use the following thresholds:
+
+* nUMI > 500
+* nGene > 500
+* log10GenesPerUMI > 0.8
+* mitoRatio < 0.1
+
+```{r}
+# Filter out low quality reads using selected thresholds - these will change with experiment
+keep <- metrics %>%
+  dplyr::filter(nUMI > 500 , 
+                nGene > 500,
+                log10GenesPerUMI > 0.8,
+                mitoRatio < 0.5,
+                ) %>% 
+  pull(cells)
+
+# Subset the cells to only include those that meet the thresholds specified
+se_c <- se[ ,keep]
+
+# Save subset to new metrics variable
+metrics_clean <- colData(se_c) %>%
+ as.data.frame()
+
+# Save cleaned single-cell experimnet as .RData to load at any time
+saveRDS(se_c, file = "se_filtered.rds")
+saveRDS(metrics_clean, "metrics_clean.rds")
+```
+
+
+# Re-assess QC metrics
+
+After performing the filtering, it’s recommended to look back over the metrics to make sure that your data matches your expectations and is good for downstream analysis.
+
+# Cell counts
+
+After filtering, we should not have more cells than we sequenced. Generally we aim to have about the number we sequenced or a bit less. With 2,700 cells sequenced, we would expect to return around this number of cells. We have about 2,480 returned after filtering, which is pretty good.
+
+```{r}
+## Cell counts
+metrics_clean %>% 
+  ggplot(aes(x=sample, fill = sample)) + 
+  geom_bar() + 
+  ggtitle("NCells")
+```  
+
+# Cells versus genes
+
+```{r}
+# Cells versus genes
+metrics_clean %>% 
+  ggplot(aes(x=sample, y=log10(nGene), fill = sample)) + 
+  geom_boxplot() + 
+  ggtitle("NCells vs NGenes")  
+```
+
+
+
+# UMI counts
+
+The filtering using a threshold of 500 has removed the cells with low numbers of UMIs from the analysis.
+
+```{r}
+# UMI counts
+metrics_clean %>% 
+  ggplot(aes(fill=sample, x=nUMI)) + 
+  geom_density() + 
+  scale_x_log10() + 
+  ylab("log10 cell density") +
+  geom_vline(xintercept = 500)
+```
+
+# UMIs vs genes
+
+```{r}
+# UMIs vs genes
+metrics_clean %>% 
+  ggplot(aes(x=nUMI, y=nGene, color=mitoRatio)) + 
+  geom_point() + 
+  stat_smooth(method=lm) +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  geom_vline(xintercept = 800) +
+  facet_wrap(~sample)
+```
