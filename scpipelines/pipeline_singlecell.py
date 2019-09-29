@@ -315,6 +315,8 @@ def runSalmonAlevin(infiles, outfile):
         reads_fastq = " ".join(fastqfiles[1]) 
 
     outfolder = outfile.rsplit('/',2)[0]
+
+    salmon_options = PARAMS['salmon_run_options']
   
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
@@ -323,7 +325,7 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
     job_memory = PARAMS["salmon_job_memory"]
-    job_threads = 5
+    job_threads = PARAMS['salmon_threads']
     P.run(statement)
 
 #############################

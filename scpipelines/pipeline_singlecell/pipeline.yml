@@ -103,6 +103,8 @@ salmon:
   # for a list of more salmon options
   index_options: ''
 
+  run_options: ''
+
   # Wether to run alevin
   alevin: 1
 
