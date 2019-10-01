@@ -52,15 +52,15 @@ Operating System :: MacOS
 
 setup(
     # package information
-    name='single_cell',
+    name='scflow',
     version=version,
-    description='single_cell : cribbslab single cell pipeline',
+    description='scflow : cribbslab single cell pipeline',
     author='Adam Cribbs',
     author_email='adam.cribbs@ndorms.ox.ac.uk',
     license="MIT",
     platforms=["any"],
     keywords="computational genomics",
-    long_description='single_cell : cribbslab single cell pipeline',
+    long_description='scflow : cribbslab single cell pipeline',
     classifiers=[_f for _f in classifiers.split("\n") if _f],
     url="",
     # package contents
@@ -68,7 +68,7 @@ setup(
     package_dir=cribbslab_package_dirs,
     include_package_data=True,
     entry_points={
-        "console_scripts": ["single_cell = scpipelines.cgatsc:main"]
+        "console_scripts": ["scflow = scpipelines.cgatsc:main"]
     },
     # other options
     zip_safe=False,
