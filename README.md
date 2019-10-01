@@ -1,4 +1,4 @@
-# single-cell
+# scflow
 
 <p align="left">
 	<a href='https://single-cell.readthedocs.io/en/latest/?badge=latest'>
