@@ -8,7 +8,7 @@ from distutils.version import LooseVersion
 if LooseVersion(setuptools.__version__) < LooseVersion('1.1'):
     print("Version detected:", LooseVersion(setuptools.__version__))
     raise ImportError(
-        "the CGAT code collection requires setuptools 1.1 higher")
+        "the scflow requires setuptools 1.1 higher")
 
 ########################################################################
 ########################################################################
@@ -32,7 +32,7 @@ if major < 3:
     raise SystemExit("""Requires Python 3 or later.""")
 
 cribbslab_packages = find_packages()
-cribbslab_package_dirs = {'pipelines': 'pipelines'}
+cribbslab_package_dirs = {'scpipelines': 'scpipelines'}
 
 ##########################################################
 ##########################################################
