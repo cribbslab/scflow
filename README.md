@@ -25,16 +25,16 @@ You can install scflow using pip, this will only install the package without any
 The preferred method for installation is through conda. Currently this installation is still in working progress. Preferably the 
 installation should be in a seperate environment::
 
-    conda create -n single-cell -c cgat single-cell
-    conda activate single-cell
-    single_cell --help
+    conda create -n scflow -c cgat scflow
+    conda activate scflow
+    scflow --help
    
 ### Manual installation
 
 The respository can also be installed manually, but dependancies will need to be installed seperately::
 
     python setup.py install
-    single_cell --help
+    scflow --help
     
 ## Usage
 
