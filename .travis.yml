@@ -4,7 +4,8 @@ os:
   - osx
   - linux
 
-osx_image: xcode10.1
+brew_packages:
+- gcc
 
 # use container-based infrastructure on Travis
 # http://docs.travis-ci.com/user/workers/container-based-infrastructure/
