@@ -3,11 +3,11 @@ title: "Combined DMSO j4 analysis"
 output: html_document
 ---
 
-# Experiment plan
+My main reason for using Seurat over other single-cell software is that it contains an implimentation of Cononical Correlation Alignment (CCA) that allows different datasets to be merged.
 
-This experiment was to evaluate the effect of control and drug treated cells.  
+In this Rmarkdown we will alignt two sets of data, 1000 PBMC cells that were ran using a version 3 10X kit and one that was ran using the v2 kit.
 
-Cells were  harvested and a single-cell experiment was then performed using the drop-seq method.
+# Import the packages
 
 ```{r, include=FALSE}
 knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
@@ -18,8 +18,6 @@ library(cowplot)
 library(org.Hs.eg.db)
 library(dplyr)
 library("AnnotationDbi")
-library(DT)
-library(biomaRt)
 library(EnsDb.Hsapiens.v75)
 ```
 
@@ -30,31 +28,31 @@ The experiment was analysed using [cgat-developer](https://github.com/cgat-devel
 Next I quanitified the experssion using [Slamon Alevin method](https://salmon.readthedocs.io/en/latest/alevin.html).  
 
 ```{r}
-txi.control <- tximport("salmon.dir//alevin/quants_mat.gz", type="alevin")
-d <- txi.control$counts
+txi.pbmc1 <- tximport("salmon.dir/pbmc_1k_v2_S1/alevin/quants_mat.gz", type="alevin")
+d <- txi.pbmc1$counts
 
 SYMBOL <- mapIds(EnsDb.Hsapiens.v75,keys=rownames(d),column="SYMBOL",keytype="GENEID",multiVals="first")
 rownames(d) <- make.unique(ifelse(is.na(SYMBOL), rownames(d), SYMBOL))
 
-control <- CreateSeuratObject(counts = d, min.cells = 3, min.features = 200, project = "CTRL")
-control$stim <- "CTRL"
+pbmc1 <- CreateSeuratObject(counts = d, min.cells = 3, min.features = 200, project = "pbmc1")
+pbmc1$cells <- "pbmc1"
 
-txi.treatment <- tximport("salmon.dir//alevin/quants_mat.gz", type="alevin")
-d <- txi.treatment$counts
+txi.pbmc2 <- tximport("salmon.dir/pbmc_1k_v3_S1/alevin/quants_mat.gz", type="alevin")
+d <- txi.pbmc2$counts
 
 SYMBOL <- mapIds(EnsDb.Hsapiens.v75,keys=rownames(d),column="SYMBOL",keytype="GENEID",multiVals="first")
 rownames(d) <- make.unique(ifelse(is.na(SYMBOL), rownames(d), SYMBOL))
 
 
-treatment <- CreateSeuratObject(counts = d, min.cells = 3, min.features = 200, project = "j4")
-treatment$stim <- "j4"
+pbmc2 <- CreateSeuratObject(counts = d, min.cells = 3, min.features = 200, project = "pbmc2")
+pbmc2$cells <- "pbmc2"
 
 ```
 
 # Assess QC metrics {.tabset .tabset-fade}
 
 
-## Control features
+## pbmc1 features
 
 In the example below, we visualize QC metrics, and use these to filter cells.
 
@@ -62,42 +60,42 @@ We filter cells that have unique feature counts over 2,500 or less than 200
 We filter cells that have >5% mitochondrial counts
 
 ```{r}
-control[["percent.mt"]] <- PercentageFeatureSet(control, pattern = "^MT-")
-VlnPlot(control, c("nFeature_RNA", "nCount_RNA", "percent.mt"))
+pbmc1[["percent.mt"]] <- PercentageFeatureSet(pbmc1, pattern = "^MT-")
+VlnPlot(pbmc1, c("nFeature_RNA", "nCount_RNA", "percent.mt"))
 ```
 
 ```{r}
-plot1 <- FeatureScatter(control, feature1 = "nCount_RNA", feature2 = "percent.mt")
-plot2 <- FeatureScatter(control, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 <- FeatureScatter(pbmc1, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(pbmc1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 CombinePlots(plots = list(plot1, plot2))
 ```
 
-## Treatment features
+## pbmc2 features
 
 ```{r}
-treatment[["percent.mt"]] <- PercentageFeatureSet(treatment, pattern = "^MT-")
-VlnPlot(treatment, c("nFeature_RNA", "nCount_RNA", "percent.mt"))
+pbmc2[["percent.mt"]] <- PercentageFeatureSet(pbmc2, pattern = "^MT-")
+VlnPlot(pbmc2, c("nFeature_RNA", "nCount_RNA", "percent.mt"))
 ```
 
 ```{r}
-plot1 <- FeatureScatter(treatment, feature1 = "nCount_RNA", feature2 = "percent.mt")
-plot2 <- FeatureScatter(treatment, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 <- FeatureScatter(pbmc2, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(pbmc2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 CombinePlots(plots = list(plot1, plot2))
 ```
 
 # Filter the cells
 
 ```{r}
-control <- subset(control, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
-treatment <- subset(treatment, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+pbmc1 <- subset(pbmc1, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 25)
+pbmc2 <- subset(pbmc2, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 25)
 
 ```
 
 # Normalise the data
 
 ```{r}
-control <- NormalizeData(control)
-treatment <- NormalizeData(treatment)
+pbmc1 <- NormalizeData(pbmc1)
+pbmc2 <- NormalizeData(pbmc2)
 ```
 
 # Identify highly variable genes
@@ -107,16 +105,17 @@ We next calculate a subset of features that exhibit high cell-to-cell variation 
 The procedure in Seurat3 is described in detail here, and improves on previous versions by directly modeling the mean-variance relationship inherent in single-cell data, and is implemented in the FindVariableFeatures function. By default, we return 2,000 features per dataset. These will be used in downstream analysis, like PCA.
 
 ```{r}
-control <- FindVariableFeatures(control, selection.method = "disp", nfeatures = 2000)
-treatment <- FindVariableFeatures(treatment, selection.method = "disp", nfeatures = 2000)
+pbmc1 <- FindVariableFeatures(pbmc1, selection.method = "disp", nfeatures = 2000)
+pbmc2 <- FindVariableFeatures(pbmc2, selection.method = "disp", nfeatures = 2000)
 
 # Identify the 10 most highly variable genes
-top10 <- head(VariableFeatures(control), 10)
+top10 <- head(VariableFeatures(pbmc1), 10)
 
 # plot variable features with and without labels
-plot1 <- VariableFeaturePlot(control)
+plot1 <- VariableFeaturePlot(pbmc1)
 plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
-CombinePlots(plots = list(plot1, plot2))
+plot1
+plot2
 ```
 
 # Integrate both datasets 
@@ -124,7 +123,7 @@ CombinePlots(plots = list(plot1, plot2))
 Next I will use Seurat to integrate the datasets together into one object so I can compare clusters between the two datasets.
 
 ```{r}
-integration <- FindIntegrationAnchors(object.list = list(control, j4, j5, dmso), dims=1:20)
+integration <- FindIntegrationAnchors(object.list = list(pbmc1, pbmc2), dims=1:20)
 to_integrate <- rownames(x = integration)
 integration <- IntegrateData(anchorset = integration, dims = 1:20, features.to.integrate = to_integrate)
 
@@ -150,7 +149,7 @@ integration <- ScaleData(integration)
 
 ```{r}
 integration <- RunPCA(integration, npcs = 30)
-DimPlot(integration, reduction = "pca", split.by = "stim")
+DimPlot(integration, reduction = "pca", split.by = "cells")
 ```
 
 # UMAP
@@ -170,8 +169,6 @@ plot_grid(p1,p2)
 ```{r}
 DimPlot(integration, reduction = "umap", split.by = "stim")
 ```
-
-## Conclusion of clustering
 
 # Identify conserved cell type markers {.tabset .tabset-fade}
 
@@ -234,46 +231,23 @@ Because of the low capture efficiency seen in the dataset, it has been quite cha
 integration$celltype.stim <- paste(Idents(integration), integration$stim, sep = "_")
 integration$celltype <- Idents(integration)
 Idents(integration) <- "celltype.stim"
-zero.output <- FindMarkers(integration, ident.1 = "0_j4", ident.2 = "0_dmso", verbose = FALSE)
+zero.output <- FindMarkers(integration, ident.1 = "0_pbmc1", ident.2 = "0_pbmc2", verbose = FALSE)
 datatable(zero.output)
 ```
 
 ## Cluster 1
 
 ```{r}
-one.output <- FindMarkers(integration, ident.1 = "1_j4", ident.2 = "1_dmso", verbose = FALSE)
+one.output <- FindMarkers(integration, ident.1 = "1_pbmc1", ident.2 = "1_pbmc2", verbose = FALSE)
 datatable(one.output)
 ```
 
-## Cluster 2
-
-```{r}
-two.output <- FindMarkers(integration, ident.1 = "2_j4", ident.2 = "2_dmso", verbose = FALSE)
-datatable(two.output)
-```
-
-## Cluster 3
-
-```{r}
-three.output <- FindMarkers(integration, ident.1 = "3_j4", ident.2 = "3_dmso", verbose = FALSE)
-datatable(three.output)
-```
-
-## Cluster 4
-
-```{r}
-four.output <- FindMarkers(integration, ident.1 = "4_j4", ident.2 = "4_dmso", verbose = FALSE)
-datatable(three.output)
-```
 
 
 # Overlap between all outputs
 
 ```{r}
 output <- intersect(rownames(zero.output),rownames(one.output))
-output <- intersect(output,rownames(two.output))
-output <- intersect(output,rownames(three.output))
-output <- intersect(output,rownames(four.output))
 output
 ```
 

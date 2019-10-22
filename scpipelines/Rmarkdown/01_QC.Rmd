@@ -3,20 +3,25 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+The first notebook will introduce you the quality control concepts that will be critical for detecting the "good" cells from the "bad" cells. QC is the most critical step in any single-cell workflow and you should ideally spend at least 70% of your time on quality checking the data.
 
+We have a saying, "crap in crap out". Bioinformatic software will always give you an answer no matter the quality of the data. You need to be smart about what is fed into the software so you can be confident of the biological interpretability.
+
+The first thing we will do is load the required packages:
 
 ```{r}
-library(Seurat)
 library(tidyverse)
 library(SingleCellExperiment)
 library(Matrix)
 library(AnnotationHub)
 library(ensembldb)
-library(cowplot)
 library(ggplot2)
 library(scales)
 library(tximport)
 ```
+
+
+Next we will load the counts data into memory using the tximport package. In addition to this we will load the barcodes generated from salmon and will import a list of genes.
 
 ```{r}
 # Import count matrix
@@ -29,11 +34,13 @@ genes <- read_tsv("salmon.dir/pbmc_1k_v3_S1/alevin/quants_mat_cols.txt", col_nam
 
 # Convert to a sparse matrix for more efficient computation
 
+Single-cell data suffers from having a lot of missing data (aks zero values). Therefore, if we were to load all of the data into memory and performed operations on that data it would take longer and be momeory inefficient. Moreover, when you start to work on higher dimensional data your machine may run out of memory. Therefore, we convert our data into a sparse matrix
+
 ```{r}
 counts <- as(txi$counts, "dgCMatrix")
 ```
 
-Creating metadata object with some QC metrics
+# Creating metadata object with some QC metrics
 
 Now that we have a counts matrix with the genes as row names and cells as columns, we can create our metadata with information about the different metrics to evaluate during quality control assessment.
 
@@ -70,13 +77,13 @@ and the sample names. However, with this dataset we only have a single sample.
 
 # Add sample name associated with each cell to metadata 
 
-we only have one sample, so more important when you have multiple samples
+we only have one sample, so this is only really important when you have multiple samples
 
 ```{r}
 metadata$sample <- "pbmcs"
 ```
 
-Using annotations file to generate additional QC metrics
+# Using annotations file to generate additional QC metrics
 
 We will be using AnnotationHub, which allows accession to a wide variety of online databases and other resources, to query Ensembl annotations made available through ensembldb. Ensembldb is a package that retrieves annotation for the databases directly from the Ensembl Perl API.
 
@@ -122,13 +129,15 @@ annotations <- annotations %>%
 
 # Extract IDs for mitochondrial genes
 
+Determining mitochrondrial content is an important feature that wll allow us to detect cells where the capture efficiency of the RNA is low. We can use this to filter bad cells that will have little to no MT genes or too high MT content.
+
 ```{r}
 mt <- annotations %>% 
   dplyr::filter(seq_name == "MT") %>%
   dplyr::pull(gene_id)
 ```
 
-Adding metrics to metadata
+# Adding metrics to metadata
 
 Now that we have information about which genes are mitochondrial, we can quanitify whether we have contamination.
 
@@ -147,7 +156,7 @@ metadata$mitoRatio <- metadata$mtUMI/metadata$nUMI
 
 This is very important to get correct as any "bad cells" will ultimately end up ruining your downstream analysis.
 
-Initial filtering
+## Initial filtering
 
 Prior to assessing our metrics, we are going to perform a very minimal filtering of those cells with less than 100 UMIs to get rid of the cells that are clearly junk, containing less than 100 UMIs.
 
@@ -175,7 +184,8 @@ se <- SingleCellExperiment(assays=list(counts=counts),
 saveRDS(se, "raw_se.rds")
 ```
 
-Assessing the quality metrics
+# Assessing the quality metrics
+
 Now that we have generated the various metrics to assess, we can explore them with visualizations. We will create our metrics file from the metadata stored in the single cell experiments.
 
 ```{r}
@@ -255,7 +265,7 @@ metrics %>%
 ```
 
 
-Mitochondrial counts ratio
+# Mitochondrial counts ratio
 
 This metric can identify whether there is a large amount of mitochondrial contamination from dead or dying cells. Poor quality samples for mitochondrial counts would have larger peaks above the 0.1 mitochondrial ratio mark, unless it is expected based on sample type.
 

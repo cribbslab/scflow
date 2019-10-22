@@ -3,6 +3,8 @@ title: "QC with scater"
 output: html_document
 ---
 
+In this quality control Rmarkdown we will go through how to perform quality analysis using the scater package, that automates a lot of the proces involved in measuring quality statistics.
+
 ```{r}
 knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
 library(scater)
@@ -41,17 +43,23 @@ sce <- runUMAP(sce)
 
 # Plot PCA
 
+Scater allows you to plots PCA, to assess the presence of batch effects
+
 ```{r}
 plotPCA(sce)
 ```
 
 # Plot UMAP
 
+UMAP projections are also a nice visual aid to identify irregularities in the data.
+
 ```{r}
 plotUMAP(sce)
 ```
 
 # Calulate metrics
+
+Quality metrics are calculated for you during this step.
 
 ```{r}
 sce <- calculateQCMetrics(sce)
@@ -67,11 +75,14 @@ colnames(colData(sce))
 
 # View the QC feature metrics
 
+Feature metrics can be accessed using rowData()
+
 ```{r}
 colnames(rowData(sce))
 ```
 
 # Quality control plots
+
 
 ```{r}
 plotScater(sce, nfeatures = 300, exprs_values = "counts")

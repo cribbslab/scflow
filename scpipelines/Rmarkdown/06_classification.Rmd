@@ -20,21 +20,83 @@ Today because of time constraints we will only go through how to predict cells, 
 
 We will use the log-transformed (size-factor normalized) matrices as query datasets, where each row refers to a gene and each column a cell.The output can then be combined within the seurat object and visualised.
 
-```{r setup, include=FALSE}
-library(scClassify)
-
-# Load the pre-trained classifier
-classifier <- readRDS("jointPBMCClass.rds")
-
+```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
-
-
-load("data/scClassify_example.rda")
-wang_cellTypes <- scClassify_example$wang_cellTypes
-exprsMat_wang_subset <- scClassify_example$exprsMat_wang_subset
-exprsMat_wang_subset <- as(exprsMat_wang_subset, "dgCMatrix")
+library(scClassify)
+library(Matrix)
+library(Seurat)
+library(scater)
 ```
 
+# Load the classifier
 
+Here we will take a preloaded classifier andfor PBMCs that we will use to classify our cells in our dataset.
 
+```{r}
+# Load the pre-trained classifier
+classifier <- readRDS("jointPBMCClass.rds")
+```
+
+```{r}
+# Import single cell experiment class object from 
+sce <- readRDS("se_filtered.rds")
+
+# To access metadata
+#colData(sce)
+# To access gene meta data
+#rowData(sce)
+# To access sparse count matric
+#assay(sce)
+```
+
+# Generate logcounts
+
+We will next generate logcounts as this is a pre-requisit for running scClassify.This ist stored in the sce object as logcounts
+
+```{r}
+counts <- as.matrix(assay(sce))
+libsizes <- colSums(counts)
+size.factors <- libsizes/mean(libsizes)
+# Also cast to a sparse matrix
+logcounts(sce) <- Matrix(log2(t(t(counts)/size.factors) + 1), sparse=TRUE)
+```
+
+# Classify cells
+
+Next, we perform predict_scClassify with our pretrained model trainRes = trainClassExample to predict the cell types of our query data matrix exprsMat_wang_subset_sparse. Here, we used pearson and spearman as similarity metrics.
+
+```{r}
+pred_res <- predict_scClassify(exprsMat_test = logcounts(sce),
+                               trainRes = classifier@listData$`PBMC_tenX(V3)`,
+                               algorithm = "WKNN",
+                               features = c("limma"),
+                               similarity = c("pearson", "spearman"),
+                               prob_threshold = 0.7,
+                               verbose = TRUE)
+
+table(pred_res$pearson_WKNN_limma$predRes)
+```
+
+# Predictions now added as meta data into experiment
+
+The predictions can now be added into the meta data or exported to be added as input to 
+
+```{r}
+sce$celltypes <-  pred_res$ensembleRes["cellTypes"]
+
+colData(sce)
+```
+
+# Convert sce to Seurat
+
+SingleCellExperiment is a class for storing single-cell experiment data, created by Davide Risso, Aaron Lun, and Keegan Korthauer, and is used by many Bioconductor analysis packages. Here we demonstrate converting the sce object to Seurat object so we can plot the expression of the data in a UMAP.
+
+```{r}
+# First run PCA
+sce <- scater::runPCA(sce)
+sce <- scater::runUMAP(sce)
+sce.seurat <- as.Seurat(sce, counts = "counts", data = "logcounts")
+
+DimPlot(sce.seurat, reduction = "UMAP", group.by ="cellTypes")
+```
 

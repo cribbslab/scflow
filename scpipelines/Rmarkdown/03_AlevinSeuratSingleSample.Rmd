@@ -11,7 +11,7 @@ This is an Rmarkdown document showing an implimentation of Seurat which was adap
 
 This experiment was to evaluate the effect of control and drug treated cells.  
 
-Cells were  harvested and a single-cell experiment was then performed using the drop-seq method.
+Cells were harvested and a single-cell experiment was then performed using the drop-seq method.
 
 ```{r, include=FALSE}
 knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
@@ -29,9 +29,19 @@ library(EnsDb.Hsapiens.v75)
 
 # Import the data 
 
-The experiment was analysed using [cgat-developer](https://github.com/cgat-developers/cgat-core) pipelines for quality of sequencing. Read quality looked good. 
+The experiment was analysed using [cgat-developer](https://github.com/cgat-developers/cgat-core) pipeline framework. The pipeline used is [scflow](https://github.com/Acribbs/scflow).
 
-Next I quanitified the experssion using [Slamon Alevin method](https://salmon.readthedocs.io/en/latest/alevin.html).  
+scflow can be installed using pip or through conda:
+
+```{python}
+pip install scflow
+
+# or
+
+conda install -c cgat scflow
+```
+
+Read quality looked good and then expression was then quanitified  using the [Slamon Alevin method](https://salmon.readthedocs.io/en/latest/alevin.html).  
 
 ```{r}
 txi.control <- tximport("salmon.dir/pbmc_1k_v3_S1/alevin/quants_mat.gz", type="alevin")
@@ -54,6 +64,8 @@ control$stim <- "CTRL"
 
 ## Control features
 
+We have previously shown that the filtering is a very important step in single-cell analysis data. We previously implimented our own filtering startegy and also used scater. However, Seurat also has basic quality control steps. However, I would not recomend using Scater to filter the data because I dont think the filtering is as robust as we have just performed in the previous Rmarkdown scripts. 
+
 In the example below, we visualize QC metrics, and use these to filter cells.
 
 We filter cells that have unique feature counts over 2,500 or less than 200
@@ -70,9 +82,9 @@ plot2 <- FeatureScatter(control, feature1 = "nCount_RNA", feature2 = "nFeature_R
 CombinePlots(plots = list(plot1, plot2))
 ```
 
-
-
 # Filter the cells
+
+Filtering is performed using the Seurat::subset function.
 
 ```{r}
 control <- subset(control, subset = nFeature_RNA > 1000 & nFeature_RNA < 5000 & percent.mt < 20)
@@ -80,6 +92,8 @@ control <- subset(control, subset = nFeature_RNA > 1000 & nFeature_RNA < 5000 & 
 ```
 
 # Normalise the data
+
+The single-cell counts data should be normalised before performing any further downstream analyses. This is so that cell to cell comparrisons can be performed. There are a number of normalisation methods available and you can see those that are available using ?NormalizeData.
 
 ```{r}
 control <- NormalizeData(control)
@@ -99,7 +113,8 @@ top10 <- head(VariableFeatures(control), 10)
 # plot variable features with and without labels
 plot1 <- VariableFeaturePlot(control)
 plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
-CombinePlots(plots = list(plot1, plot2))
+plot1
+plot2
 ```
 
 
@@ -127,6 +142,7 @@ In Macosko et al, we implemented a resampling test inspired by the JackStraw pro
 The JackStrawPlot function provides a visualization tool for comparing the distribution of p-values for each PC with a uniform distribution (dashed line). ‘Significant’ PCs will show a strong enrichment of features with low p-values (solid curve above the dashed line). In this case it appears that there is a sharp drop-off in significance after the first 12-13 PCs.
 
 ```{r}
+control <- RunPCA(control, npcs = 20)
 control <- JackStraw(control, num.replicate = 100)
 control <- ScoreJackStraw(control, dims = 1:20)
 JackStrawPlot(control, dims = 1:20)
@@ -148,12 +164,16 @@ We advise users to err on the higher side when choosing this parameter. For exam
 
 # PCA
 
+PCA plots can be important for spotting batch effects of irregularities within the data.
+
 ```{r}
 control <- RunPCA(control, npcs = 10)
 DimPlot(control, reduction = "pca", split.by = "stim")
 ```
 
 # UMAP
+
+UMAP visualisation is the recomeded high-dimensional visualisation methods for visualisaing clusters wihtin the data.
 
 ```{r}
 control <- RunUMAP(control, reduction = "pca", dims = 1:10)
@@ -172,8 +192,6 @@ plot_grid(p1,p2)
 ```{r}
 DimPlot(control, reduction = "umap", split.by = "stim")
 ```
-
-
 
 # Feature plot
 
@@ -202,4 +220,10 @@ head(cluster1.markers, n = 5)
 control.markers <- FindAllMarkers(control, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 control.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_logFC)
 
+```
+
+# Save the Seurat object
+
+```{r}
+saveRDS(control, file="seurat_object.rds")
 ```
