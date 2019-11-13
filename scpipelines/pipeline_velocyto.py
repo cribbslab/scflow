@@ -92,9 +92,10 @@ def index_genome_star(infiles, outfile):
     """
 
     gtffile, genome = infiles
+    threads = PARAMS['star_threads']
 
     statement = """STAR
-                   --runThreadN 16 
+                   --runThreadN %(threads)s 
                    --runMode genomeGenerate 
                    --genomeDir star_index.dir/
                    --genomeFastaFiles %(genome)s"""
@@ -286,17 +287,18 @@ def bam_to_fastq(infile, outfile):
            r"star.dir/\1_Aligned.out.bam")
 def star_mapping(infiles, outfile):
     """
-    Perform star mapping
+    Perform star mapping. Ouputs unsorted BAM file.
     """
 
     fastq, gtffile, genome = infiles
     dirs, files = os.path.split(outfile)
     name = fastq.replace("fastq_file.dir/","")
     outfile_name = name.replace(".fastq","")
+    threads = PARAMS['star_threads']
 
     statement = """STAR 
                    --readFilesIn %(fastq)s 
-                   --runThreadN 12 
+                   --runThreadN %(threads)s 
                    --genomeDir star_index.dir
                    --outSAMmultNmax 1
                    --outSAMunmapped Within
@@ -503,7 +505,7 @@ def CB_sort(infile, outfile):
 def velocyto_run_dropest(infiles, outfile):
     """
     Generate a loom file using BAM file preprocessed with dropEst tools.
-    """
+    """ 
 
     bamfile, gtf_file = infiles
     output_folder = os.path.split(bamfile)[0]
@@ -542,7 +544,7 @@ def loom_analysis(infile, outfile):
 
     statement = """ Rscript %(R_ROOT)s/velocyto_analysis.R -l %(infile)s """
 
-    job_memory = '10G'
+    job_memory = '20G'
    
     P.run(statement)
 
