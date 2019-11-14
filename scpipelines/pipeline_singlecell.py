@@ -120,10 +120,9 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 
 
 @mkdir('geneset.dir')
-@transform(PARAMS['geneset'],
-           regex("(\S+).gtf.gz"),
-           r"geneset.dir/\1.fa")
-def buildReferenceTranscriptome(infile, outfile):
+@merge([PARAMS['geneset'], PARAMS['geneset2']],
+           r"geneset.dir/geneset_all.fa")
+def buildReferenceTranscriptome(infiles, outfile):
     '''
     Builds a reference transcriptome from the provided GTF geneset - generates
     a fasta file containing the sequence of each feature labelled as
@@ -140,18 +139,36 @@ def buildReferenceTranscriptome(infile, outfile):
     outfile: str
         path to output file
     '''
-
-    genome_file = os.path.abspath(
+    geneset1, geneset2 = infiles
+    genome_file1 = os.path.abspath(
         os.path.join(PARAMS["genome_dir"], PARAMS["genome"] + ".fa"))
+    genome_file2 = os.path.abspath(
+        os.path.join(PARAMS["genome_dir2"], PARAMS["genome2"] + ".fa"))
 
-    statement = '''
-    zcat %(infile)s |
-    awk '$3=="exon"'|
-    cgat gff2fasta
-    --is-gtf --genome-file=%(genome_file)s --fold-at=60 -v 0
-    --log=%(outfile)s.log > %(outfile)s;
-    samtools faidx %(outfile)s
-    '''
+    if PARAMS['mixed_species']:
+           statement = '''
+                       cat %(genome_file1)s %(genome_file2)s > genome.fa &&
+                       zcat %(geneset1)s %(geneset2)s |
+                       awk '$3=="exon"'|
+                       cgat gff2fasta
+                       --is-gtf
+                       --genome-file=genome.fa
+                       --fold-at=60 -v 0
+                       --log=%(outfile)s.log > %(outfile)s &&
+                       samtools faidx %(outfile)s
+                       && rm -rf genome.fa
+                       '''
+    else:
+           statement = '''
+                       zcat %(geneset1)s |
+                       awk '$3=="exon"'|
+                       cgat gff2fasta
+                       --is-gtf
+                       --genome-file=%(genome_file)s
+                       --fold-at=60 -v 0
+                       --log=%(outfile)s.log > %(outfile)s &&
+                       samtools faidx %(outfile)s
+                       '''
 
     P.run(statement)
 
