@@ -146,20 +146,28 @@ def buildReferenceTranscriptome(infiles, outfile):
         os.path.join(PARAMS["genome_dir2"], PARAMS["genome2"] + ".fa"))
 
     if PARAMS['mixed_species']:
-           statement = '''
-                       cat %(genome_file1)s %(genome_file2)s > genome.fa &&
-                       zcat %(geneset1)s %(geneset2)s |
+        tmp1 = P.get_temp_filename('.')
+        tmp2 = P.get_temp_filename('.')
+        statement = '''
+                       zcat %(geneset1)s |
                        awk '$3=="exon"'|
                        cgat gff2fasta
                        --is-gtf
-                       --genome-file=genome.fa
+                       --genome-file=%(genome_file1)s
                        --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(outfile)s &&
+                       --log=%(outfile)s.log > %(tmp1)s &&
+                       zcat %(geneset2)s |
+                       awk '$3=="exon"'|
+                       cgat gff2fasta
+                       --is-gtf
+                       --genome-file=%(genome_file2)s
+                       --fold-at=60 -v 0
+                       --log=%(outfile)s.log > %(tmp2)s &&
+                       cat %(tmp1)s %(tmp2)s > %(outfile)s &&
                        samtools faidx %(outfile)s
-                       && rm -rf genome.fa
                        '''
     else:
-           statement = '''
+        statement = '''
                        zcat %(geneset1)s |
                        awk '$3=="exon"'|
                        cgat gff2fasta
@@ -171,6 +179,9 @@ def buildReferenceTranscriptome(infiles, outfile):
                        '''
 
     P.run(statement)
+    if PARAMS['mixed_species']:
+        os.unlink(tmp1)
+        os.unlink(tmp2)
 
 @active_if(PARAMS['salmon_alevin'])
 @transform(buildReferenceTranscriptome,
