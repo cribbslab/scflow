@@ -8,6 +8,22 @@
 genome: hg38
 genome_dir: /ifs/mirror/genomes/index/
 
+# Provide a reference geneset (suffix= ".gtf.gz")
+# Geneset should be located in working directory
+geneset: human_geneset_all.gtf.gz
+
+# Specify if there is a mixed species input (i.e. mouse and human)
+mixed_species: 0
+
+# If there is a mixed specied input specify the extra genome (in addition to the
+# one already specified)
+genome2: 
+genome_dir2: /ifs/mirror/genomes/index/
+
+# If there is a mixed specied input specify a reference geneset (suffix= ".gtf.gz")
+# Geneset should be located in working directory
+geneset2:
+
 # Location of the single cell directory
 sc_dir: '/ifs/projects/adam/single-cell-test/'
 
@@ -20,9 +36,6 @@ copyright: Cribbs Group, Botnar Research Centre (2019)
 # Location of the data. 0 for the current directory
 data: 0
 
-# Provide a reference geneset (suffix= ".gtf.gz")
-# Geneset should be located in working directory
-geneset: geneset_all.gtf.gz
 
 ################################################################
 ## merge options
@@ -90,6 +103,8 @@ salmon:
 
   # Length of kmer for indexing
   kmer: 31
+
+  job_memory: 30G
 
   # Number of threads that can be used by alevin to perform the quantification
   threads: 10

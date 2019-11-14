@@ -120,10 +120,9 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 
 
 @mkdir('geneset.dir')
-@transform(PARAMS['geneset'],
-           regex("(\S+).gtf.gz"),
-           r"geneset.dir/\1.fa")
-def buildReferenceTranscriptome(infile, outfile):
+@merge([PARAMS['geneset'], PARAMS['geneset2']],
+           r"geneset.dir/geneset_all.fa")
+def buildReferenceTranscriptome(infiles, outfile):
     '''
     Builds a reference transcriptome from the provided GTF geneset - generates
     a fasta file containing the sequence of each feature labelled as
@@ -140,20 +139,49 @@ def buildReferenceTranscriptome(infile, outfile):
     outfile: str
         path to output file
     '''
-
-    genome_file = os.path.abspath(
+    geneset1, geneset2 = infiles
+    genome_file1 = os.path.abspath(
         os.path.join(PARAMS["genome_dir"], PARAMS["genome"] + ".fa"))
 
-    statement = '''
-    zcat %(infile)s |
-    awk '$3=="exon"'|
-    cgat gff2fasta
-    --is-gtf --genome-file=%(genome_file)s --fold-at=60 -v 0
-    --log=%(outfile)s.log > %(outfile)s;
-    samtools faidx %(outfile)s
-    '''
+    if PARAMS['mixed_species']:
+        genome_file2 = os.path.abspath(
+        os.path.join(PARAMS["genome_dir2"], PARAMS["genome2"] + ".fa"))
+        tmp1 = P.get_temp_filename('.')
+        tmp2 = P.get_temp_filename('.')
+        statement = '''
+                       zcat %(geneset1)s |
+                       awk '$3=="exon"'|
+                       cgat gff2fasta
+                       --is-gtf
+                       --genome-file=%(genome_file1)s
+                       --fold-at=60 -v 0
+                       --log=%(outfile)s.log > %(tmp1)s &&
+                       zcat %(geneset2)s |
+                       awk '$3=="exon"'|
+                       cgat gff2fasta
+                       --is-gtf
+                       --genome-file=%(genome_file2)s
+                       --fold-at=60 -v 0
+                       --log=%(outfile)s.log > %(tmp2)s &&
+                       cat %(tmp1)s %(tmp2)s > %(outfile)s &&
+                       samtools faidx %(outfile)s
+                       '''
+    else:
+        statement = '''
+                       zcat %(geneset1)s |
+                       awk '$3=="exon"'|
+                       cgat gff2fasta
+                       --is-gtf
+                       --genome-file=%(genome_file1)s
+                       --fold-at=60 -v 0
+                       --log=%(outfile)s.log > %(outfile)s &&
+                       samtools faidx %(outfile)s
+                       '''
 
     P.run(statement)
+    if PARAMS['mixed_species']:
+        os.unlink(tmp1)
+        os.unlink(tmp2)
 
 @active_if(PARAMS['salmon_alevin'])
 @transform(buildReferenceTranscriptome,
@@ -232,6 +260,21 @@ def getTranscript2GeneMap(outfile):
                     transcript2gene_dict[entry.transcript_id]))
         else:
             transcript2gene_dict[entry.transcript_id] = entry.gene_id
+
+    if PARAMS['mixed_species']:
+        iterator = GTF.iterator(iotools.open_file(PARAMS['geneset2']))
+
+        for entry in iterator:
+
+            # Check the same transcript_id is not mapped to multiple gene_ids!
+            if entry.transcript_id in transcript2gene_dict:
+                if not entry.gene_id == transcript2gene_dict[entry.transcript_id]:
+                    raise ValueError('''multipe gene_ids associated with
+                                     the same transcript_id %s %s''' % (
+                            entry.gene_id,
+                            transcript2gene_dict[entry.transcript_id]))
+            else:
+                transcript2gene_dict[entry.transcript_id] = entry.gene_id
 
     with iotools.open_file(outfile, "w") as outf:
         outf.write("transcript_id\tgene_id\n")
