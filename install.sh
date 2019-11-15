@@ -42,7 +42,7 @@ error_handler() {
     echo " ${SCRIPT_NAME} ${SCRIPT_PARAMS}"
     echo
     echo " Please copy and paste this error and report it via Git Hub: "
-    echo " https://github.com/Acribbs/single-cell/issues "
+    echo " https://github.com/Acribbs/scflow/issues "
     print_env_vars
     echo " ########################################################## "
 }
@@ -89,8 +89,12 @@ detect_single-cell_installation() {
 get_single-cell_env() {
     INSTALL_HOME=$TRAVIS_BUILD_DIR
     CONDA_INSTALL_TYPE="single-cell.yml"
-    CONDA_INSTALL_DIR=$INSTALL_HOME/conda-install
-    CONDA_INSTALL_ENV="single-cell"
+    if [[ ! $CONDA_INSTALL ]] ; then
+	CONDA_INSTALL_DIR=$INSTALL_HOME/conda-install
+    else
+	CONDA_INSTALL_DIR=${CONDA_PREFIX}
+	
+    [[ ${CONDA_INSTALL_ENV} ]] || CONDA_INSTALL_ENV="single-cell"
 
 } # get_single-cell_env
 
@@ -130,31 +134,6 @@ print_env_vars() {
 
 } # print_env_vars
 
-# check whether the 'cgat-flow' conda environment is enabled or not
-is_env_enabled() {
-    # disable error checking
-    set +e
-
-    # store the result
-    ENV_ENABLED=0
-
-    # is conda available?
-    CONDA_PATH=$(which conda)
-
-    if [[ $? -eq 0 ]] ; then
-        ENV_PATH=$(dirname $(dirname $CONDA_PATH))
-	stat ${ENV_PATH}/envs/cgat-flow >& /dev/null
-	if [[ $? -eq 0 ]] ; then
-            export ENV_ENABLED=1
-	fi
-    fi
-
-    export ENV_ENABLED
-
-    # enable error checking again
-    set -e
-}
-
 # Travis installations are running out of RAM
 # with large conda installations. Issue has been submitted here:
 # https://github.com/conda/conda/issues/1197
@@ -167,32 +146,13 @@ conda_cleanup() {
     conda clean --packages -y
 }
 
+# install and activate miniconda
+miniconda_install() {
 
-# proceed with conda installation
-conda_install() {
-
-    log "installing conda"
-
-    detect_single-cell_installation
-
-    if [[ -n "$UNINSTALL_DIR" ]] ; then
-
-	echo
-	echo " An installation of the single-cell code was found in: $UNINSTALL_DIR"
-	echo " Please use --location to install single-cell code in a different location "
-	echo " or uninstall the current version before proceeding."
-	echo
-	echo " Installation is aborted."
-	echo
-	exit 1
-
-    fi
-
-    # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
+    log "installing miniconda"
+    
+    # get environment variables: CGAT_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE_PIPELINES
     get_single-cell_env
-
-    mkdir -p $INSTALL_HOME
-    cd $INSTALL_HOME
 
     # select Miniconda bootstrap script depending on Operating System
     MINICONDA=
@@ -202,16 +162,15 @@ conda_install() {
 	# Conda 4.4 breaks everything again!
 	# Conda 4.5 looks better
 	MINICONDA="Miniconda3-latest-Linux-x86_64.sh"
-	#MINICONDA="Miniconda3-4.3.31-Linux-x86_64.sh"
 
     elif [[ `uname` == "Darwin" ]] ; then
 
 	# Conda 4.4 breaks everything again!
 	# Conda 4.5 looks better
 	MINICONDA="Miniconda3-latest-MacOSX-x86_64.sh"
-	#MINICONDA="Miniconda3-4.3.31-MacOSX-x86_64.sh"
 
     else
+
 	echo
 	echo " Unsupported operating system detected. "
 	echo
@@ -227,23 +186,49 @@ conda_install() {
 
     log "installing miniconda"
     bash ${MINICONDA} -b -p $CONDA_INSTALL_DIR
-    source ${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh
+    source ${CONDA_INSTALL_DIR}/bin/activate
     hash -r
 
     # install cgat environment
-    log "updating conda environment"
     # Conda 4.4 breaks everything again!
     # Conda 4.5 looks better
     # conda install --quiet --yes 'conda=4.3.33'
-    conda update --all --yes
+    # conda update --all --yes
     conda info -a
+}
 
-    log "installing single-cell environment"
-    # Now using conda environment files:
-    # https://conda.io/docs/using/envs.html#use-environment-from-file
+# proceed with conda installation
+conda_install() {
 
-    [[ -z ${TRAVIS_BRANCH} ]] && TRAVIS_BRANCH=${INSTALL_BRANCH}
-    curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/single-cell/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
+    log "installing conda"
+
+    detect_single-cell_installation
+
+    # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
+    get_single-cell_env
+
+    mkdir -p $INSTALL_HOME
+    cd $INSTALL_HOME
+
+    log "romoving old environment ${CONDA_INSTALL_ENV} if it exists"
+    conda env remove -y -n ${CONDA_INSTALL_ENV} >& /dev/null || echo "Not removing environment ${CONDA_INSTALL_ENV} because it does not exist"
+
+    log "installing conda CGAT environment into ${CONDA_INSTALL_ENV}"
+
+    log "installing cgat-core and basic dependencies"
+    conda create -y --name ${CONDA_INSTALL_ENV} cgatcore numpy cython pysam
+    # activate the environment - conda activate directly does not work
+    source ${CONDA_INSTALL_DIR}/bin/activate $CONDA_INSTALL_ENV
+
+    # TODO: use conda once cgat-apps is available on bioconda Can then probably
+    # remove numpy, cython, pysam from the previous line.
+    log "installing cgat-apps"
+    pip install cgat
+
+    log "installing pipeline dependencies for single-cell"
+    curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/scflow/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
+
+    
     conda env create --quiet --file env.yml
     
     conda env export --name ${CONDA_INSTALL_ENV}
@@ -252,16 +237,112 @@ conda_install() {
     log "activating environment"
     conda activate ${CONDA_INSTALL_ENV}
 
-    log "installing single-cell code into conda environment"
-    # if installation is 'devel' (outside of travis), checkout latest version from github
-    if [[ -z ${TRAVIS_INSTALL} ]] ; then
-
-	DEV_RESULT=0
-
-    fi # if travis install
 
 } # conda install
 
+
+code_install() {
+	
+    detect_single-cell_installation
+
+    get_single-cell_env
+
+    # activate the environment - conda activate directly does not work
+    source ${CONDA_INSTALL_DIR}/bin/activate $CONDA_INSTALL_ENV
+
+    log "installing single-cell code into conda environment"
+    if [[ ${CLONE_REPO} ]] ; then
+
+	DEV_RESULT=0
+	# make sure you are in the CGAT_HOME folder
+	cd $INSTALL_HOME
+
+	# download the code out of jenkins
+	if [[ -z ${JENKINS_INSTALL} ]] ; then
+
+	    if [[ $CODE_DOWNLOAD_TYPE -eq 0 ]] ; then
+		# get the latest version from Git Hub in zip format
+		curl -LOk https://github.com/Acribbs/scflow/archive/$BRANCH.zip
+		unzip $BRANCH.zip
+		rm $BRANCH.zip
+		if [[ ${RELEASE} ]] ; then
+		    NEW_NAME=`echo $BRANCH | sed 's/^v//g'`
+		    mv cgat-flow-$NEW_NAME/ cgat-flow/
+		else
+		    mv cgat-flow-$BRANCH/ cgat-flow/
+		fi
+            elif [[ $CODE_DOWNLOAD_TYPE -eq 1 ]] ; then
+		# get latest version from Git Hub with git clone
+		git clone --branch=$BRANCH https://github.com/Acribbs/scflow.git
+            elif [[ $CODE_DOWNLOAD_TYPE -eq 2 ]] ; then
+		# get latest version from Git Hub with git clone
+		git clone --branch=$BRANCH git@github.com:Acribbs/scflow.git
+            else
+		report_error " Unknown download type for CGAT code... "
+	    fi
+	    
+	    # make sure you are in the CGAT_HOME/cgat-flow folder
+	    cd $INSTALL_HOME/cgat-flow
+	fi
+    else
+	cd ${REPO_DIR}
+    fi
+
+    # Set up other environment variables
+    setup_env_vars
+    
+    # Python preparation
+    sed -i'' -e '/REPO_REQUIREMENT/,/pass/d' setup.py
+    sed -i'' -e '/# dependencies/,/dependency_links=dependency_links,/d' setup.py
+    python setup.py develop
+
+    if [[ $? -ne 0 ]] ; then
+	echo
+	echo " There was a problem doing: 'python setup.py develop' "
+	echo " Installation did not finish properly. "
+	echo 
+	echo " Please submit this issue via Git Hub: "
+	echo " https://github.com/cgat-developers/cgat-flow/issues "
+	echo
+	
+	print_env_vars
+	
+    fi # if-$?
+
+    # revert setup.py if downloaded with git
+    [[ $CODE_DOWNLOAD_TYPE -ge 1 ]] && git checkout -- setup.py
+    
+    conda env export > environment.yml
+
+    # check whether conda create went fine
+    if [[ $DEV_RESULT -ne 0 ]] ; then
+	echo
+	echo " There was a problem installing the code with conda. "
+	echo " Installation did not finish properly. "
+	echo
+	echo " Please submit this issue via Git Hub: "
+	echo " https://github.com/cgat-developers/cgat-flow/issues "
+	echo
+
+	print_env_vars
+
+    else
+	clear
+	echo 
+	echo " The code was successfully installed!"
+	echo
+	echo " To activate the CGAT environment type: "
+	echo " $ source $CONDA_INSTALL_DIR/etc/profile.d/conda.sh"
+	echo " $ conda activate base"
+	echo " $ conda activate $CONDA_INSTALL_ENV"
+	[[ $INSTALL_PRODUCTION ]] && echo " cgatflow --help"
+	echo
+	echo " To deactivate the environment, use:"
+	echo " $ conda deactivate"
+	echo
+    fi # if-$ conda create
+
+} # conda install
 
 # test code with conda install
 conda_test() {
@@ -515,7 +596,7 @@ INSTALL_UPDATE=
 UNINSTALL=
 UNINSTALL_DIR=
 # where to install code
-INSTALL_HOME=
+INSTALL_HOME=$INSTALL/scflow
 # how to download code:
 # 0 = as zip (default)
 # 1 = git clone with https
