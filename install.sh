@@ -130,6 +130,31 @@ print_env_vars() {
 
 } # print_env_vars
 
+# check whether the 'cgat-flow' conda environment is enabled or not
+is_env_enabled() {
+    # disable error checking
+    set +e
+
+    # store the result
+    ENV_ENABLED=0
+
+    # is conda available?
+    CONDA_PATH=$(which conda)
+
+    if [[ $? -eq 0 ]] ; then
+        ENV_PATH=$(dirname $(dirname $CONDA_PATH))
+	stat ${ENV_PATH}/envs/cgat-flow >& /dev/null
+	if [[ $? -eq 0 ]] ; then
+            export ENV_ENABLED=1
+	fi
+    fi
+
+    export ENV_ENABLED
+
+    # enable error checking again
+    set -e
+}
+
 # Travis installations are running out of RAM
 # with large conda installations. Issue has been submitted here:
 # https://github.com/conda/conda/issues/1197
@@ -202,7 +227,7 @@ conda_install() {
 
     log "installing miniconda"
     bash ${MINICONDA} -b -p $CONDA_INSTALL_DIR
-    source ${CONDA_INSTALL_DIR}/bin/activate
+    source ${CONDA_INSTALL_DIR}/etc/profile.d/conda.sh
     hash -r
 
     # install cgat environment
@@ -225,7 +250,7 @@ conda_install() {
 
     # activate single-cell environment
     log "activating environment"
-    source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
+    conda activate ${CONDA_INSTALL_ENV}
 
     log "installing single-cell code into conda environment"
     # if installation is 'devel' (outside of travis), checkout latest version from github
@@ -253,8 +278,9 @@ conda_test() {
 
 	# enable Conda env
 	log "activating single-cell conda environment"
-	source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
-
+	is_env_enabled
+        [[ ! ${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
+	
 	# show conda environment used for testing
 	conda env export
 
@@ -288,7 +314,8 @@ conda_update() {
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
     get_single-cell_env
 
-    source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
+    is_env_enabled
+    [[ ! ${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
     conda update --all
 
     if [[ ! $? -eq 0 ]] ; then
@@ -426,8 +453,8 @@ test_release() {
 # deliberately use brute force
 cleanup_env() {
     set +e
-    source deactivate >& /dev/null || true
-    source deactivate >& /dev/null || true
+    conda deactivate >& /dev/null || true
+    conda deactivate >& /dev/null || true
     unset -f conda || true
     unset PYTHONPATH || true
     # Next actions disabled. Please see:
