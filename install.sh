@@ -65,12 +65,12 @@ report_error() {
 }
 
 # detect trnanalysis installation
-detect_trnanalysis_installation() {
+detect_single-cell_installation() {
 
     if [[ -z "$INSTALL_HOME" ]] ; then
 
-	if [[ -d "$HOME/trnanalysis-install/conda-install" ]] ; then
-	    UNINSTALL_DIR="$HOME/trnanalysis-install"
+	if [[ -d "$HOME/scflow-install/conda-install" ]] ; then
+	    UNINSTALL_DIR="$HOME/scflow-install"
 	fi
 
     else
@@ -81,7 +81,7 @@ detect_trnanalysis_installation() {
 
     fi
 
-} # detect_trnanalysis_installation
+} # detect_single-cell_installation
 
 
 # configure environment variables 
@@ -148,7 +148,7 @@ conda_install() {
 
     log "installing conda"
 
-    detect_trnanalysis_installation
+    detect_single-cell_installation
 
     if [[ -n "$UNINSTALL_DIR" ]] ; then
 
@@ -244,7 +244,7 @@ conda_test() {
     log "starting conda_test"
 
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-    get_trnanalysis_env
+    get_single-cell_env
 
     setup_env_vars
 
@@ -286,7 +286,7 @@ conda_test() {
 conda_update() {
 
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-    get_trnanalysis_env
+    get_single-cell_env
 
     source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
     conda update --all
@@ -314,7 +314,7 @@ conda_update() {
 # unistall trnanalysis
 uninstall() {
 
-    detect_trnanalysis_installation
+    detect_single-cell_installation
 
     if [[ -z "$UNINSTALL_DIR" ]] ; then
 
