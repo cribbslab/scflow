@@ -249,7 +249,7 @@ for (i in sample_files){
 for (i in sample_files){
   d <- get(gsub("SAMPLE_FILE",i , "d.SAMPLE_FILE"))
   cell_species <- get(gsub("SAMPLE_FILE",i , "cell_species.SAMPLE_FILE"))
-  seu <- CreateSeuratObject(d, min.cells = 3) %>% 
+  seu <- CreateSeuratObject(d, min.cells = 3, min.features = 200) %>% 
   NormalizeData(verbose = FALSE) %>% 
   ScaleData(verbose = FALSE) %>% 
   FindVariableFeatures(verbose = FALSE, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 25)
@@ -258,7 +258,6 @@ for (i in sample_files){
         pt.size = 0.1)
   seu <- RunPCA(seu, verbose = FALSE, npcs = 30)
   assign(paste("seu", i, sep = "."), seu)
-
   cat("## ",i,"\n")
   print(vln)
   cat('\n\n')
@@ -292,4 +291,70 @@ for (i in sample_files){
   print(umap)
   cat('\n\n')
 }
+```
+
+
+
+# Integrate both datasets 
+
+Next I will use Seurat to integrate the datasets together into one object so I can compare clusters between the two datasets.
+
+```{r}
+meta_data <- readr::read_csv("meta_data.csv")
+sample_files <- meta_data$Sample
+samples <- mget(paste0("seu.",sample_files))
+integration <- FindIntegrationAnchors(object.list = samples, 
+                                      dims=1:10,
+                                      k.filter = 150)
+to_integrate <- rownames(x = integration)
+integration <- IntegrateData(anchorset = integration, dims = 1:10, features.to.integrate = to_integrate)
+
+```
+
+# Evaluate the clustering
+
+Next I will use UMAP to visualise the clustering
+
+First, we need to apply a linear transformation (‘scaling’) that is a standard pre-processing step prior to dimensional reduction techniques like PCA. The ScaleData function:
+
+Shifts the expression of each gene, so that the mean expression across cells is 0
+Scales the expression of each gene, so that the variance across cells is 1
+This step gives equal weight in downstream analyses, so that highly-expressed genes do not dominate
+The results of this are stored in integration[["RNA"]]@scale.data
+
+```{r}
+DefaultAssay(integration) <- "integrated"
+integration <- ScaleData(integration)
+```
+
+# PCA {.tabset}
+
+```{r}
+integration <- RunPCA(integration, npcs = 30)
+plt <- DimPlot(integration, reduction = "pca", split.by = "species")
+  cat("## ",i,"\n")
+  print(plt)
+  cat('\n\n')
+```
+
+# UMAP {.tabset}
+
+```{r}
+integration <- RunUMAP(integration, reduction = "pca", dims = 1:10)
+integration <- FindNeighbors(integration, reduction = "pca", dims = 1:10)
+integration <- FindClusters(integration, resolution = 0.4)
+
+p1 <- DimPlot(integration, reduction = "umap", group.by = "species")
+p2 <- DimPlot(integration, reduction = "umap", label = TRUE)
+
+
+cat("## ",'By species',"\n")
+print(p1)
+  cat('\n\n')
+
+
+cat("## ",'By cluster',"\n")
+print(p1)
+cat('\n\n')
+
 ```
