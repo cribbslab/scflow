@@ -594,7 +594,7 @@ fi
 # sanity check 3: make sure there is space available in the destination folder (10 GB) in 512-byte blocks
 [[ -z ${TRAVIS_INSTALL} ]] && \
     mkdir -p ${INSTALL_HOME} && \
-    [[ `df -P ${INSTALL_HOME} | awk '/\// {print $4}'` -lt 20971520  ]] && \
+    [[ `df -P ${INSTALL_HOME} | awk '/\// {print $4}'` -lt 10971520  ]] && \
     report_error " Not enough disk space available on the installation folder: "$INSTALL_HOME
 
 # perform actions according to the input parameters processed
