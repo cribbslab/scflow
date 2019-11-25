@@ -25,6 +25,7 @@ library("AnnotationDbi")
 library(DT)
 library(biomaRt)
 library(EnsDb.Hsapiens.v75)
+library(SingleR)
 ```
 
 # Import the data 
@@ -44,7 +45,7 @@ conda install -c cgat scflow
 Read quality looked good and then expression was then quanitified  using the [Slamon Alevin method](https://salmon.readthedocs.io/en/latest/alevin.html).  
 
 ```{r}
-txi.control <- tximport("salmon.dir/pbmc_1k_v3_S1/alevin/quants_mat.gz", type="alevin")
+txi.control <- tximport("salmon.dir/Adam-1_S2/alevin/quants_mat.gz", type="alevin")
 d <- txi.control$counts
 
 # Import the filtering QC metrics clean object and filter the names from that object
@@ -54,7 +55,7 @@ d <- d[,metrics_clean$cells]
 SYMBOL <- mapIds(EnsDb.Hsapiens.v75,keys=rownames(d),column="SYMBOL",keytype="GENEID",multiVals="first")
 rownames(d) <- make.unique(ifelse(is.na(SYMBOL), rownames(d), SYMBOL))
 
-control <- CreateSeuratObject(counts = d, min.cells = 3, min.features = 200, project = "CTRL")
+control <- CreateSeuratObject(counts = d, project = "CTRL")
 control$stim <- "CTRL"
 
 ```
@@ -87,7 +88,7 @@ CombinePlots(plots = list(plot1, plot2))
 Filtering is performed using the Seurat::subset function.
 
 ```{r}
-control <- subset(control, subset = nFeature_RNA > 1000 & nFeature_RNA < 5000 & percent.mt < 20)
+control <- subset(control, subset = nFeature_RNA > 10 & nFeature_RNA < 4000 & percent.mt < 15)
 
 ```
 
@@ -96,7 +97,7 @@ control <- subset(control, subset = nFeature_RNA > 1000 & nFeature_RNA < 5000 & 
 The single-cell counts data should be normalised before performing any further downstream analyses. This is so that cell to cell comparrisons can be performed. There are a number of normalisation methods available and you can see those that are available using ?NormalizeData.
 
 ```{r}
-control <- NormalizeData(control)
+control <- NormalizeData(control, normalization.method = "LogNormalize", scale.factor = 10000)
 ```
 
 # Identify highly variable genes
@@ -106,7 +107,7 @@ We next calculate a subset of features that exhibit high cell-to-cell variation 
 The procedure in Seurat3 is described in detail here, and improves on previous versions by directly modeling the mean-variance relationship inherent in single-cell data, and is implemented in the FindVariableFeatures function. By default, we return 2,000 features per dataset. These will be used in downstream analysis, like PCA.
 
 ```{r}
-control <- FindVariableFeatures(control, selection.method = "disp", nfeatures = 2000)
+control <- FindVariableFeatures(control, selection.method = "disp", nfeatures = 1000)
 # Identify the 10 most highly variable genes
 top10 <- head(VariableFeatures(control), 10)
 
@@ -167,7 +168,7 @@ We advise users to err on the higher side when choosing this parameter. For exam
 PCA plots can be important for spotting batch effects of irregularities within the data.
 
 ```{r}
-control <- RunPCA(control, npcs = 10)
+control <- RunPCA(control, npcs = 20)
 DimPlot(control, reduction = "pca", split.by = "stim")
 ```
 
@@ -180,7 +181,7 @@ control <- RunUMAP(control, reduction = "pca", dims = 1:10)
 control <- FindNeighbors(control, reduction = "pca", dims = 1:10)
 
 # Finding clusters can 
-control <- FindClusters(control, resolution = 0.4)
+control <- FindClusters(control, resolution = 0.5)
 
 p1 <- DimPlot(control, reduction = "umap", group.by = "stim")
 p2 <- DimPlot(control, reduction = "umap", label = TRUE)
@@ -197,7 +198,7 @@ DimPlot(control, reduction = "umap", split.by = "stim")
 
 ```{r}
 
-FeaturePlot(control, features = c("CD4", "CD8A"), split.by = "stim",
+FeaturePlot(control, features = c("TNNC2", "ENO3"), split.by = "stim",
             order = TRUE)
 ```
 
@@ -209,8 +210,21 @@ The min.pct argument requires a feature to be detected at a minimum percentage i
 
 ```{r}
 # find all markers of cluster 1
-cluster1.markers <- FindMarkers(control, ident.1 = 1, min.pct = 0.25)
-head(cluster1.markers, n = 5)
+cluster1.markers <- FindMarkers(control, ident.1 = 0, min.pct = 0.25)
+head(cluster1.markers, n = 100)
+```
+
+# markers
+
+```{r}
+# Markers 0, 1, 2 - skeletal muscles
+FeaturePlot(control, features = c("MYL1", "MYH2"), split.by = "stim",
+            order = TRUE)
+
+
+# Markers 3 - extracellular vesicles?
+FeaturePlot(control, features = c("CD63", "YIPF4"), split.by = "stim",
+            order = TRUE)
 ```
 
 # Find all markers
@@ -220,6 +234,27 @@ head(cluster1.markers, n = 5)
 control.markers <- FindAllMarkers(control, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 control.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_logFC)
 
+```
+
+
+# Lebel cells using singleR
+
+```{r}
+bpen.se <- BlueprintEncodeData()
+counts.data <-  GetAssayData(control, slot = "data")
+sc <- SingleCellExperiment::SingleCellExperiment(assays = list(counts=counts.data))
+d.log.counts <- scater::logNormCounts(sc)
+annot <- SingleR(d.log.counts, bpen.se, bpen.se$label.fine, method="single")
+
+
+control <- AddMetaData(
+  object = control,
+  metadata = annot$pruned.labels,
+  col.name = 'cell-labels'
+)
+
+
+DimPlot(control, reduction = "umap", group.by = "cell-labels")
 ```
 
 # Save the Seurat object
