@@ -10,7 +10,7 @@ My main reason for using Seurat over other single-cell software is that it conta
 # Import the packages
 
 ```{r, include=FALSE}
-knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(cache=TRUE, warning = FALSE, message = FALSE)
 Sys.setenv(KMP_DUPLICATE_LIB_OK=TRUE)
 library(Seurat)
 library(tximport)
@@ -22,30 +22,59 @@ library(EnsDb.Hsapiens.v75)
 library(EnsDb.Mmusculus.v75)
 library(stringr)
 meta_data <- readr::read_csv("meta_data.csv")
-sample_files <- meta_data$Sample
+#sample_files <- meta_data$Sample
+sample_files <- c("mouse-1_S7", "mouse-2_S5", "mouse-3_S4",
+                  "mouse-4_S9", "mouse-5_S8", "mouse-7_S6",
+                  "mouse-8_S1")
+
 
 ```
 
-# Import the data 
+# Import the data {.tabset}
 
 The experiment was analysed using [cgat-developer](https://github.com/cgat-developers/cgat-core) pipelines for quality of sequencing. Read quality looked good. 
 
 Next I quanitified the experssion using [Slamon Alevin method](https://salmon.readthedocs.io/en/latest/alevin.html).  
 
-```{r}
+```{r, results='asis', echo = FALSE}
 for (i in sample_files){
   txi.import <- tximport(gsub("SAMPLE_FILE",i , "salmon.dir/SAMPLE_FILE/alevin/quants_mat.gz"), type="alevin")
   d <- txi.import$counts
   
+  gene_species <- ifelse(str_detect(rownames(d), "^ENSMUSG"), "mouse", "human")
+  mouse_inds <- gene_species == "mouse"
+  human_inds <- gene_species == "human"
+  cell_species <- tibble(n_mouse_umi = Matrix::colSums(d[mouse_inds,]),
+                       n_human_umi = Matrix::colSums(d[human_inds,]),
+                       tot_umi = Matrix::colSums(d),
+                       prop_mouse = n_mouse_umi / tot_umi,
+                       prop_human = n_human_umi / tot_umi)
+  cell_species <- cell_species %>% 
+  mutate(species = case_when(
+    prop_mouse > 0.9 ~ "mouse",
+    prop_human > 0.9 ~ "human",
+    TRUE ~ "mixed"
+  ))
+  rownames(cell_species) <- colnames(d)
+  gg <- ggplot(cell_species, aes(n_human_umi, n_mouse_umi, color = species)) +
+  geom_point(size = 0.5)
+
+  cat("## ",i,"\n")
+  print(gg)
+  cat('\n\n')
+  
   SYMBOL <- mapIds(EnsDb.Hsapiens.v75,keys=rownames(d),column="SYMBOL",keytype="GENEID",
                    multiVals="first")
   rownames(d) <- make.unique(ifelse(is.na(SYMBOL), rownames(d), SYMBOL))
-    SYMBOL <- mapIds(EnsDb.Mmusculus.v75,keys=rownames(d),column="SYMBOL",keytype="GENEID",
+  SYMBOL <- mapIds(EnsDb.Mmusculus.v75,keys=rownames(d),column="SYMBOL",keytype="GENEID",
                    multiVals="first")
   rownames(d) <- make.unique(ifelse(is.na(SYMBOL), rownames(d), SYMBOL))
 
+  
+
   seurat_obj <- CreateSeuratObject(counts = d, min.cells = 3, min.features = 200, project = "pbmc1")
   seurat_obj$cells <- meta_data[meta_data$Sample == i,]$treatment
+  seurat_obj <- AddMetaData(seurat_obj, cell_species)
   assign(paste("seurat_obj", i, sep = "."), seurat_obj)
   
 }
@@ -93,7 +122,7 @@ for (i in sample_files){
 ```{r, results='asis', echo = FALSE}
 for (i in sample_files){
   seurat <- get(gsub("SAMPLE_FILE",i , "seurat_obj.SAMPLE_FILE"))
-  seurat <- subset(seurat, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 25)
+  seurat <- subset(seurat, subset = nFeature_RNA > 100 & nFeature_RNA < 4000 & percent.mt < 25)
   assign(paste("seurat_obj", i, sep = "."), seurat)
 }
 
@@ -191,170 +220,70 @@ DimPlot(integration, reduction = "umap", split.by = "cells")
 DimPlot(integration, reduction = "umap")
 ```
 
-
-# Measure human and mouse reads {.tabset}
-
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  txi.import <- tximport(gsub("SAMPLE_FILE",i , "salmon.dir/SAMPLE_FILE/alevin/quants_mat.gz"), type="alevin")
-  d <- txi.import$counts
-  gene_species <- ifelse(str_detect(rownames(d), "^ENSMUSG"), "mouse", "human")
-  mouse_inds <- gene_species == "mouse"
-  human_inds <- gene_species == "human"
-  cell_species <- tibble(n_mouse_umi = Matrix::colSums(d[mouse_inds,]),
-                       n_human_umi = Matrix::colSums(d[human_inds,]),
-                       tot_umi = Matrix::colSums(d),
-                       prop_mouse = n_mouse_umi / tot_umi,
-                       prop_human = n_human_umi / tot_umi)
-  cell_species <- cell_species %>% 
-  mutate(species = case_when(
-    prop_mouse > 0.9 ~ "mouse",
-    prop_human > 0.9 ~ "human",
-    TRUE ~ "mixed"
-  ))
-  gg <- ggplot(cell_species, aes(n_human_umi, n_mouse_umi, color = species)) +
-  geom_point(size = 0.5)
-  
-  assign(paste("cell_species", i, sep = "."), cell_species)
-  assign(paste("d", i, sep = "."), d)
-  cat("## ",i,"\n")
-  print(gg)
-  cat('\n\n')
-
-  
-}
-```
-
-
-# Number of cells per species {.tabset}
-
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  cell_species <- get(paste("cell_species", i, sep = "."))
-  t <- cell_species %>% 
-  dplyr::count(species) %>% 
-  mutate(proportion = n / ncol(d))
-
-  cat("## ",i,"\n")
-  kableExtra::kable(t)
-  cat('\n\n')
-} 
-```
-
-
-# Vln plot of each cells {.tabset}
-
-```{r, results='asis', echo = FALSE}
-
-for (i in sample_files){
-  d <- get(gsub("SAMPLE_FILE",i , "d.SAMPLE_FILE"))
-  cell_species <- get(gsub("SAMPLE_FILE",i , "cell_species.SAMPLE_FILE"))
-  seu <- CreateSeuratObject(d, min.cells = 3, min.features = 200) %>% 
-  NormalizeData(verbose = FALSE) %>% 
-  ScaleData(verbose = FALSE) %>% 
-  FindVariableFeatures(verbose = FALSE, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 25)
-  seu <- AddMetaData(seu, metadata = cell_species$species, col.name = "species")
-  vln <- VlnPlot(seu, c("nCount_RNA", "nFeature_RNA"), group.by = "species",
-        pt.size = 0.1)
-  seu <- RunPCA(seu, verbose = FALSE, npcs = 30)
-  assign(paste("seu", i, sep = "."), seu)
-  cat("## ",i,"\n")
-  print(vln)
-  cat('\n\n')
-  }
-
-```
-
-# PCA plot of samples {.tabset}
-
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  seu <- get(paste0("seu.", as.character(i)))
-  plt <- DimPlot(seu, reduction = "pca", pt.size = 0.5, group.by = "species")
-
-  cat("## ",i,"\n")
-  print(plt)
-  cat('\n\n')
-  }
- 
-```
-
-# UMAP plots {.tabset}
-
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  seu <- get(paste0("seu.", as.character(i)))
-  seu <- RunUMAP(seu, reduction = "pca", dims = 1:20)
-  umap <- DimPlot(seu, reduction = "umap", pt.size = 0.5, group.by = "species")
-
-  cat("## ",i,"\n")
-  print(umap)
-  cat('\n\n')
-}
-```
-
-
-
-# Integrate both datasets 
-
-Next I will use Seurat to integrate the datasets together into one object so I can compare clusters between the two datasets.
+# Plot human and mouse cells
 
 ```{r}
-meta_data <- readr::read_csv("meta_data.csv")
-sample_files <- meta_data$Sample
-samples <- mget(paste0("seu.",sample_files))
-integration <- FindIntegrationAnchors(object.list = samples, 
-                                      dims=1:10,
-                                      k.filter = 150)
-to_integrate <- rownames(x = integration)
-integration <- IntegrateData(anchorset = integration, dims = 1:10, features.to.integrate = to_integrate)
+
+Idents(integration) <- paste(integration@meta.data$cells,integration@meta.data$species, sep="_")
+
+human_de <- FindMarkers(integration, ident.1 = "control_human", ident.2 = "bort_human", test.use = "MAST")
+
+
+DimPlot(
+  object = integration, reduction = "umap", split.by = "cells"
+)
 
 ```
 
-# Evaluate the clustering
-
-Next I will use UMAP to visualise the clustering
-
-First, we need to apply a linear transformation (‘scaling’) that is a standard pre-processing step prior to dimensional reduction techniques like PCA. The ScaleData function:
-
-Shifts the expression of each gene, so that the mean expression across cells is 0
-Scales the expression of each gene, so that the variance across cells is 1
-This step gives equal weight in downstream analyses, so that highly-expressed genes do not dominate
-The results of this are stored in integration[["RNA"]]@scale.data
+# Plot only human cells
 
 ```{r}
-DefaultAssay(integration) <- "integrated"
-integration <- ScaleData(integration)
+Idents(integration) <- paste(integration@meta.data$species)
+human <- subset(integration, subset = species == "human")
+mouse <- subset(integration, subset = species == "mouse")
+
+# Recompute the embeddings for umap
+human <- RunUMAP(human, reduction = "pca", dims = 1:20)
+human <- FindNeighbors(human, reduction = "pca", dims = 1:20)
+human <- FindClusters(human, resolution = 0.4)
+
+DimPlot(
+  object = human, reduction = "umap", split.by = "cells"
+)
 ```
 
-# PCA {.tabset}
+# DE of human cells 
 
 ```{r}
-integration <- RunPCA(integration, npcs = 30)
-plt <- DimPlot(integration, reduction = "pca", split.by = "species")
-  cat("## ",i,"\n")
-  print(plt)
-  cat('\n\n')
+human 
 ```
 
-# UMAP {.tabset}
+# Plot only mouse cells
 
 ```{r}
-integration <- RunUMAP(integration, reduction = "pca", dims = 1:10)
-integration <- FindNeighbors(integration, reduction = "pca", dims = 1:10)
-integration <- FindClusters(integration, resolution = 0.4)
+Idents(mouse) <- paste(mouse@meta.data$seurat_clusters)
 
-p1 <- DimPlot(integration, reduction = "umap", group.by = "species")
-p2 <- DimPlot(integration, reduction = "umap", label = TRUE)
+# Recompute the embeddings for umap
+mouse <- RunUMAP(mouse, reduction = "pca", dims = 1:20)
+mouse <- FindNeighbors(mouse, reduction = "pca", dims = 1:20)
+mouse <- FindClusters(mouse, resolution = 0.4)
 
+DimPlot(
+  object = mouse, reduction = "umap", split.by = "cells"
+)
 
-cat("## ",'By species',"\n")
-print(p1)
-  cat('\n\n')
-
-
-cat("## ",'By cluster',"\n")
-print(p1)
-cat('\n\n')
 
 ```
+
+
+# Export as singlecellexperiment class
+
+```{r}
+mouse.sce <- as.SingleCellExperiment(mouse)
+saveRDS(mouse.sce, file = "sce.mouse.rds")
+saveRDS(mouse, file = "seurat.mouse.rds")
+saveRDS(human, file = "seurat.human.rds")
+
+```
+
+
