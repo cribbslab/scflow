@@ -1,2 +1,8 @@
-conda:
-   file: conda/environments/readthedocs.yml
+build:
+  image: latest
+
+python:
+  version: 3.7
+  setup_py_install: true
+
+requirements_file: requirements/readthedocs.txt
