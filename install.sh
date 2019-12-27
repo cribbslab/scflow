@@ -42,7 +42,7 @@ error_handler() {
     echo " ${SCRIPT_NAME} ${SCRIPT_PARAMS}"
     echo
     echo " Please copy and paste this error and report it via Git Hub: "
-    echo " https://github.com/Acribbs/tRNAnalysis/issues "
+    echo " https://github.com/Acribbs/scflow/issues "
     print_env_vars
     echo " ########################################################## "
 }
@@ -69,8 +69,8 @@ detect_scflow_installation() {
 
     if [[ -z "$INSTALL_HOME" ]] ; then
 
-	if [[ -d "$HOME/scflow-install/conda-install" ]] ; then
-	    UNINSTALL_DIR="$HOME/scflow-install"
+	if [[ -d "$HOME/scflow/conda-install" ]] ; then
+	    UNINSTALL_DIR="$HOME/scflow"
 	fi
 
     else
@@ -178,8 +178,8 @@ conda_install() {
     if [[ -n "$UNINSTALL_DIR" ]] ; then
 
 	echo
-	echo " An installation of the trnanalysis code was found in: $UNINSTALL_DIR"
-	echo " Please use --location to install trnanalysis code in a different location "
+	echo " An installation of the scflow code was found in: $UNINSTALL_DIR"
+	echo " Please use --location to install scflow code in a different location "
 	echo " or uninstall the current version before proceeding."
 	echo
 	echo " Installation is aborted."
@@ -238,21 +238,21 @@ conda_install() {
     conda update --all --yes
     conda info -a
 
-    log "installing tRNAnalysis environment"
+    log "installing scflow environment"
     # Now using conda environment files:
     # https://conda.io/docs/using/envs.html#use-environment-from-file
 
     [[ -z ${TRAVIS_BRANCH} ]] && TRAVIS_BRANCH=${INSTALL_BRANCH}
-    curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/tRNAnalysis/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
+    curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/scflow/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
     conda env create --quiet --file env.yml
 
     conda env export --name ${CONDA_INSTALL_ENV}
 
-    # activate trnanalysis environment
+    # activate scflow environment
     log "activating environment"
     [[ !${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
 
-    log "installing trnanalysis code into conda environment"
+    log "installing scflow code into conda environment"
     # if installation is 'devel' (outside of travis), checkout latest version from github
     if [[ -z ${TRAVIS_INSTALL} ]] ; then
 
@@ -277,7 +277,7 @@ conda_test() {
     if [[ $TRAVIS_INSTALL ]]; then
 
 	# enable Conda env
-	log "activating trnanalysis conda environment"
+	log "activating scflow conda environment"
 	is_env_enabled
 	[[ ! ${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
 
@@ -337,7 +337,7 @@ conda_update() {
 } # conda_update
 
 
-# unistall trnanalysis
+# unistall scflow
 uninstall() {
 
     detect_scflow_installation
@@ -413,14 +413,14 @@ test_mix_branch_release() {
 }
 
 
-# test whether a branch exists in the trnanalysis repository
+# test whether a branch exists in the scflow repository
 # https://stackoverflow.com/questions/12199059/how-to-check-if-an-url-exists-with-the-shell-and-probably-curl
 test_core_branch() {
     RELEASE_TEST=0
     curl --output /dev/null --silent --head --fail https://raw.githubusercontent.com/Acribbs/scflow/${INSTALL_BRANCH}/README.rst || RELEASE_TEST=$?
     if [[ ${RELEASE_TEST} -ne 0 ]] ; then
 	echo
-	echo " The branch provided for trnanalysis does not exist: ${INSTALL_BRANCH}"
+	echo " The branch provided for scflow does not exist: ${INSTALL_BRANCH}"
 	echo
 	echo " Please have a look at valid branches here: "
 	echo " https://github.com/Acribbs/scflow/branches"
@@ -467,7 +467,7 @@ cleanup_env() {
 # function to display help message
 help_message() {
     echo
-    echo " This script uses Conda to install trnanalysis. To proceed, please type:"
+    echo " This script uses Conda to install scflow. To proceed, please type:"
     echo " ./install.sh [--location </full/path/to/folder/without/trailing/slash>]"
     echo
     echo " The default install folder will be: $HOME/scflow"
