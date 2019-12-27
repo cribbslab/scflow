@@ -42,7 +42,7 @@ error_handler() {
     echo " ${SCRIPT_NAME} ${SCRIPT_PARAMS}"
     echo
     echo " Please copy and paste this error and report it via Git Hub: "
-    echo " https://github.com/Acribbs/scflow/issues "
+    echo " https://github.com/Acribbs/tRNAnalysis/issues "
     print_env_vars
     echo " ########################################################## "
 }
@@ -64,8 +64,8 @@ report_error() {
     exit 1
 }
 
-# detect trnanalysis installation
-detect_single-cell_installation() {
+
+detect_scflow_installation() {
 
     if [[ -z "$INSTALL_HOME" ]] ; then
 
@@ -84,15 +84,40 @@ detect_single-cell_installation() {
 } # detect_single-cell_installation
 
 
-# configure environment variables 
+# configure environment variables
 # set: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-get_single-cell_env() {
+get_scflow_env() {
     INSTALL_HOME=$TRAVIS_BUILD_DIR
-    CONDA_INSTALL_TYPE="single-cell.yml"
+    CONDA_INSTALL_TYPE="scflow.yml"
     CONDA_INSTALL_DIR=$INSTALL_HOME/conda-install
-    CONDA_INSTALL_ENV="single-cell"
+    CONDA_INSTALL_ENV="scflow"
 
-} # get_trnanalysis_env
+} # get_scflow_env
+
+# check whether the 'scflow' conda environment is enabled or not
+is_env_enabled() {
+    # disable error checking
+    set +e
+
+    # store the result
+    ENV_ENABLED=0
+
+    # is conda available?
+    CONDA_PATH=$(which conda)
+
+    if [[ $? -eq 0 ]] ; then
+        ENV_PATH=$(dirname $(dirname $CONDA_PATH))
+	stat ${ENV_PATH}/envs/scflow >& /dev/null
+	if [[ $? -eq 0 ]] ; then
+            export ENV_ENABLED=1
+	fi
+    fi
+
+    export ENV_ENABLED
+
+    # enable error checking again
+    set -e
+}
 
 
 # setup environment variables
@@ -148,7 +173,7 @@ conda_install() {
 
     log "installing conda"
 
-    detect_single-cell_installation
+    detect_scflow_installation
 
     if [[ -n "$UNINSTALL_DIR" ]] ; then
 
@@ -164,7 +189,7 @@ conda_install() {
     fi
 
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-    get_single-cell_env
+    get_scflow_env
 
     mkdir -p $INSTALL_HOME
     cd $INSTALL_HOME
@@ -218,14 +243,14 @@ conda_install() {
     # https://conda.io/docs/using/envs.html#use-environment-from-file
 
     [[ -z ${TRAVIS_BRANCH} ]] && TRAVIS_BRANCH=${INSTALL_BRANCH}
-    curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/scflow/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
+    curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/tRNAnalysis/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
     conda env create --quiet --file env.yml
-    
+
     conda env export --name ${CONDA_INSTALL_ENV}
 
     # activate trnanalysis environment
     log "activating environment"
-    source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
+    [[ !${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
 
     log "installing trnanalysis code into conda environment"
     # if installation is 'devel' (outside of travis), checkout latest version from github
@@ -244,16 +269,17 @@ conda_test() {
     log "starting conda_test"
 
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-    get_single-cell_env
+    get_scflow_env
 
-    setup_env_vars
+    #setup_env_vars
 
     # setup environment and run tests
     if [[ $TRAVIS_INSTALL ]]; then
 
 	# enable Conda env
 	log "activating trnanalysis conda environment"
-	source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
+	is_env_enabled
+	[[ ! ${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
 
 	# show conda environment used for testing
 	conda env export
@@ -286,27 +312,27 @@ conda_test() {
 conda_update() {
 
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-    get_single-cell_env
+    get_scflow_env
 
-    source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
+    [[ ! ${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
     conda update --all
 
     if [[ ! $? -eq 0 ]] ; then
 
 	echo
 	echo " There was a problem updating the installation. "
-	echo 
+	echo
 	echo " Please submit this issue via Git Hub: "
 	echo " https://github.com/Acribbs/scflow/issues "
-	echo 
+	echo
 
-    else 
+    else
 
 	echo
 	echo " All packages were succesfully updated. "
-	echo 
+	echo
 
-    fi 
+    fi
 
 } # conda_update
 
@@ -314,27 +340,27 @@ conda_update() {
 # unistall trnanalysis
 uninstall() {
 
-    detect_single-cell_installation
+    detect_scflow_installation
 
     if [[ -z "$UNINSTALL_DIR" ]] ; then
 
 	echo
-	echo " The location of the scflow code was not found. "
+	echo " The location of the scflow was not found. "
 	echo " Please uninstall manually."
 	echo
 	exit 1
-	
+
     else
 
 	rm -rf $UNINSTALL_DIR
 	if [[ $? -eq 0 ]] ; then
 	    echo
-	    echo " CGAT code successfully uninstalled."
-	    echo 
+	    echo " scflow successfully uninstalled."
+	    echo
 	    exit 0
 	else
 	    echo
-	    echo " There was a problem uninstalling the CGAT code."
+	    echo " There was a problem uninstalling the scflow code."
 	    echo " Please uninstall manually."
 	    echo
 	    exit 1
@@ -444,12 +470,12 @@ help_message() {
     echo " This script uses Conda to install trnanalysis. To proceed, please type:"
     echo " ./install.sh [--location </full/path/to/folder/without/trailing/slash>]"
     echo
-    echo " The default install folder will be: $HOME/cgat-install"
+    echo " The default install folder will be: $HOME/scflow"
     echo
-    echo " It will create a new Conda environment ready to run the scflow code."
+    echo " It will create a new Conda environment ready to run the CGAT code."
     echo
     echo " By default the master branch will be installed:"
-    echo " https://github.com/Acribbs/scflow/"
+    echo " https://github.com/Acribbs/scflow"
     echo
     echo " Change that with:"
     echo " ./install.sh  --branch <name-of-branch>"
@@ -459,12 +485,12 @@ help_message() {
     echo
     echo " To update the Conda packages:"
     echo " ./install.sh --update [--location </full/path/to/folder/without/trailing/slash>]"
-    echo 
-    echo " To uninstall the CGAT code:"
+    echo
+    echo " To uninstall the scflow code:"
     echo " ./install.sh --uninstall [--location </full/path/to/folder/without/trailing/slash>]"
     echo
     echo " Please submit any issues via Git Hub:"
-    echo " https://github.com/Acribbs/tRNAnalysis/issues"
+    echo " https://github.com/Acribbs/scflow/issues"
     echo
     exit 1
 } # help_message
@@ -594,7 +620,7 @@ fi
 # sanity check 3: make sure there is space available in the destination folder (10 GB) in 512-byte blocks
 [[ -z ${TRAVIS_INSTALL} ]] && \
     mkdir -p ${INSTALL_HOME} && \
-    [[ `df -P ${INSTALL_HOME} | awk '/\// {print $4}'` -lt 10971520  ]] && \
+    [[ `df -P ${INSTALL_HOME} | awk '/\// {print $4}'` -lt 20971520  ]] && \
     report_error " Not enough disk space available on the installation folder: "$INSTALL_HOME
 
 # perform actions according to the input parameters processed
@@ -603,7 +629,7 @@ if [[ $TRAVIS_INSTALL ]]; then
     conda_install
     conda_test
 
-else 
+else
 
     if [[ $INSTALL_DEVEL ]] ; then
 	conda_install
