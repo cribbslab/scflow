@@ -1,4 +1,4 @@
-name: single-cell
+name: scflow
 
 channels:
  - conda-forge
