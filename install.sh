@@ -69,8 +69,8 @@ detect_scflow_installation() {
 
     if [[ -z "$INSTALL_HOME" ]] ; then
 
-	if [[ -d "$HOME/scflow/conda-install" ]] ; then
-	    UNINSTALL_DIR="$HOME/scflow"
+	if [[ -d "$HOME/scflow-install/conda-install" ]] ; then
+	    UNINSTALL_DIR="$HOME/scflow-install"
 	fi
 
     else
