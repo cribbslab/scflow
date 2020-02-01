@@ -93,7 +93,7 @@ import sqlite3
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
-import ModuleSC
+import scpipelines.ModuleSC
 
 import pandas as pd
 
@@ -142,62 +142,114 @@ $ echo -n CAGTCNTTTTTTTTAATTTAAAAAAAAAAAAAAGATTTATTAACAGTTTTAGAAGGCAGTT | wc -c
 L= 61
 '''
 
-# Download the introns bed and cDNA fasta
-'''
-Download the INTRONS BED file with L-1 flank:
+@mkdir('geneset.dir')
+@originate("geneset.dir/tr2g.txt")
+def t2g(outfile):
+    '''This function will convert transcript to genes using t2g
+       script'''
 
-Go to the UCSC table browser.
-Select desired species and assembly
-Select group: Genes and Gene Prediction Tracks
-Select track: UCSC Genes (or Refseq, Ensembl, etc.)
-Select table: knownGene
-Select region: genome (or you can test on a single chromosome or smaller region)
-Select output format: BED - browser extensible data
-Enter output file: introns.bed
-Select file type returned: gzip compressed
-Select the ‘get output’ button A second page of options relating to the BED file will appear.
-Under ‘create one BED record per:’. Select ‘Introns plus’
-Add flank L - 1 flank
-Select the ‘get BED’ option
-Save as introns.bed.gz to velocity_index/
-Download the cDNA FASTA file:
+    PY_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
-Go to the UCSC table browser.
-Select desired species and assembly
-Select group: Genes and Gene Prediction Tracks
-Select track: UCSC Genes (or Refseq, Ensembl, etc.)
-Select table: knownGene
-Select region: genome (or you can test on a single chromosome or smaller region)
-Select output format: sequence
-Enter output file: cDNA.fa.gz
-Select file type returned: gzip compressed
-Hit the ‘get output’ button
-Select genomic and click submit A page of options relating to the FASTA file will appear.
-Select 5' UTR Exons & CDS Exons & 3' UTR Exons
-Select One FASTA record per region (exon, intron, etc.) with 0 extra bases upstream (5') and 0 extra downstream (3')
-Select All upper case
-Select get sequence
-Save as cDNA.fa.gz to velocity_index/
-Note: You may ask why we don’t just download the sequence of introns? The reason is because the FASTA file is large for complex organisms (you can do this for simple organisms) and the UCSC server times out after 20 minutes and results in a corrupted intron FASTA file.
+    statement = '''
+       zcat < %(geneset)s | %(PY_SRC_PATH)s/t2g.py  > %(outfile)s'''
 
-Download the Genome
+    P.run(statement)
 
-Go to the website specieid by the track in the UCSC table browser ## Example Gencode 29 GRCh38
-Selected desired species
-Right click FASTA next to Genome sequence, primary assembly (GRCh38)
-Download species.dna.primary_assembly.fa.gz (where species will be your specific species)
-$ wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_29/GRCh38.primary_assembly.genome.fa.gz
-Download the GTF and make a transcripts to genes map
-
-Go to ensembl or the website for whichever track specified in the UCSC table browser
-Selected desired species
-Select Download GTF
-Download species.gtf.gz (where species will be your specific species)
-$ wget  ftp://ftp.ensembl.org/pub/release-97/gtf/homo_sapiens/Homo_sapiens.GRCh38.97.gtf.gz ## Homo sapiens GRCh38 example
-
-'''
 
 @mkdir('geneset.dir')
+@originate("geneset.dir/introns.fa")
+def intron_bed2fa(outfile):
+    '''This converts introns bed to introns fa'''
+
+    tmp_bed = P.get_temp_filename(".")
+
+    statement = '''zcat < %(intron_bed)s > %(tmp_bed)s &&
+    # index the fa file before next line &&
+    bedtools getfasta -name -fo introns.fa -fi %(genome_file)s -bed %(tmp_bed)s'''
+
+    P.run(statement)
+    os.unlink(tmp_bed)
+
+
+
+@transform(intron_bed2fa,
+           regex("(\S+).fa"),
+           r"geneset.dir/\1_transcripts.txt")
+def introns_transcripts(infile, outfile):
+    '''get a list of all of the intronic transcript IDs represented in our FASTA file, with version numbers.'''
+
+    statement = '''cat %(infile)s | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3"."$4}' > %(outfile)s'''
+
+    P.run(statement)
+
+
+@transform(introns_transcripts,
+           regex("geneset.dir/(\S+)_transcripts.txt"),
+           r"geneset.dir/\1_transcripts_no_version.txt")
+def introns_transcripts_no_version(infile, outfile):
+    '''list of all of the intronic transcript IDs represented in our FASTA file, without version numbers.'''
+
+    staement = '''cat %(infile)s | tr "." " " | awk '{print $1}' > %(outfile)s '''
+
+    P.run(statement)
+
+
+@transform(introns_transcripts,
+           regex("geneset.dir/(\S+)_transcripts.txt"),
+           r"geneset.dir/\1_transcripts.to_capture.txt")
+def add_identifier(infile outfile):
+    '''add an identifier to the transcript IDs '''
+
+    statement = '''cat %(infile)s | awk '{print $0"."NR"-I"}' > %(outfile)s'''
+
+    P.run(statement)
+
+
+@merge([introns_transcripts,t2g],
+       r"geneset.dir/introns_t2g.txt")
+def map_trans2gene(infiles, outfile):
+    '''map the transcripts to their respective genes.'''
+
+    tr2g, introns_transcripts = infiles
+
+    statement = '''awk 'NR==FNR{a[$1]=$2; b[$1]=$3;next} {$2=a[$1];$3=b[$1]} 1' %(tr2g)s %(introns_transcripts)s > %(outfile)s'''
+
+    P.run(statement)
+
+
+@merge([map_trans2gene,intron_bed2fa],
+           r"geneset.dir/\introns.correct_header.fa")
+def fix_intron_fasta(infiles, outfile):
+    '''fix all of the headers for the introns FASTA file so that they
+    contain the transcript ID, an identifier specifying that the transcript
+    is an “intronic” transcript, and a unique number to avoid duplicates.'''
+
+    introns_t2g, introns = infiles
+
+    tmp_fasta = P.get_temp_filename(".")
+
+    statement = '''awk '{print ">"$1"."NR"-I"" gene_id:"$2" gene_name:"$3}' %(introns_t2g)s > %(tmp_fasta)s  &&
+                awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' %(tmp_fasta)s  %(introns)s > %(outfile)s '''
+
+    P.run(statement)
+    os.unlink()
+
+
+@mkdir('geneset.dir')
+@originate("geneset.dir/cDNA_transcripts_no_version.txt")
+def capture_list(infile, outfile):
+    '''Get the transcripts to capture list and transcripts to genes for cDNA'''
+
+    tmp_cdna = P.get_temp_filename(".")
+
+    statement = '''zcat < cDNA.fa | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s  &&
+                   cat %(tmp_cdna)s  | tr "." " " | awk '{print $1}' > %(outfile)s '''
+
+
+    P.run(statement)
+    os.unlink()
+
+
 @merge([PARAMS['geneset'], PARAMS['geneset2']],
            r"geneset.dir/geneset_all.fa")
 def buildReferenceTranscriptome(infiles, outfile):

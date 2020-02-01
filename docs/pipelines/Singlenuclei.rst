@@ -1,7 +1,7 @@
 
-=====================
-singlenuclei pipeline
-=====================
+============
+singlenuclei
+============
 
 Overview
 ========

@@ -4,20 +4,26 @@
 #
 ##########################
 
-# genomeID
-genome: hg38
-genome_dir: /ifs/mirror/genomes/index/
+#
 
-# Provide a reference geneset (suffix= ".gtf.gz")
-# Geneset should be located in working directory
-geneset: human_geneset_all.gtf.gz
+# Primary genome assembly fasta in gz format
+genome_file: GRCh38.primary_assembly.genome.fa.gz
+
+# The introns in bed format downloaded according to the setup instructions
+intron_bed: Refseq-introns.bed.gz
+
+# cDNA fasta downloaded according to the setup instructions
+cdna_fasta: cDNA.fa.gz
+
+# The gtf geneset downloaded accoring to the setup instructions
+geneset: Homo_sapiens.GRCh38.97.gtf.gz
 
 # Specify if there is a mixed species input (i.e. mouse and human)
 mixed_species: 0
 
 # If there is a mixed specied input specify the extra genome (in addition to the
 # one already specified)
-genome2: 
+genome2:
 genome_dir2: /ifs/mirror/genomes/index/
 
 # If there is a mixed specied input specify a reference geneset (suffix= ".gtf.gz")
@@ -147,7 +153,7 @@ sce:
 
 qc:
 
-  # Set mitochondrial percent maximum threshold (usually 10-20%) 
+  # Set mitochondrial percent maximum threshold (usually 10-20%)
   max_mito: 5
 
   # Or instead use median + 2 median absolute deviations as mitochondrial threshold (0 or 1)
@@ -190,11 +196,10 @@ downsample_to: 0
 monocle:
   # Gene of interest to be plotted. Ensembl or symbols depending on genesymbol
   gene_marker: "ENSG00000164867"
-  
+
   max_components: 2
-  
+
   num_dim: 6
 
   # +1 to number of clusters you want
   num_clusters: 7
-
