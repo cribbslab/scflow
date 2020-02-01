@@ -237,18 +237,54 @@ def fix_intron_fasta(infiles, outfile):
 
 @mkdir('geneset.dir')
 @originate("geneset.dir/cDNA_transcripts_no_version.txt")
-def capture_list(infile, outfile):
+def capture_list(outfile):
     '''Get the transcripts to capture list and transcripts to genes for cDNA'''
 
     tmp_cdna = P.get_temp_filename(".")
 
-    statement = '''zcat < cDNA.fa | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s  &&
+    statement = '''zcat < %(cdna_fasta)s cDNA.fa | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s  &&
                    cat %(tmp_cdna)s  | tr "." " " | awk '{print $1}' > %(outfile)s '''
 
 
     P.run(statement)
     os.unlink()
 
+
+@mkdir('geneset.dir')
+@originate("geneset.dir/cDNA_transcripts.to_capture.txt")
+def map_tran_gene(outfile):
+    ''''Add an identifier to the transcript IDs'''
+
+    tmp_cdna = P.get_temp_filename(".")
+
+    statement = '''zcat < %(cdna_fasta)s | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s &&
+                   cat %(tmp_cdna)s | awk '{print $0"."NR}' > %(outfile)s'''
+
+    P.run(statement)
+
+
+@transform(t2g,
+           regex("(\S+).txt"),
+           r"geneset.dir/cDNA_\1.txt")
+def map_tr2gene(infile, outfile):
+    '''Map the transcripts to genes.'''
+
+    tmp_cdna = P.get_temp_filename(".")
+
+    statement = '''zcat < %(cdna_fasta)s | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s &&
+                   awk 'NR==FNR{a[$1]=$2; b[$1]=$3;next} {$2=a[$1];$3=b[$1]} 1' %(infile)s %(tmp_cdna)s  > %(outfile)s'''
+
+
+    P.run(statement)
+
+
+def finx_intron_fa_header(infile, outfile):
+    '''Fix the INTRONS FASTA header'''
+
+    statement = '''awk '{print ">"$1"."NR" gene_id:"$2" gene_name:"$3}' cDNA_t2g.txt > cDNA_fasta_header.txt &&
+                   awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' cDNA_fasta_header.txt $cDNA_fa > cDNA.correct_header.fa'''
+
+    P.run(statement)
 
 @merge([PARAMS['geneset'], PARAMS['geneset2']],
            r"geneset.dir/geneset_all.fa")
