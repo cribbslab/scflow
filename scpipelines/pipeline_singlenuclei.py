@@ -78,7 +78,7 @@ Pipeline output
 
 The output of running this pipeline is the generation of an
 Rmarkdown report with summary statistics. The end user can use this as a base
-to then further develop project specific analyses. 
+to then further develop project specific analyses.
 
 Code
 ==================
@@ -129,7 +129,73 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 ############################################
 # Build indexes
 ############################################
+# Need to build one index for cDNA and one for intron
 
+# Determine read length - can do this in python
+'''
+$ zcat R1.fastq.gz | head -2 ## note on a mac you would do zcat < R1.fastq.gz | head
+@SRR8742283.1 NS500422:552:HJ5Y3BGX3:1:11101:21875:1038 length=61
+CAGTCNTTTTTTTTAATTTAAAAAAAAAAAAAAGATTTATTAACAGTTTTAGAAGGCAGTT
+
+$ echo -n CAGTCNTTTTTTTTAATTTAAAAAAAAAAAAAAGATTTATTAACAGTTTTAGAAGGCAGTT | wc -c
+61
+L= 61
+'''
+
+# Download the introns bed and cDNA fasta
+'''
+Download the INTRONS BED file with L-1 flank:
+
+Go to the UCSC table browser.
+Select desired species and assembly
+Select group: Genes and Gene Prediction Tracks
+Select track: UCSC Genes (or Refseq, Ensembl, etc.)
+Select table: knownGene
+Select region: genome (or you can test on a single chromosome or smaller region)
+Select output format: BED - browser extensible data
+Enter output file: introns.bed
+Select file type returned: gzip compressed
+Select the ‘get output’ button A second page of options relating to the BED file will appear.
+Under ‘create one BED record per:’. Select ‘Introns plus’
+Add flank L - 1 flank
+Select the ‘get BED’ option
+Save as introns.bed.gz to velocity_index/
+Download the cDNA FASTA file:
+
+Go to the UCSC table browser.
+Select desired species and assembly
+Select group: Genes and Gene Prediction Tracks
+Select track: UCSC Genes (or Refseq, Ensembl, etc.)
+Select table: knownGene
+Select region: genome (or you can test on a single chromosome or smaller region)
+Select output format: sequence
+Enter output file: cDNA.fa.gz
+Select file type returned: gzip compressed
+Hit the ‘get output’ button
+Select genomic and click submit A page of options relating to the FASTA file will appear.
+Select 5' UTR Exons & CDS Exons & 3' UTR Exons
+Select One FASTA record per region (exon, intron, etc.) with 0 extra bases upstream (5') and 0 extra downstream (3')
+Select All upper case
+Select get sequence
+Save as cDNA.fa.gz to velocity_index/
+Note: You may ask why we don’t just download the sequence of introns? The reason is because the FASTA file is large for complex organisms (you can do this for simple organisms) and the UCSC server times out after 20 minutes and results in a corrupted intron FASTA file.
+
+Download the Genome
+
+Go to the website specieid by the track in the UCSC table browser ## Example Gencode 29 GRCh38
+Selected desired species
+Right click FASTA next to Genome sequence, primary assembly (GRCh38)
+Download species.dna.primary_assembly.fa.gz (where species will be your specific species)
+$ wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_29/GRCh38.primary_assembly.genome.fa.gz
+Download the GTF and make a transcripts to genes map
+
+Go to ensembl or the website for whichever track specified in the UCSC table browser
+Selected desired species
+Select Download GTF
+Download species.gtf.gz (where species will be your specific species)
+$ wget  ftp://ftp.ensembl.org/pub/release-97/gtf/homo_sapiens/Homo_sapiens.GRCh38.97.gtf.gz ## Homo sapiens GRCh38 example
+
+'''
 
 @mkdir('geneset.dir')
 @merge([PARAMS['geneset'], PARAMS['geneset2']],

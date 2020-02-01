@@ -13,9 +13,10 @@ Conda Installation
 
 The preferred method for installation is through conda. Currently this installation is still in working progress. Preferably the installation should be in a separate environment.::
 
-  conda create -n scflow -c cgat scflow
-  conda activate scflow
-  scflow --help
+  # The conda environment is currently not ready but we are working on this
+  #conda create -n scflow -c cgat scflow
+  #conda activate scflow
+  #scflow --help
 
 ----------------
 Pip installation
