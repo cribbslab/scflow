@@ -1,13 +1,13 @@
 
-===================
-singlecell pipeline
-===================
+=====================
+singlenuclei pipeline
+=====================
 
 Overview
 ========
 
 This pipeline performs alignment free based quantification of drop-seq, 10X
-single-cell sequencing analysis using wither kallisto or salmon.
+single-nuclei sequencing analysis using wither kallisto or salmon.
 Pseudoalignment is performed on the RNA reads,
 using kallisto or Alevin and the resulting data is quantitatively
 and qualitatively analysed.
@@ -19,8 +19,8 @@ The pipeline performs the following analyses:
 Input files
 -----------
 
-The pipeline is ran using fastq files that follow the naming convention Read1: Name.fastq.1.gz
-and read2: Name.fastq.2.gz.
+The pipeline is ran using fastq files that follow the naming convention
+Read1: Name.fastq.1.gz and read2: Name.fastq.2.gz.
 
  * a fastq file (paired end following the naming convention below)
  * a GTF geneset
@@ -48,7 +48,7 @@ commandline flag `--no-cluster`.
 
 The following command will run the pipeline::
 
-   scflow singlecell make full -v5
+   scflow singlenuclei make full -v5
 
 
 Report generation
@@ -56,7 +56,7 @@ Report generation
 
 The pipeline also generates Rmarkdown reports by running the following command::
 
-   scflow singlecell make build_report -v5
+   scflow singlenuclei make build_report -v5
 
 
 output

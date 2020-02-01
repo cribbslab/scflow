@@ -53,23 +53,23 @@ Input files
 -----------
 
 The pipeline is ran using fastq files that follow the naming convention Read1: Name.fastq.1.gz
-and read2: Name.fastq.2.gz. 
+and read2: Name.fastq.2.gz.
 
  * a fastq file (single /paired end (always paired end for drop seq methods and
 potentially single end or paired end for smartseq2)
  * a GTF geneset
 
 The default file format assumes the following convention:
-fastq.1.gz and fastq.2.gz for paired data, where fastq.1.gz contains UMI/cellular barcode data and fastq.2.gz contains sequencing reads. 
+fastq.1.gz and fastq.2.gz for paired data, where fastq.1.gz contains UMI/cellular barcode data and fastq.2.gz contains sequencing reads.
 Chromium outputis of the format: samplename_R1.fastq.gz and samplename_R2.fastq.gz so will require conversion to the default file format above.
 
 Pipeline output
-==================
+===============
 
-The output of running this software is the generation of a SingleCellExperiment object and further downstream analysis including: clustering, pseudotime analysis, velocity time graphs, quality control analysis. 
+The output of running this software is the generation of a SingleCellExperiment object and further downstream analysis including: clustering, pseudotime analysis, velocity time graphs, quality control analysis.
 
 Code
-==================
+====
 
 """
 from ruffus import *
@@ -355,12 +355,12 @@ def runSalmonAlevin(infiles, outfile):
     fastqfiles = ModuleSC.check_paired_end(fastqfile, aligner)
     if isinstance(fastqfiles, list):
         CB_UMI_fastq = " ".join(fastqfiles[0])
-        reads_fastq = " ".join(fastqfiles[1]) 
+        reads_fastq = " ".join(fastqfiles[1])
 
     outfolder = outfile.rsplit('/',2)[0]
 
     salmon_options = PARAMS['salmon_run_options']
-  
+
     statement = '''
     salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
     --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
@@ -442,8 +442,8 @@ def busText(infile, outfile):
 def busCount(infiles, outfile):
     '''
     Takes the sorted BUS file, corresponding ec matrix and transcript text file and generates a count matrix and tag count comparison??
-    ''' 
-    
+    '''
+
     sorted_bus, t2gmap = infiles
     folder = sorted_bus.rsplit('/', 1)[0]
     ROOT = os.path.dirname(__file__)
@@ -461,7 +461,7 @@ def busCount(infiles, outfile):
     P.run(statement)
 
 #########################
-# SCE object  
+# SCE object
 #########################
 
 @follows(mkdir("SCE.dir"))
@@ -483,13 +483,13 @@ def readAlevinSCE(infile,outfile):
         downsample = "-d" + PARAMS['downsample_to']
     else:
         downsample = ""
-    
+
     job_memory = "40G"
 
     statement = '''
     Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s %(downsample)s
     '''
-    
+
     P.run(statement)
 
 
@@ -500,7 +500,7 @@ def readAlevinSCE(infile,outfile):
            regex("kallisto.dir/(\S+)/bus/output.bus_GCcoordmatrix.mtx"),
            r"SCE.dir/\1/bus/sce.rds")
 def readBusSCE(infile, outfile):
-    ''' 
+    '''
     Takes in gene count matrices for each sample
     Creates a single cell experiment class in R and saves as an r object
     '''
@@ -510,7 +510,7 @@ def readBusSCE(infile, outfile):
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'kallisto'
-    
+
     job_memory = "10G"
 
     statement = '''
@@ -528,9 +528,9 @@ def readBusSCE(infile, outfile):
            add_inputs(PARAMS['geneset'], getTranscript2GeneMap),
            r"SCE.dir/\1/bus/sce.rds")
 def BUSpaRse(infiles, outfile):
-    ''' 
-    Create kallisto SCE object. Use BUSpaRse package to read in bus file and convert to TCC and gene counts matrix. 
-    Create knee plot and use point of inflection to estimate number of empty droplets and cells. 
+    '''
+    Create kallisto SCE object. Use BUSpaRse package to read in bus file and convert to TCC and gene counts matrix.
+    Create knee plot and use point of inflection to estimate number of empty droplets and cells.
     Or use emptyDrops function from DropletUtils package to compare to the ambient profile.
     '''
 
@@ -545,14 +545,14 @@ def BUSpaRse(infiles, outfile):
     '''
 
     P.run(statement)
-    
 
-@transform((BUSpaRse, readAlevinSCE), 
+
+@transform((BUSpaRse, readAlevinSCE),
            regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
            r"SCE.dir/\1/\2/sce.rds")
 def combine_alevin_bus(infiles, outfiles):
     '''
-    dummy task to combine alevin and bus output into one task 
+    dummy task to combine alevin and bus output into one task
     '''
 
 #########################
@@ -574,7 +574,7 @@ def build_multiqc(infile):
     P.run(statement)
 
 #########################
-# QC step - needs some work so have commented out at the moment  
+# QC step - needs some work so have commented out at the moment
 #########################
 
 #@follows(build_multiqc)
@@ -593,7 +593,7 @@ def build_multiqc(infile):
 #
 #    inf_dir = os.path.dirname(infile)
 #    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-#    
+#
 #    job_memory = 'unlimited'
 #
 #    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&

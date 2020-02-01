@@ -55,7 +55,8 @@ These publications will appear here. Watch this space as this is a new repositor
    :maxdepth: 1
    :hidden:
 
-   pipelines/singlecell.rst
+   pipelines/Singlecell.rst
+   pipelines/Singlenuclei.rst
    pipelines/velocyto.rst
 
 .. toctree::
