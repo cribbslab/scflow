@@ -57,7 +57,7 @@ These publications will appear here. Watch this space as this is a new repositor
 
    pipelines/Singlecell.rst
    pipelines/Singlenuclei.rst
-   pipelines/velocyto.rst
+   pipelines/Velocyto.rst
 
 .. toctree::
    :caption: Project Info
