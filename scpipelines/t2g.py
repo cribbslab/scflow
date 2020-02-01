@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+'''
+This was downloaded from the bustools repository and is added to scflow
+for convinience.
+'''
+
 import sys, argparse
 
 def create_transcript_list(input, use_name = True, use_version = False):
