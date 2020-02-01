@@ -1,0 +1,102 @@
+---
+title: "Classification"
+output: html_document
+---
+
+Classification of your clusters in single cell datasets is a very important task as it allows you to make interpretable relationships between cell heterogeneity and your biological question or experiment. This task has historically been quite challenging to do for new data and relies on shutting a bunch of PhD students in a locked room and not letting them out until they have looked at the gene expression patterns of all the cells and related this back to literature.
+
+However, more recently there has been an explosion on the number of models that have been developed to allow you to accurately classify your cells of interest. A list of some of the available software can be found here:
+* https://academic.oup.com/nar/article/47/8/e48/5364134
+* https://www.biorxiv.org/content/10.1101/532093v1
+* https://www.biorxiv.org/content/10.1101/369538v2
+
+In this tutroial we will use the scClassify method that was recently published as a pre-print: https://www.biorxiv.org/content/10.1101/776948v1 
+
+Navigate to the following link to download the PBMC classifier .rds object: https://sydneybiox.github.io/scClassify/
+
+Today because of time constraints we will only go through how to predict cells, however in your own time, if you have your own data you can train a classifier.  
+
+# Load and import the data 
+
+We will use the log-transformed (size-factor normalized) matrices as query datasets, where each row refers to a gene and each column a cell.The output can then be combined within the seurat object and visualised.
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(scClassify)
+library(Matrix)
+library(Seurat)
+library(scater)
+```
+
+# Load the classifier
+
+Here we will take a preloaded classifier andfor PBMCs that we will use to classify our cells in our dataset.
+
+```{r}
+# Load the pre-trained classifier
+classifier <- readRDS("jointPBMCClass.rds")
+```
+
+```{r}
+# Import single cell experiment class object from 
+sce <- readRDS("se_filtered.rds")
+
+# To access metadata
+#colData(sce)
+# To access gene meta data
+#rowData(sce)
+# To access sparse count matric
+#assay(sce)
+```
+
+# Generate logcounts
+
+We will next generate logcounts as this is a pre-requisit for running scClassify.This ist stored in the sce object as logcounts
+
+```{r}
+counts <- as.matrix(assay(sce))
+libsizes <- colSums(counts)
+size.factors <- libsizes/mean(libsizes)
+# Also cast to a sparse matrix
+logcounts(sce) <- Matrix(log2(t(t(counts)/size.factors) + 1), sparse=TRUE)
+```
+
+# Classify cells
+
+Next, we perform predict_scClassify with our pretrained model trainRes = trainClassExample to predict the cell types of our query data matrix exprsMat_wang_subset_sparse. Here, we used pearson and spearman as similarity metrics.
+
+```{r}
+pred_res <- predict_scClassify(exprsMat_test = logcounts(sce),
+                               trainRes = classifier@listData$`PBMC_tenX(V3)`,
+                               algorithm = "WKNN",
+                               features = c("limma"),
+                               similarity = c("pearson", "spearman"),
+                               prob_threshold = 0.7,
+                               verbose = TRUE)
+
+table(pred_res$pearson_WKNN_limma$predRes)
+```
+
+# Predictions now added as meta data into experiment
+
+The predictions can now be added into the meta data or exported to be added as input to 
+
+```{r}
+sce$celltypes <-  pred_res$ensembleRes["cellTypes"]
+
+colData(sce)
+```
+
+# Convert sce to Seurat
+
+SingleCellExperiment is a class for storing single-cell experiment data, created by Davide Risso, Aaron Lun, and Keegan Korthauer, and is used by many Bioconductor analysis packages. Here we demonstrate converting the sce object to Seurat object so we can plot the expression of the data in a UMAP.
+
+```{r}
+# First run PCA
+sce <- scater::runPCA(sce)
+sce <- scater::runUMAP(sce)
+sce.seurat <- as.Seurat(sce, counts = "counts", data = "logcounts")
+
+DimPlot(sce.seurat, reduction = "UMAP", group.by ="cellTypes")
+```
+

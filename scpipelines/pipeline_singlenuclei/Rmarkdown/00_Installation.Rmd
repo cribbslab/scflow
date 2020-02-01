@@ -1,0 +1,40 @@
+---
+title: "Installation"
+output: html_document
+---
+
+Before you run the tutorial, you will need to install the following packages. I have written a few helper functions that will facilitate the installation process:
+
+```{r}
+# Install CRAN packages
+check.packages <- function(pkg){
+    new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(new.pkg)) 
+        install.packages(new.pkg, dependencies = TRUE)
+    sapply(pkg, require, character.only = TRUE)
+}
+
+packages<-c("Seurat", "tidyverse", "BiocManager", "Matrix", "cowplot", "ggplot2",
+            "scales", "devtools", "reticulate")
+check.packages(packages)
+
+
+# Install bioconductor packages
+check_biocmanager <- function(pkg){
+  if (!requireNamespace(pkg, quietly = TRUE))
+    install.packages(pkg)
+  sapply(pkg, require, character.only = TRUE)}
+
+packages<-c("tximport", "scater", "limma", "EnsDb.Hsapiens.v75",
+            "AnnotationHub", "ensembldb", "SingleCellExperiment")
+check_biocmanager(packages)
+
+# these packages are not currently on any package manager so you will need to
+# install these individually from github using devtools (installed above).
+
+devtools::install_github("cole-trapnell-lab/garnett")
+devtools::install_github("SydneyBioX/scClassify")
+devtools::install_github("hemberg-lab/SC3")
+
+
+```

@@ -1,0 +1,217 @@
+---
+title: "Combined DMSO j4 analysis"
+output: html_document
+---
+
+# Overview
+
+This is an Rmarkdown document showing an implimentation of Seurat which was adapted form the vignette found here: [Seurat tutorial](https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html).
+
+# Experiment plan
+
+This experiment was to evaluate the effect of control and drug treated cells.  
+
+Cells were harvested and a single-cell experiment was then performed using the drop-seq method.
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+Sys.setenv(KMP_DUPLICATE_LIB_OK=TRUE)
+library(Seurat)
+library(tximport)
+library(cowplot)
+library(org.Hs.eg.db)
+library(dplyr)
+library("AnnotationDbi")
+library(DT)
+library(biomaRt)
+library(EnsDb.Hsapiens.v75)
+library(SingleR)
+load("R_Seurat_objects.rdata")
+data <- UpdateSeuratObject(seuratobj)
+```
+
+# Assess QC metrics {.tabset .tabset-fade}
+
+
+## Control features
+
+We have previously shown that the filtering is a very important step in single-cell analysis data. We previously implimented our own filtering startegy and also used scater. However, Seurat also has basic quality control steps. However, I would not recomend using Scater to filter the data because I dont think the filtering is as robust as we have just performed in the previous Rmarkdown scripts. 
+
+In the example below, we visualize QC metrics, and use these to filter cells.
+
+We filter cells that have unique feature counts over 2,500 or less than 200
+We filter cells that have >5% mitochondrial counts
+
+```{r}
+data[["percent.mt"]] <- PercentageFeatureSet(data, pattern = "^MT-")
+VlnPlot(data, c("nFeature_RNA", "nCount_RNA", "percent.mt"))
+```
+
+```{r}
+plot1 <- FeatureScatter(data, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(data, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+CombinePlots(plots = list(plot1, plot2))
+```
+
+# Filter the cells
+
+Filtering is performed using the Seurat::subset function.
+
+```{r}
+data <- subset(data, subset = nFeature_RNA > 10 & nFeature_RNA < 10000 & percent.mt < 5)
+
+```
+
+
+# Seperate data into individual samples
+
+```{r}
+for (i in unique(data@meta.data$samples)){
+  so <-  subset(data,  subset = samples == i)
+  assign(paste("seurat_obj", i, sep = "."), so)
+}
+```
+
+# Normalise the data
+
+The single-cell counts data should be normalised before performing any further downstream analyses. This is so that cell to cell comparrisons can be performed. There are a number of normalisation methods available and you can see those that are available using ?NormalizeData.
+
+```{r}
+for (i in unique(data@meta.data$samples)){
+  so <- get(gsub("SAMPLE_FILE",i , "seurat_obj.SAMPLE_FILE"))
+  so <- NormalizeData(so, normalization.method = "LogNormalize", scale.factor = 10000)
+  assign(paste("seurat_obj", i, sep = "."), so)
+  }
+```
+
+# Identify highly variable genes
+
+We next calculate a subset of features that exhibit high cell-to-cell variation in the dataset (i.e, they are highly expressed in some cells, and lowly expressed in others). We and others have found that focusing on these genes in downstream analysis helps to highlight biological signal in single-cell datasets.
+
+The procedure in Seurat3 is described in detail here, and improves on previous versions by directly modeling the mean-variance relationship inherent in single-cell data, and is implemented in the FindVariableFeatures function. By default, we return 2,000 features per dataset. These will be used in downstream analysis, like PCA.
+
+```{r, results='asis', echo = FALSE}
+for (i in unique(data@meta.data$samples)){
+  so <- get(gsub("SAMPLE_FILE",i , "seurat_obj.SAMPLE_FILE"))
+  so <- FindVariableFeatures(so, selection.method = "disp", nfeatures = 1500) 
+  top10 <- head(VariableFeatures(so), 10)
+  plot1 <- VariableFeaturePlot(so)
+  plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+  cat("## ",i,"\n")
+  print(plot2)
+  cat('\n\n')
+
+  assign(paste("seurat_obj", i, sep = "."), so)
+}
+```
+
+# Integrate both datasets 
+
+Next I will use Seurat to integrate the datasets together into one object so I can compare clusters between the two datasets.
+
+```{r}
+sample_files <- unique(data@meta.data$samples)
+samples <- mget(paste0("seurat_obj.",sample_files))
+integration <- FindIntegrationAnchors(object.list = samples, 
+                                      dims=1:15,
+                                      k.filter = 150)
+to_integrate <- rownames(x = integration)
+integration <- IntegrateData(anchorset = integration, dims = 1:15, features.to.integrate = to_integrate)
+
+```
+
+# Evaluate the clustering
+
+Next I will use UMAP to visualise the clustering
+
+First, we need to apply a linear transformation (‘scaling’) that is a standard pre-processing step prior to dimensional reduction techniques like PCA. The ScaleData function:
+
+Shifts the expression of each gene, so that the mean expression across cells is 0
+Scales the expression of each gene, so that the variance across cells is 1
+This step gives equal weight in downstream analyses, so that highly-expressed genes do not dominate
+The results of this are stored in integration[["RNA"]]@scale.data
+
+```{r}
+DefaultAssay(integration) <- "integrated"
+integration <- ScaleData(integration)
+```
+
+# PCA
+
+```{r}
+integration <- RunPCA(integration, npcs = 30)
+DimPlot(integration, reduction = "pca")
+```
+
+# UMAP
+
+```{r}
+integration <- RunUMAP(integration, reduction = "pca", dims = 1:10)
+integration <- FindNeighbors(integration, reduction = "pca", dims = 1:10)
+integration <- FindClusters(integration, resolution = 0.6)
+
+p1 <- DimPlot(integration, reduction = "umap", group.by = "samples")
+p2 <- DimPlot(integration, reduction = "umap", label = TRUE)
+plot_grid(p1,p2)
+```
+
+
+
+# Clustering facet
+
+```{r}
+
+DimPlot(integration, reduction = "umap", split.by = "samples")
+```
+
+# Finding differentially expressed features 
+
+Seurat can help you find markers that define clusters via differential expression. By default, it identifes positive and negative markers of a single cluster (specified in ident.1), compared to all other cells. FindAllMarkers automates this process for all clusters, but you can also test groups of clusters vs. each other, or against all cells.
+
+The min.pct argument requires a feature to be detected at a minimum percentage in either of the two groups of cells, and the thresh.test argument requires a feature to be differentially expressed (on average) by some amount between the two groups. You can set both of these to 0, but with a dramatic increase in time - since this will test a large number of features that are unlikely to be highly discriminatory. As another option to speed up these computations, max.cells.per.ident can be set. This will downsample each identity class to have no more cells than whatever this is set to. While there is generally going to be a loss in power, the speed increases can be significiant and the most highly differentially expressed features will likely still rise to the top.
+
+# Find all markers
+
+```{r}
+# find markers for every cluster compared to all remaining cells, report only the positive ones
+control.markers <- FindAllMarkers(integration, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+control.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logFC)
+
+```
+
+# Feature plot
+
+```{r}
+
+FeaturePlot(integration, features = c("CASP8AP2", "FERMT2"),
+            order = FALSE)
+```
+
+
+# SingleR analysis
+
+```{r}
+
+bpen.se <- HumanPrimaryCellAtlasData()
+counts.data <-  GetAssayData(integration, slot = "data")
+sc <- SingleCellExperiment::SingleCellExperiment(assays = list(counts=counts.data))
+d.log.counts <- scater::logNormCounts(sc)
+annot <- SingleR(d.log.counts, bpen.se, bpen.se$label.fine, method="single",
+                 tune.thresh = 0.01, sd.thresh = 0.05)
+
+
+integration <- AddMetaData(
+  object = integration,
+  metadata = sub("\\:.*", "", annot$pruned.labels),
+  col.name = 'cell-labels'
+)
+DimPlot(integration, reduction = "umap", group.by = "cell-labels")
+```
+
+Cant use classification algorithm to predict cell types because the reference datasets do not contain our relevant cell types. The classifier cannot handle our data effectively so we will need to develop our own classifiers.
+
+# Save the Seurat object
+
+```{r}
+saveRDS(control, file="seurat_object.rds")
+```
