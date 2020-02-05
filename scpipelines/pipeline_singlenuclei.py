@@ -210,7 +210,7 @@ def add_identifier(infile outfile):
 def map_trans2gene(infiles, outfile):
     '''map the transcripts to their respective genes.'''
 
-    tr2g, introns_transcripts = infiles
+    introns_transcripts, tr2g  = infiles
 
     statement = '''awk 'NR==FNR{a[$1]=$2; b[$1]=$3;next} {$2=a[$1];$3=b[$1]} 1' %(tr2g)s %(introns_transcripts)s > %(outfile)s'''
 
@@ -278,113 +278,23 @@ def map_tr2gene(infile, outfile):
     P.run(statement)
 
 
-def finx_intron_fa_header(infile, outfile):
+@transform(map_trans2gene,
+           regex("(\S+)_t2g.txt"),
+           r"geneset.dir/\1.correct_fasta.fa")
+def find_intron_fa_header(infile, outfile):
     '''Fix the INTRONS FASTA header'''
 
-    statement = '''awk '{print ">"$1"."NR" gene_id:"$2" gene_name:"$3}' cDNA_t2g.txt > cDNA_fasta_header.txt &&
-                   awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' cDNA_fasta_header.txt $cDNA_fa > cDNA.correct_header.fa'''
+    statement = '''awk '{print ">"$1"."NR" gene_id:"$2" gene_name:"$3}' %(infile)s > geneset.dir/cDNA_fasta_header.txt &&
+                   awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' geneset.dir/cDNA_fasta_header.txt $cDNA_fa >
+                  %(outfile)s'''
 
     P.run(statement)
 
-@merge([PARAMS['geneset'], PARAMS['geneset2']],
-           r"geneset.dir/geneset_all.fa")
-def buildReferenceTranscriptome(infiles, outfile):
-    '''
-    Builds a reference transcriptome from the provided GTF geneset - generates
-    a fasta file containing the sequence of each feature labelled as
-    "exon" in the GTF.
-    --fold-at specifies the line length in the output fasta file
-    Parameters
-    ----------
-    infile: str
-        path to the GTF file containing transcript and gene level annotations
-    genome_dir: str
-        :term: `PARAMS` the directory of the reference genome
-    genome: str
-        :term: `PARAMS` the filename of the reference genome (without .fa)
-    outfile: str
-        path to output file
-    '''
-    geneset1, geneset2 = infiles
-    genome_file1 = os.path.abspath(
-        os.path.join(PARAMS["genome_dir"], PARAMS["genome"] + ".fa"))
 
-    if PARAMS['mixed_species']:
-        genome_file2 = os.path.abspath(
-        os.path.join(PARAMS["genome_dir2"], PARAMS["genome2"] + ".fa"))
-        tmp1 = P.get_temp_filename('.')
-        tmp2 = P.get_temp_filename('.')
-        statement = '''
-                       zcat %(geneset1)s |
-                       awk '$3=="exon"'|
-                       cgat gff2fasta
-                       --is-gtf
-                       --genome-file=%(genome_file1)s
-                       --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(tmp1)s &&
-                       zcat %(geneset2)s |
-                       awk '$3=="exon"'|
-                       cgat gff2fasta
-                       --is-gtf
-                       --genome-file=%(genome_file2)s
-                       --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(tmp2)s &&
-                       cat %(tmp1)s %(tmp2)s > %(outfile)s &&
-                       samtools faidx %(outfile)s
-                       '''
-    else:
-        statement = '''
-                       zcat %(geneset1)s |
-                       awk '$3=="exon"'|
-                       cgat gff2fasta
-                       --is-gtf
-                       --genome-file=%(genome_file1)s
-                       --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(outfile)s &&
-                       samtools faidx %(outfile)s
-                       '''
-
-    P.run(statement)
-    if PARAMS['mixed_species']:
-        os.unlink(tmp1)
-        os.unlink(tmp2)
-
-@active_if(PARAMS['salmon_alevin'])
-@transform(buildReferenceTranscriptome,
-           suffix(".fa"),
-           ".salmon.index")
-def buildSalmonIndex(infile, outfile):
-    '''
-    Builds a salmon index for the reference transriptome
-    Parameters
-    ----------
-    infile: str
-       path to reference transcriptome - fasta file containing transcript
-       sequences
-    salmon_kmer: int
-       :term: `PARAMS` kmer size for sailfish.  Default is 31.
-       Salmon will ignores transcripts shorter than this.
-    salmon_index_options: str
-       :term: `PARAMS` string to append to the salmon index command to
-       provide specific options e.g. --force --threads N
-    outfile: str
-       path to output file
-    '''
-
-    job_memory = "12G"
-
-    statement = '''
-    rm -rf %(outfile)s;
-    salmon index -k %(salmon_kmer)i %(salmon_index_options)s -t %(infile)s -i %(outfile)s
-    '''
-
-    P.run(statement)
-
-@active_if(PARAMS['kallisto_bustools'])
-@transform(buildReferenceTranscriptome,
-           suffix(".fa"),
-           ".kallisto.index")
-def buildKallistoIndex(infile, outfile):
+@mkdir('kallisto.dir')
+@merge([find_intron_fa_header,fix_intron_fasta, map_tr2gene, map_trans2gene],
+           "kallisto.dir/kallisto.index")
+def buildKallistoIndex(infiles, outfile):
     '''
     Builds a kallisto index for the reference transcriptome
     Parameters
@@ -398,54 +308,18 @@ def buildKallistoIndex(infile, outfile):
     outfile: str
        path to output file
     '''
+    cDNA_correct_header, introns_correct_header, map_tr2gene, map_trans2gene = infiles
 
     job_memory = "12G"
 
     statement = '''
-    kallisto index -i %(outfile)s -k %(kallisto_kmer)s %(infile)s
+    cat %(cDNA_correct_header)s %(introns_correct_header)s > kallisto.dir/cDNA_introns.fa
+    cat %(map_tr2gene)s %(map_trans2gene)s > kallisto.dir/cDNA_introns_t2g.txt
+    kallisto index -i %(outfile)s -k %(kallisto_kmer)s kallisto.dir/cDNA_introns.fa
     '''
 
     P.run(statement)
 
-
-@originate("transcript2geneMap.tsv")
-def getTranscript2GeneMap(outfile):
-    ''' Extract a 1:1 map of transcript_id to gene_id from the geneset '''
-
-    iterator = GTF.iterator(iotools.open_file(PARAMS['geneset']))
-    transcript2gene_dict = {}
-
-    for entry in iterator:
-
-        # Check the same transcript_id is not mapped to multiple gene_ids!
-        if entry.transcript_id in transcript2gene_dict:
-            if not entry.gene_id == transcript2gene_dict[entry.transcript_id]:
-                raise ValueError('''multipe gene_ids associated with
-                the same transcript_id %s %s''' % (
-                    entry.gene_id,
-                    transcript2gene_dict[entry.transcript_id]))
-        else:
-            transcript2gene_dict[entry.transcript_id] = entry.gene_id
-
-    if PARAMS['mixed_species']:
-        iterator = GTF.iterator(iotools.open_file(PARAMS['geneset2']))
-
-        for entry in iterator:
-
-            # Check the same transcript_id is not mapped to multiple gene_ids!
-            if entry.transcript_id in transcript2gene_dict:
-                if not entry.gene_id == transcript2gene_dict[entry.transcript_id]:
-                    raise ValueError('''multipe gene_ids associated with
-                                     the same transcript_id %s %s''' % (
-                            entry.gene_id,
-                            transcript2gene_dict[entry.transcript_id]))
-            else:
-                transcript2gene_dict[entry.transcript_id] = entry.gene_id
-
-    with iotools.open_file(outfile, "w") as outf:
-        outf.write("transcript_id\tgene_id\n")
-        for key, value in sorted(transcript2gene_dict.items()):
-            outf.write("%s\t%s\n" % (key, value))
 
 ############################################
 # Perform read quality steps
@@ -484,10 +358,6 @@ if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
         r"kallisto.dir/%s/bus/output.bus" % (
             PARAMS["merge_pattern_output"].strip()))
 
-    SEQUENCEFILES_SALMON_OUTPUT = (
-        r"salmon.dir/%s/alevin/quants_mat.gz" % (
-            PARAMS["merge_pattern_output"].strip()))
-
 else:
     SEQUENCEFILES_REGEX = regex(
         "(\S+).(fastq.gz|fastq.1.gz)")
@@ -495,57 +365,16 @@ else:
     SEQUENCEFILES_KALLISTO_OUTPUT = (
         r"kallisto.dir/\1/bus/output.bus")
 
-    SEQUENCEFILES_SALMON_OUTPUT = (
-        r"salmon.dir/\1/alevin/quants_mat.gz")
-
-#############################
-# Salmon- Alevin
-#############################
-
-@active_if(PARAMS['salmon_alevin'])
-@follows(mkdir("salmon.dir"))
-@collate(SEQUENCEFILES,
-         SEQUENCEFILES_REGEX,
-         add_inputs(buildSalmonIndex, getTranscript2GeneMap),
-         SEQUENCEFILES_SALMON_OUTPUT)
-def runSalmonAlevin(infiles, outfile):
-    '''
-    Alevin is integrated with salmon to quantify and analyse 3' tagged-end
-    single-cell sequencing data. Alevin supports 10Xv1, 10Xv2 and Drop-Seq
-    sc technology.
-    '''
-
-    aligner = 'salmon_alevin'
-    infiles = ModuleSC.check_multiple_read_files(infiles)
-    fastqfile, index, t2gmap = infiles
-    fastqfiles = ModuleSC.check_paired_end(fastqfile, aligner)
-    if isinstance(fastqfiles, list):
-        CB_UMI_fastq = " ".join(fastqfiles[0])
-        reads_fastq = " ".join(fastqfiles[1])
-
-    outfolder = outfile.rsplit('/',2)[0]
-
-    salmon_options = PARAMS['salmon_run_options']
-
-    statement = '''
-    salmon alevin -l %(salmon_librarytype)s -1 %(CB_UMI_fastq)s -2  %(reads_fastq)s
-    --%(salmon_sctechnology)s -i %(index)s -p %(salmon_threads)s -o %(outfolder)s
-    --tgMap %(t2gmap)s --dumpFeatures --dumpUmiGraph %(salmon_options)s
-    '''
-
-    job_memory = PARAMS["salmon_job_memory"]
-    job_threads = PARAMS['salmon_threads']
-    P.run(statement)
 
 #############################
 # Kallisto- Bus
 #############################
 
-@active_if(PARAMS['kallisto_bustools'])
+
 @follows(mkdir("kallisto.dir"))
 @collate(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
-         add_inputs(buildKallistoIndex, getTranscript2GeneMap),
+         add_inputs(buildKallistoIndex),
          SEQUENCEFILES_KALLISTO_OUTPUT)
 def runKallistoBus(infiles, outfile):
     '''
@@ -556,7 +385,7 @@ def runKallistoBus(infiles, outfile):
     '''
     aligner = 'kallisto_bus'
     infiles = ModuleSC.check_multiple_read_files(infiles)
-    fastqfile, index, t2gmap = infiles
+    fastqfile, index = infiles
     fastqfiles = ModuleSC.check_paired_end(fastqfile, aligner)
     fastqfiles = " ".join(fastqfiles)
 
@@ -570,6 +399,56 @@ def runKallistoBus(infiles, outfile):
     job_memory = '20G'
 
     P.run(statement)
+
+
+@collate(SEQUENCEFILES,
+         SEQUENCEFILES_REGEX,
+         r"\1_whitelist.txt")
+def whitelist(infile, outfile):
+    '''use umitools to generate whitelist of barcodes'''
+
+    statement = '''
+                umi_tools whitelist --stdin=%(infile)s
+                --bc-pattern=%(umitools_barcode_pattern)s
+                --extract-method=regex
+                --log2stderr
+                > %(outfile)s
+    '''
+
+    P.run(statement)
+
+
+@transform(runKallistoBus,
+           regex("kallisto.dir/\1/bus/output.bus"),
+           add_inputs(),
+           r"kallisto.dir/\1/bus/output.correct.bus")
+def bustools_correct(infiles, outfile):
+    ''' then
+    bustools correct function'''
+
+    bus_file, whitelist = infiles
+
+    statement = '''
+
+    bustools correct -w %(whitelist)s -o %(outfile)s  %(bus_file)s
+    '''
+
+    P.run(statement)
+
+bustools393 sort -o bus_output/output.correct.sort.bus -t 4 bus_output/output.correct.bus
+
+# Use UMI tools to create whitelist
+
+# Bustools correct whitelist
+
+# Bustools sort
+
+# Bustools capture cDNA and then introns
+
+# Bustools count for cDNA and introns
+
+# Merge spliced and unspliced
+
 
 #########################
 # Process bus file
@@ -598,7 +477,6 @@ def busText(infile, outfile):
     '''
 
     P.run(statement)
-
 
 
 @transform(busText,
@@ -630,36 +508,6 @@ def busCount(infiles, outfile):
 # SCE object
 #########################
 
-@follows(mkdir("SCE.dir"))
-@active_if(PARAMS['salmon_alevin'])
-@transform(runSalmonAlevin,
-           regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"SCE.dir/\1/alevin/sce.rds")
-def readAlevinSCE(infile,outfile):
-    '''
-    Collates alevin count matrices for each sample
-    Creates a single cell experiment class in R and saves as an r object
-    '''
-    working_dir = os.getcwd()
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-    species = PARAMS['sce_species']
-    gene_name = PARAMS['sce_genesymbol']
-    pseudo = 'alevin'
-    if PARAMS['downsample_active']:
-        downsample = "-d" + PARAMS['downsample_to']
-    else:
-        downsample = ""
-
-    job_memory = "40G"
-
-    statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s %(downsample)s
-    '''
-
-    P.run(statement)
-
-
-## Kallisto SCE object
 @follows(mkdir("SCE.dir"))
 @active_if(PARAMS['kallisto_bustools'])
 @transform(busCount,
@@ -713,14 +561,6 @@ def BUSpaRse(infiles, outfile):
     P.run(statement)
 
 
-@transform((BUSpaRse, readAlevinSCE),
-           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
-           r"SCE.dir/\1/\2/sce.rds")
-def combine_alevin_bus(infiles, outfiles):
-    '''
-    dummy task to combine alevin and bus output into one task
-    '''
-
 #########################
 # Multiqc
 #########################
@@ -739,35 +579,8 @@ def build_multiqc(infile):
 
     P.run(statement)
 
-#########################
-# QC step - needs some work so have commented out at the moment
-#########################
 
-#@follows(build_multiqc)
-#@follows(mkdir("QC_report.dir"))
-#@transform(combine_alevin_bus,
-#           regex("(\S+/\S+/\S+)/sce.rds"),
-#           r"\1/pass.rds")
-#def run_qc(infile, outfile):
-#    """
-#    Runs an Rmarkdown report that allows users to visualise and set their
-#    quality parameters according to the data. The aim is for the pipeline
-#    to generate default thresholds then the user can open the Rmarkdown in
-#    rstudio and re-run the report, modifying parameters changes to suit the
-#    data
-#    """
-#
-#    inf_dir = os.path.dirname(infile)
-#    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-#
-#    job_memory = 'unlimited'
-#
-#    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
-#                   R -e "rmarkdown::render('%(inf_dir)s/Sample_QC.Rmd',encoding = 'UTF-8')"'''
-#
-#    P.run(statement)
-
-@follows(combine_alevin_bus, build_multiqc)
+@follows(BUSpaRse, build_multiqc)
 def full():
     pass
 
