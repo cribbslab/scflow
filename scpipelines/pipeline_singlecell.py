@@ -447,7 +447,7 @@ def busCount(infiles, outfile):
     sorted_bus, t2gmap = infiles
     folder = sorted_bus.rsplit('/', 1)[0]
     ROOT = os.path.dirname(__file__)
-    bus2count = ROOT + "/bus2count.py"
+    bus2count = ROOT + "python" + "/bus2count.py"
     exp_cells = PARAMS['kallisto_expectedcells']
     threads = PARAMS['kallisto_threads']
 
