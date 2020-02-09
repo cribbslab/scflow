@@ -5,6 +5,7 @@ library("SingleCellExperiment")
 library("optparse")
 library('biomaRt')
 library("Matrix")
+library("tximport")
 
 option_list = list(
   make_option(c("-w", "--workingdir"), type="character", default=NULL, 
@@ -36,54 +37,20 @@ pseudo <- opt$pseudoaligner
 downsample <- opt$downsample
 
 
-readAlevin <- function(files) {
-  dir <- sub("/alevin$","",dirname(files))
-  barcode.file <- file.path(dir, "alevin/quants_mat_rows.txt")
-  gene.file <- file.path(dir, "alevin/quants_mat_cols.txt")
-  matrix.file <- file.path(dir, "alevin/quants_mat.gz")
-  var.file <- file.path(dir, "alevin/quants_var_mat.gz")
-  for (f in c(barcode.file, gene.file, matrix.file)) {
-    if (!file.exists(f)) {
-      stop("expecting 'files' to point to 'quants_mat.gz' file in a directory 'alevin'
-           also containing 'quants_mat_rows.txt' and 'quant_mat_cols.txt'.
-           please re-run alevin preserving output structure")
-    }
-    }
-  cell.names <- readLines(barcode.file)
-  gene.names <- readLines(gene.file)
-  num.cells <- length(cell.names)
-  num.genes <- length(gene.names)
-  
-  if(!is.null(downsample)){
-    if(downsample > length(cell.names) ){ downsample <- num.cells}
-    downsample_list <- sort(sample(1:length(cell.names), downsample, replace = F))
-  }
-  
-  mat <- matrix(nrow=num.genes, ncol=num.cells, dimnames=list(gene.names, cell.names))
-  con <- gzcon(file(matrix.file, "rb"))
-  
-  for (j in seq_len(num.cells)) {
-    mat[,j] <- readBin(con, double(), endian = "little", n=num.genes)
-  }
-  close(con)
 
-  if(!is.null(downsample)){
-  		 mat <- mat[,downsample_list]
-  }
+readAlevin <- function(files){
+	txi <- tximport(files, type= "alevin")
+	mat <- txi$counts  
 
-  # if inferential replicate variance exists:
-  if (file.exists(var.file)) {
-    counts.mat <- mat
-    var.mat <- mat
-    con <- gzcon(file(var.file, "rb"))
-    for (j in seq_len(num.cells)) {
-      var.mat[,j] <- readBin(con, double(), endian = "little", n=num.genes)
-    }
-    close(con)
-    mat <- list(counts.mat, var.mat)
-  }
-  return(mat)
-    }
+if(!is.null(downsample)){
+
+	 downsample_list <- sort(sample(colanmes(mat), downsample, replace = F))
+
+ 	 mat <- mat[,downsample_list]
+}
+
+	return(mat)
+}
 
 ## Kallisto BUS matrix
 
