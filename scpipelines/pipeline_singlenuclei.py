@@ -197,7 +197,7 @@ def introns_transcripts_no_version(infile, outfile):
 @transform(introns_transcripts,
            regex("geneset.dir/(\S+)_transcripts.txt"),
            r"geneset.dir/\1_transcripts.to_capture.txt")
-def add_identifier(infile outfile):
+def add_identifier(infile, outfile):
     '''add an identifier to the transcript IDs '''
 
     statement = '''cat %(infile)s | awk '{print $0"."NR"-I"}' > %(outfile)s'''
@@ -550,7 +550,7 @@ def build_multiqc(infile):
     P.run(statement)
 
 
-@follows(, build_multiqc)
+@follows(build_multiqc)
 def full():
     pass
 
