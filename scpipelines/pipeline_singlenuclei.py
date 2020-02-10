@@ -93,7 +93,7 @@ import sqlite3
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
-import scpipelines.ModuleSC
+import scpipelines.ModuleSC as ModuleQC
 
 import pandas as pd
 
