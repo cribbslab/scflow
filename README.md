@@ -1,10 +1,10 @@
-# single-cell
+# scflow
 
 <p align="left">
 	<a href='https://single-cell.readthedocs.io/en/latest/?badge=latest'>
     <img src='https://readthedocs.org/projects/single-cell/badge/?version=latest' alt='Documentation Status' /></a>
-	<a href="https://travis-ci.com/Acribbs/single-cell.svg?branch=master", alt="Travis">
-		<img src="https://travis-ci.com/Acribbs/single-cell.svg?branch=master" /></a>
+	<a href="https://travis-ci.com/Acribbs/scflow.svg?branch=master", alt="Travis">
+		<img src="https://travis-ci.com/Acribbs/scflow.svg?branch=master" /></a>
 	<a href="https://twitter.com/CribbsP?lang=en", alt="Twitter followers">
 		<img src="https://img.shields.io/twitter/url/http/shields.io.svg?style=social&logo=twitter" /></a>
 </p>
@@ -14,37 +14,43 @@ This repository contains a collection of pipelines that aid the analysis of sing
 
 ## Installation
 
-### Conda installation
+### pip install 
+
+You can install scflow using pip, this will only install the package without any dependancies, which will have to be installed seperately.::
+
+	pip install scflow
+
+### Conda installation - in progress
 
 The preferred method for installation is through conda. Currently this installation is still in working progress. Preferably the 
 installation should be in a seperate environment::
 
-    conda create -n single-cell -c cgat single-cell
-    conda activate single-cell
-    single_cell --help
+    conda create -n scflow -c cgat scflow
+    conda activate scflow
+    scflow --help
    
 ### Manual installation
 
 The respository can also be installed manually, but dependancies will need to be installed seperately::
 
     python setup.py install
-    single_cell --help
+    scflow --help
     
 ## Usage
 
-Run the ``single_cell --help`` command view the help documentation for how to run the single-cell repository.
+Run the ``scflow --help`` command view the help documentation for how to run the single-cell repository.
 
 To run the main single_cell droplet based pipeline run first generate a configuration file::
 
-    single_cell singlecell config
+    scflow singlecell config
 
 Then run the pipeline::
 
-    single_cell singlecell make full -v5
+    scflow singlecell make full -v5
     
 Then to run the report::
 
-    single_cell singlecell make build_report
+    scflow singlecell make build_report
     
 ## Documentation
 

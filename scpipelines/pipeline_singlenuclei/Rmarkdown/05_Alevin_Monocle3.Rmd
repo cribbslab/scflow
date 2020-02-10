@@ -1,0 +1,301 @@
+---
+title: "Monocle3"
+output: html_document
+---
+
+This Rmarkdown was adapted from the vignette provided by monocle3: https://cole-trapnell-lab.github.io/monocle3/docs/
+
+
+```{r}
+knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+library(monocle3)
+library(tximport)
+library("AnnotationDbi")
+library(garnett)
+library(biomaRt)
+library(EnsDb.Hsapiens.v75)
+library(tidyverse)
+library(reticulate)
+library(Seurat)
+```
+
+# Import the data
+
+The first step is to import the data from salmon and then import the metrics from the QC cleaning steps. The second step is to filter the data to leave only the "good" cells.
+
+```{r}
+
+txi.control <- tximport("salmon.dir/pbmc_1k_v3_S1/alevin/quants_mat.gz", type="alevin")
+d <- as.matrix(txi.control$counts)
+
+# Import the filtering QC metrics clean object and filter the names from that object
+metrics_clean <- readRDS( "metrics_clean.rds")
+d <- d[,metrics_clean$cells]
+
+SYMBOL <- mapIds(EnsDb.Hsapiens.v75,keys=rownames(d),column="SYMBOL",keytype="GENEID",multiVals="first")
+
+symbol <- as.data.frame(SYMBOL)
+symbol$ENSEMBL <- rownames(symbol)
+```
+
+# Set up the monocle3 object
+
+The first step in working with Monocle 3 is to load up your data into Monocle 3's main class, cell_data_set:
+
+```{r}
+# A column called gene_short_name is required for monocle3
+colnames(symbol) <- c("gene_short_name", "ensembl")  
+
+control <- new_cell_data_set(d,
+                             cell_metadata = metrics_clean,
+                             gene_metadata = symbol)
+```
+
+
+# Preprocess the data
+
+Now that the data's all loaded up, we need to pre-process it. This step is where you tell Monocle 3 how you want to normalize the data, whether to use Principal Components Analysis (the standard for RNA-seq) or Latent Semantic Indexing (common in ATAC-seq), and how to remove any batch effects. We will just use the standard PCA method in this demonstration. When using PCA, you should specify the number of principal components you want Monocle to compute.
+
+```{r}
+control <- preprocess_cds(control, num_dim = 20)
+```
+
+# Plot PCs
+
+It's a good idea to check that you're using enough PCs to capture most of the variation in gene expression across all the cells in the data set. You can look at the fraction of variation explained by each PC using plot_pc_variance_explained():
+
+```{r}
+plot_pc_variance_explained(control)
+```
+
+# Remove batch effects
+
+This is an optional function that we wont use today as there are no batch effects within the data. You can subtracted unwatched batch effects or align cells from similar (but not exactly) the same conditions using several different methods in Monocle 3.
+
+```{r}
+#cds <- align_cds(cds, alignment_group = "batch")
+```
+
+
+# Reduce dimensions and cluster
+
+```{r}
+control <- reduce_dimension(control)
+
+# If you would like to use tSNE then:
+# control <- reduce_dimension(control, reduction_method="tSNE")
+# Then when you plot cells use: plot_cells(control, reduction_method="tSNE")
+
+
+# You may get warning stating that the louvain package needs to be installed when running cluster_cells, this can be installed using:
+#conda_install(envname = "r-reticulate", packages="louvain")
+# Using r-reticulate specify the version of python
+use_python("cgat-dev")
+
+
+control <- cluster_cells(control, resolution=1e-5)
+```
+
+
+# Plot clusters
+
+```{r}
+plot_cells(control, color_cells_by="cluster", label_branch_points = FALSE, label_roots = FALSE, label_leaves = FALSE, show_trajectory_graph = FALSE)
+```
+
+# Plot meta features 
+
+In addition to plotting clusters you are able to plot meta features
+
+```{r}
+plot_cells(control, color_cells_by="mitoRatio", label_branch_points = FALSE, label_roots = FALSE, label_leaves = FALSE, show_trajectory_graph = FALSE)
+```
+
+# plot genes on UMAP plot
+
+```{r}
+plot_cells(control, genes=c("CD3D"), cell_size = 0.7, 
+label_branch_points = FALSE, label_roots = FALSE, label_leaves = FALSE, show_trajectory_graph = FALSE)
+```
+
+# Find marker genes expressed by each cluster
+
+Just like in Seurat, monocle 3 also has the functionality to allow the identification of markers that define each cluster.
+
+The data frame marker_test_res contains a number of metrics for how specifically expressed each gene is in each partition. We could group the cells according to cluster, partition, or any categorical variable in colData(cds). You can rank the table according to one or more of the specificity metrics and take the top gene for each cluster. For example, pseudo_R2 is one such measure.
+
+```{r}
+marker_test_res <- top_markers(control, group_cells_by="cluster", 
+                               reference_cells=1000, cores=8)
+
+top_specific_markers <- marker_test_res %>%
+                            dplyr::filter(fraction_expressing >= 0.10) %>%
+                            group_by(cell_group) %>%
+                            top_n(1, pseudo_R2)
+
+top_specific_marker_ids <- unique(top_specific_markers %>% pull(gene_id))
+```
+
+
+# Plot the genes by group
+
+Now, we can plot the expression and fraction of cells that express each marker in each group with the plot_genes_by_group function:
+
+```{r}
+plot_genes_by_group(control,
+                    top_specific_marker_ids,
+                    group_cells_by="cluster",
+                    ordering_type="maximal_on_diag",
+                    max.size=3)
+```
+
+It's often informative to look at more than one marker, which you can do just by changing the first argument to top_n():
+
+```{r}
+top_specific_markers <- marker_test_res %>%
+                            dplyr::filter(fraction_expressing >= 0.10) %>%
+                            group_by(cell_group) %>%
+                            top_n(3, pseudo_R2)
+
+top_specific_marker_ids <- unique(top_specific_markers %>% pull(gene_id))
+
+plot_genes_by_group(control,
+                    top_specific_marker_ids,
+                    group_cells_by="cluster",
+                    ordering_type="cluster_row_col",
+                    max.size=3)
+```
+
+
+# Isolate cells
+
+Some cell populations may have interesting structure and therefore we can zoom into these cells in more detail.
+
+```{r}
+control_subset <- choose_cells(control)
+```
+
+Now we have a smaller object that only contains the cells we wish to drill down into. We can identify genes that are differentially regulated in this subset.
+
+```{r}
+pr_graph_test_res <- graph_test(control_subset, neighbor_graph="knn", cores=2)
+pr_deg_ids <- row.names(subset(pr_graph_test_res, morans_I > 0.01 & q_value < 0.05))
+```
+
+We can take all the genes that vary across this set of cells and group those that have similar patterns of expression into modules:
+
+```{r}
+gene_module_df <- find_gene_modules(control_subset[pr_deg_ids,], resolution=1e-3)
+```
+
+Plotting these modules aggregate expression values reveals which cells express which modues.
+
+```{r}
+plot_cells(control_subset, genes=gene_module_df, 
+           show_trajectory_graph=FALSE, 
+           label_cell_groups=FALSE)
+```
+
+If you were unsure of the cell type this would be the stage at which you would manually look at the gene expression pattern for each module and then use applications such as GO analysis to try and infer the cell type for each cluster. This is a difficult tas as it required knowledge of the biological state of each cell subtype. 
+
+Suppose after doing this we have a good idea of what the cell types in the partition are. Let's recluster the cells at finer resolution and then see how they overlap with the clusters in the partition:
+
+```{r}
+control_subset = cluster_cells(control_subset, resolution=1e-1)
+plot_cells(control_subset, color_cells_by="cluster",show_trajectory_graph=FALSE, 
+           label_cell_groups=FALSE)
+
+# Set clusters within the meta data 
+colData(control_subset)$assigned_cell_type <- as.character(control_subset@clusters$UMAP$clusters[colnames(control_subset)])
+
+# We can add annotation to each cluster as follows
+colData(control_subset)$assigned_cell_type <- dplyr::recode(colData(control_subset)$assigned_cell_type,
+                                                        "1"="Cell type 1",
+                                                        "2"="Cell type 2",
+                                                        "3"="Cell type 3",
+                                                        "4"="Cell type 4",
+                                                        "5"="Cell type 5")
+plot_cells(control_subset, group_cells_by="cluster", color_cells_by="assigned_cell_type", show_trajectory_graph=FALSE)
+```
+
+# Learn the trajectory graph
+
+```{r}
+control <- learn_graph(control)
+
+plot_cells(control,
+           color_cells_by = "cluster",
+           label_groups_by_cluster=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE)
+```
+
+# Order cells in pseudotime along a trajectory
+
+Now, put your cells in order by how much progress they've made through whatever process you're studying, such as differentiation, reprogramming, or an immune response.
+
+For the purposes of this example we are going to order our cells using the GO term for immune cell activation.
+
+```{r}
+plot_cells(control,
+           color_cells_by = "cluster",
+           label_cell_groups=FALSE,
+           label_leaves=TRUE,
+           label_branch_points=TRUE,
+           graph_label_size=2)
+```
+
+The circles with numbers in them denote special points within the graph. Each leaf, denoted by light gray circles, corresponds to a different outcome (i.e. cell fate) of the trajectory. Black circles indicate branch nodes, in which cells can travel to one of several outcomes. You can control whether or not these are shown in the plot with the label_leaves and label_branch_points arguments to plot_cells.
+
+Now that we have a sense of where the early cells fall, we can call order_cells(), which will calculate where each cell falls in pseudotime. In order to do so order_cells()needs you to specify the root nodes of the trajectory graph. If you don't provide them as an argument, it will launch a graphical user interface for selecting one or more root nodes.
+
+```{r}
+control <- order_cells(control)
+```
+
+# View pseudotime
+
+```{r}
+plot_cells(control,
+           color_cells_by = "pseudotime",
+           label_cell_groups=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE,
+           graph_label_size=1.5)
+```
+
+
+
+# Importing UMAP and clustering from Seurat
+
+Sometimes you want to maintain consistency between different software, this is particularly important when generating visual plots such as UMAP or PCA. However, this can be easily achieved by importing the UMAP and clustering projections generated in one software to another. This is how you can overwrite the UMAP and clustering of Monocle with the UMAP projections and clustering from Seurat. 
+
+```{r}
+# Import Seurat object
+seurat <- readRDS("seurat_object.rds")
+
+sce <- control
+# Import UMAP coordinates from Seurat
+umaps = Embeddings(seurat, assay="integrated",reduction="umap")
+colnames(umaps) <- c("V1", "V2")
+# Different filtering methodologies has resulted in different cells passing or failing
+# so the cells in sce need to be filtered so they contain the same.
+sce <- sce[,rownames(umaps)]
+# Check to see if they are identical
+identical(rownames(umaps),rownames(reducedDims(sce)$UMAP))
+
+# Add the UMAP projections onto the sce
+reducedDims(sce)$UMAP <- umaps
+
+
+sce=cluster_cells(sce,reduction_method = "UMAP")
+
+# In my version of seurat there is a bug that may (or may not be fixed on the latest version). Without reducing the partitions to 1 the ordering_cells will not work.
+sce@clusters$UMAP$partitions[sce@clusters$UMAP$partitions == "2"] <- "1"
+sce@clusters$UMAP$partitions[sce@clusters$UMAP$partitions == "3"] <- "1"
+
+sce <- learn_graph(sce, use_partition = F)
+sce <- order_cells(sce)
+plot_cells(sce, label_cell_groups=FALSE, label_leaves=FALSE, label_branch_points=FALSE, graph_label_size=1.5)
+
+```

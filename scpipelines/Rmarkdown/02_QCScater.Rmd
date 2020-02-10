@@ -1,0 +1,284 @@
+---
+title: "QC with scater"
+output: html_document
+---
+
+In this quality control Rmarkdown we will go through how to perform quality analysis using the scater package, that automates a lot of the proces involved in measuring quality statistics.
+
+```{r, include=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+library(scater)
+library(tximport)
+library(limma)
+
+meta_data <- readr::read_csv("meta_data.csv")
+sample_files <- meta_data$Sample
+```
+
+The scater package has a focus on aiding with quality control (QC) and pre-processing of single-cell RNA-seq data before further downstream analysis. Scater can be used as a complimentary technique to the previous QC that we have just looked at. 
+
+Scater sees QC as consisting of three distinct steps:
+
+- QC and filtering of cells
+- QC and filtering of features (genes)
+- QC of experimental variables
+
+Following QC, we can proceed with data normalisation before downstream analysis and modelling. 
+
+# Import data from salmon
+
+```{r}
+for (i in sample_files){
+  # Import count matrix
+  txi <- tximport(gsub("SAMPLE_FILE",i , "salmon.dir/SAMPLE_FILE/alevin/quants_mat.gz"), type="alevin")
+
+  sce <- SingleCellExperiment(assays = list(counts = as.matrix(txi$counts)))
+
+  #Calculate TMPs
+  tpm(sce) <- calculateTPM(sce)
+  # Calculate CPM
+  cpm(sce) <- calculateCPM(sce)
+  sce <- normalize(sce)
+
+  # Run PCA
+  sce <- runPCA(sce)
+  # Run UMAP
+  sce <- runUMAP(sce)
+  assign(paste("sce", i, sep = "."), sce)
+}
+```
+
+# Plot PCA {.tabset}
+
+Scater allows you to plots PCA, to assess the presence of batch effects
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  
+  plt <- plotPCA(sce)
+  
+  cat("## ",i,"\n")
+  plot(plt)
+  cat('\n\n')
+}
+```
+
+# Plot UMAP
+
+UMAP projections are also a nice visual aid to identify irregularities in the data.
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  
+  plt <- plotUMAP(sce)
+  
+  cat("## ",i,"\n")
+  plot(plt)
+  cat('\n\n')
+}
+
+```
+
+# Calulate metrics
+
+Quality metrics are calculated for you during this step.
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  
+  sce <- calculateQCMetrics(sce)
+  assign(paste("sce", i, sep = "."), sce)
+}
+```
+
+# View the QC cell metrics {.tabset}
+
+Quality control metrics for each cell and feature, stored in the colData and rowData respectively
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  kableExtra::kable(colnames(colData(sce)))
+}
+```
+
+# View the QC feature metrics {.tabset}
+
+Feature metrics can be accessed using rowData()
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  kableExtra::kable(colnames(rowData(sce)))
+}
+```
+
+# Quality control plots .{tabset}
+
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  plt <- plotScater(sce, nfeatures = 300, exprs_values = "counts")
+
+  cat("## ",i,"\n")
+  plot(plt)
+  cat('\n\n')
+  }
+```
+
+# Quality control rowdata .{tabset}
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  plt <- plotRowData(sce, x = "n_cells_by_counts", y = "mean_counts")
+  
+  cat("## ",i,"\n")
+  plot(plt)
+  cat('\n\n')
+}
+```
+
+# Plot multiple features
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+p1 <- plotColData(sce, x = "total_counts", 
+    y = "total_features_by_counts")
+p2 <- plotColData(sce, x = "log10_total_features_by_counts",
+    y = "total_features_by_counts")
+p3 <- plotColData(sce, x = "log10_total_features_by_counts",
+    y = "pct_counts_in_top_50_features")
+ plt <- multiplot(p1, p2, p3, cols = 3)
+  cat("## ",i,"\n")
+  plot(plt)
+  cat('\n\n')
+}
+```
+
+# Plot Expression frequency vs mean
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  plt <- plotExprsFreqVsMean(sce)
+  cat("## ",i,"\n")
+  plot(plt)
+  cat('\n\n')
+}
+```
+
+# Plot highest expressed genes
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  plt <- plotHighestExprs(sce, exprs_values = "counts")
+  cat("## ",i,"\n")
+  plot(plt)
+  cat('\n\n')
+}
+```
+
+
+# Filtering the single-cell experiment dataset
+
+Column subsetting of the SingeCellExperiment object will only retain the selected cells, thus removing low-quality or otherwise unwanted cells. We demonstrate below by retaining the first 40 cells. (This happens to be all the cells in this particular dataset, which are already known to be high-quality.)
+
+scater also provides a filter function, inspired by the function of the same name in the dplyr package and operating in exactly the same manner. This can be used to very conviently subset (i.e. filter) the cells of an SingleCellExperiment object based on its colData variables.
+
+```{r}
+# This wont work, its just an example to show that this function exists
+filter(sce, Treatment == "treat1")
+```
+
+
+# Use metrics to filter
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "sce.SAMPLE_FILE"))
+  keep.total <- sce$total_counts > 1e3
+  keep.n <- sce$total_features_by_counts > 50
+  filtered <- sce[,keep.total & keep.n]
+  dim(filtered)
+  assign(paste("filtered_sce", i, sep = "."), filtered)
+}
+```
+
+# Filter by features
+
+It is common to filter out low-abundance features prior to further analyses. This is easily achieved by row subsetting of the SingleCellExperiment object. In the example below, genes are only retained if they are expressed in four or more cells:
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "filtered_sce.SAMPLE_FILE"))
+  keep_feature <- nexprs(sce, byrow=TRUE) >= 4
+  sce <- sce[keep_feature,]
+  dim(sce)
+  # Save sce object for downstream analysis
+  saveRDS(sce, paste0("sce_scater_", i, ".rds"))
+  assign(paste("filtered_sce", i, sep = "."), sce)
+}
+```
+
+# Plot relationship between experimental factors and expression
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "filtered_sce.SAMPLE_FILE"))
+  sce <- normalize(sce)
+  plt <- plotExplanatoryVariables(sce)
+  assign(paste("filtered_sce", i, sep = "."), sce)
+  
+  cat("## ",i,"\n")
+  plot(plt)
+  cat('\n\n')
+}
+```
+
+
+# Remove technical bias
+
+Scaling normalization accounts for cell-specific biases that scale expression up or down for all genes in a particular cell, e.g., coverage or capture efficiency. The simplest approach to scaling normalization defines the size factors from the scaled library sizes of all cells. is done so that the mean size factor is equal to unity, ensuring that the normalized values are on the same scale as the original counts.
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "filtered_sce.SAMPLE_FILE"))
+  sizeFactors(sce) <- librarySizeFactors(sce)
+  summary(sizeFactors(sce))
+  assign(paste("filtered_sce", i, sep = "."), sce)
+}
+```
+
+Log-transformed normalized expression values can then be computed with normalize, which stores the output in the "logcounts" slot.
+
+```{r}
+for (i in sample_files){
+  sce <- get(gsub("SAMPLE_FILE",i , "filtered_sce.SAMPLE_FILE"))
+  sce <- normalize(sce)
+  assign(paste("filtered_sce", i, sep = "."), sce)
+}
+```
+
+While simple, library size normalization does not account for composition biases that are often present in high-throughput sequencing data. It also fails to account for differences in the biases affecting spike-in transcripts. We strongly suggest using the computeSumFactors and computeSpikeFactors functions from the scran package.
+
+# Batch correction
+
+Batch correction accounts for systematic differences in expression between cells in different batches. Unlike scaling biases, these are usually constant across all cells in a given batch but different for each gene.
+
+Batch effects can be regressed out by using the removeBatchEffect function from the limma package. This applies a linear model, usually on the log-expression values to avoid issues with the mean-variance relationship. 
+
+```{r}
+batch <- rep(1:2, each=20)
+corrected <- removeBatchEffect(logcounts(sce), block=batch)
+assay(sce, "corrected_logcounts") <- corrected
+```
+
+Factors of interest can be included in design to avoid regressing them out. This is necessary when they are not orthogonal to the block. However, this assumes that your model is fully specified, which may not be possible when the factors of interest are unknown. In such cases, an alternative method is to use the mnnCorrect approach from scran.
+

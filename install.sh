@@ -42,7 +42,7 @@ error_handler() {
     echo " ${SCRIPT_NAME} ${SCRIPT_PARAMS}"
     echo
     echo " Please copy and paste this error and report it via Git Hub: "
-    echo " https://github.com/Acribbs/single-cell/issues "
+    echo " https://github.com/Acribbs/scflow/issues "
     print_env_vars
     echo " ########################################################## "
 }
@@ -64,13 +64,13 @@ report_error() {
     exit 1
 }
 
-# detect single-cell installation
-detect_single-cell_installation() {
+
+detect_scflow_installation() {
 
     if [[ -z "$INSTALL_HOME" ]] ; then
 
-	if [[ -d "$HOME/single-cell-install/conda-install" ]] ; then
-	    UNINSTALL_DIR="$HOME/single-cell-install"
+	if [[ -d "$HOME/scflow-install/conda-install" ]] ; then
+	    UNINSTALL_DIR="$HOME/scflow-install"
 	fi
 
     else
@@ -84,15 +84,40 @@ detect_single-cell_installation() {
 } # detect_single-cell_installation
 
 
-# configure environment variables 
+# configure environment variables
 # set: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-get_single-cell_env() {
+get_scflow_env() {
     INSTALL_HOME=$TRAVIS_BUILD_DIR
-    CONDA_INSTALL_TYPE="single-cell.yml"
+    CONDA_INSTALL_TYPE="scflow.yml"
     CONDA_INSTALL_DIR=$INSTALL_HOME/conda-install
-    CONDA_INSTALL_ENV="single-cell"
+    CONDA_INSTALL_ENV="scflow"
 
-} # get_single-cell_env
+} # get_scflow_env
+
+# check whether the 'scflow' conda environment is enabled or not
+is_env_enabled() {
+    # disable error checking
+    set +e
+
+    # store the result
+    ENV_ENABLED=0
+
+    # is conda available?
+    CONDA_PATH=$(which conda)
+
+    if [[ $? -eq 0 ]] ; then
+        ENV_PATH=$(dirname $(dirname $CONDA_PATH))
+	stat ${ENV_PATH}/envs/scflow >& /dev/null
+	if [[ $? -eq 0 ]] ; then
+            export ENV_ENABLED=1
+	fi
+    fi
+
+    export ENV_ENABLED
+
+    # enable error checking again
+    set -e
+}
 
 
 # setup environment variables
@@ -148,13 +173,13 @@ conda_install() {
 
     log "installing conda"
 
-    detect_single-cell_installation
+    detect_scflow_installation
 
     if [[ -n "$UNINSTALL_DIR" ]] ; then
 
 	echo
-	echo " An installation of the single-cell code was found in: $UNINSTALL_DIR"
-	echo " Please use --location to install single-cell code in a different location "
+	echo " An installation of the scflow code was found in: $UNINSTALL_DIR"
+	echo " Please use --location to install scflow code in a different location "
 	echo " or uninstall the current version before proceeding."
 	echo
 	echo " Installation is aborted."
@@ -164,7 +189,7 @@ conda_install() {
     fi
 
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-    get_single-cell_env
+    get_scflow_env
 
     mkdir -p $INSTALL_HOME
     cd $INSTALL_HOME
@@ -213,21 +238,21 @@ conda_install() {
     conda update --all --yes
     conda info -a
 
-    log "installing single-cell environment"
+    log "installing scflow environment"
     # Now using conda environment files:
     # https://conda.io/docs/using/envs.html#use-environment-from-file
 
     [[ -z ${TRAVIS_BRANCH} ]] && TRAVIS_BRANCH=${INSTALL_BRANCH}
-    curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/single-cell/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
-    conda env create --quiet --file env.yml
-    
+    curl -o env.yml -O https://raw.githubusercontent.com/Acribbs/scflow/${TRAVIS_BRANCH}/conda/environments/${CONDA_INSTALL_TYPE}
+    conda env create --quiet --force --file env.yml
+
     conda env export --name ${CONDA_INSTALL_ENV}
 
-    # activate single-cell environment
+    # activate scflow environment
     log "activating environment"
-    source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
+    [[ !${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
 
-    log "installing single-cell code into conda environment"
+    log "installing scflow code into conda environment"
     # if installation is 'devel' (outside of travis), checkout latest version from github
     if [[ -z ${TRAVIS_INSTALL} ]] ; then
 
@@ -244,16 +269,17 @@ conda_test() {
     log "starting conda_test"
 
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-    get_single-cell_env
+    get_scflow_env
 
-    setup_env_vars
+    #setup_env_vars
 
     # setup environment and run tests
     if [[ $TRAVIS_INSTALL ]]; then
 
 	# enable Conda env
-	log "activating single-cell conda environment"
-	source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
+	log "activating scflow conda environment"
+	is_env_enabled
+	[[ ! ${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
 
 	# show conda environment used for testing
 	conda env export
@@ -286,55 +312,55 @@ conda_test() {
 conda_update() {
 
     # get environment variables: INSTALL_HOME, CONDA_INSTALL_DIR, CONDA_INSTALL_TYPE
-    get_single-cell_env
+    get_scflow_env
 
-    source $CONDA_INSTALL_DIR/bin/activate $CONDA_INSTALL_ENV
+    [[ ! ${ENV_ENABLED} ]] && conda activate ${CONDA_INSTALL_ENV}
     conda update --all
 
     if [[ ! $? -eq 0 ]] ; then
 
 	echo
 	echo " There was a problem updating the installation. "
-	echo 
+	echo
 	echo " Please submit this issue via Git Hub: "
-	echo " https://github.com/Acribbs/single-cell/issues "
-	echo 
+	echo " https://github.com/Acribbs/scflow/issues "
+	echo
 
-    else 
+    else
 
 	echo
 	echo " All packages were succesfully updated. "
-	echo 
+	echo
 
-    fi 
+    fi
 
 } # conda_update
 
 
-# unistall single-cell
+# unistall scflow
 uninstall() {
 
-    detect_single-cell_installation
+    detect_scflow_installation
 
     if [[ -z "$UNINSTALL_DIR" ]] ; then
 
 	echo
-	echo " The location of the single-cell code was not found. "
+	echo " The location of the scflow was not found. "
 	echo " Please uninstall manually."
 	echo
 	exit 1
-	
+
     else
 
 	rm -rf $UNINSTALL_DIR
 	if [[ $? -eq 0 ]] ; then
 	    echo
-	    echo " single-cell code successfully uninstalled."
-	    echo 
+	    echo " scflow successfully uninstalled."
+	    echo
 	    exit 0
 	else
 	    echo
-	    echo " There was a problem uninstalling the single-cell code."
+	    echo " There was a problem uninstalling the scflow code."
 	    echo " Please uninstall manually."
 	    echo
 	    exit 1
@@ -387,17 +413,17 @@ test_mix_branch_release() {
 }
 
 
-# test whether a branch exists in the single-cell repository
+# test whether a branch exists in the scflow repository
 # https://stackoverflow.com/questions/12199059/how-to-check-if-an-url-exists-with-the-shell-and-probably-curl
 test_core_branch() {
     RELEASE_TEST=0
-    curl --output /dev/null --silent --head --fail https://raw.githubusercontent.com/Acribbs/single-cell/${INSTALL_BRANCH}/README.rst || RELEASE_TEST=$?
+    curl --output /dev/null --silent --head --fail https://raw.githubusercontent.com/Acribbs/scflow/${INSTALL_BRANCH}/README.rst || RELEASE_TEST=$?
     if [[ ${RELEASE_TEST} -ne 0 ]] ; then
 	echo
-	echo " The branch provided for single-cell does not exist: ${INSTALL_BRANCH}"
+	echo " The branch provided for scflow does not exist: ${INSTALL_BRANCH}"
 	echo
 	echo " Please have a look at valid branches here: "
-	echo " https://github.com/Acribbs/single-cell/branches"
+	echo " https://github.com/Acribbs/scflow/branches"
 	echo
 	report_error " Please use a valid branch and try again."
     fi
@@ -408,13 +434,13 @@ test_core_branch() {
 # https://stackoverflow.com/questions/12199059/how-to-check-if-an-url-exists-with-the-shell-and-probably-curl
 test_release() {
     RELEASE_TEST=0
-    curl --output /dev/null --silent --head --fail https://raw.githubusercontent.com/Acribbs/single-cell/${RELEASE}/README.rst || RELEASE_TEST=$?
+    curl --output /dev/null --silent --head --fail https://raw.githubusercontent.com/Acribbs/scflow/${RELEASE}/README.rst || RELEASE_TEST=$?
     if [[ ${RELEASE_TEST} -ne 0 ]] ; then
 	echo
 	echo " The release number provided does not exist: ${RELEASE}"
 	echo
 	echo " Please have a look at valid releases here: "
-	echo " https://github.com/Acribbs/single-cell/releases"
+	echo " https://github.com/Acribbs/scflow/releases"
 	echo
 	echo " An example of valid release is: --release v0.4.0"
 	report_error " Please use a valid release and try again."
@@ -441,15 +467,15 @@ cleanup_env() {
 # function to display help message
 help_message() {
     echo
-    echo " This script uses Conda to install single-cell. To proceed, please type:"
+    echo " This script uses Conda to install scflow. To proceed, please type:"
     echo " ./install.sh [--location </full/path/to/folder/without/trailing/slash>]"
     echo
-    echo " The default install folder will be: $HOME/cgat-install"
+    echo " The default install folder will be: $HOME/scflow"
     echo
-    echo " It will create a new Conda environment ready to run the single-cell code."
+    echo " It will create a new Conda environment ready to run the CGAT code."
     echo
     echo " By default the master branch will be installed:"
-    echo " https://github.com/Acribbs/single-cell/"
+    echo " https://github.com/Acribbs/scflow"
     echo
     echo " Change that with:"
     echo " ./install.sh  --branch <name-of-branch>"
@@ -459,12 +485,12 @@ help_message() {
     echo
     echo " To update the Conda packages:"
     echo " ./install.sh --update [--location </full/path/to/folder/without/trailing/slash>]"
-    echo 
-    echo " To uninstall the single-cell code:"
+    echo
+    echo " To uninstall the scflow code:"
     echo " ./install.sh --uninstall [--location </full/path/to/folder/without/trailing/slash>]"
     echo
     echo " Please submit any issues via Git Hub:"
-    echo " https://github.com/Acribbs/single-cell/issues"
+    echo " https://github.com/Acribbs/scflow/issues"
     echo
     exit 1
 } # help_message
@@ -603,7 +629,7 @@ if [[ $TRAVIS_INSTALL ]]; then
     conda_install
     conda_test
 
-else 
+else
 
     if [[ $INSTALL_DEVEL ]] ; then
 	conda_install

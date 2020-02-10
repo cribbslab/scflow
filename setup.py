@@ -8,7 +8,7 @@ from distutils.version import LooseVersion
 if LooseVersion(setuptools.__version__) < LooseVersion('1.1'):
     print("Version detected:", LooseVersion(setuptools.__version__))
     raise ImportError(
-        "the CGAT code collection requires setuptools 1.1 higher")
+        "the scflow requires setuptools 1.1 higher")
 
 ########################################################################
 ########################################################################
@@ -32,7 +32,7 @@ if major < 3:
     raise SystemExit("""Requires Python 3 or later.""")
 
 cribbslab_packages = find_packages()
-cribbslab_package_dirs = {'pipelines': 'pipelines'}
+cribbslab_package_dirs = {'scpipelines': 'scpipelines'}
 
 ##########################################################
 ##########################################################
@@ -52,15 +52,15 @@ Operating System :: MacOS
 
 setup(
     # package information
-    name='single_cell',
+    name='scflow',
     version=version,
-    description='single_cell : cribbslab single cell pipeline',
+    description='scflow : cribbslab single cell pipeline',
     author='Adam Cribbs',
     author_email='adam.cribbs@ndorms.ox.ac.uk',
     license="MIT",
     platforms=["any"],
     keywords="computational genomics",
-    long_description='single_cell : cribbslab single cell pipeline',
+    long_description='scflow : cribbslab single cell pipeline',
     classifiers=[_f for _f in classifiers.split("\n") if _f],
     url="",
     # package contents
@@ -68,7 +68,7 @@ setup(
     package_dir=cribbslab_package_dirs,
     include_package_data=True,
     entry_points={
-        "console_scripts": ["single_cell = scpipelines.cgatsc:main"]
+        "console_scripts": ["scflow = scpipelines.cgatsc:main"]
     },
     # other options
     zip_safe=False,

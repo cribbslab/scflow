@@ -30,14 +30,25 @@ Pipeline single cell
 Overview
 ==================
 
-This pipeline performs alignment free based quantification of drop-seq, 10X and smart-seq2
-single-cell sequencing analysis. Pseudoalignment is performed on the RNA reads,
-using kallisto or Alevin and the resulting data is quantitatvely and qualitatively analysed.
+This pipeline performs alignment free based quantification of single-nuclei-seq.
+The pipeline is based off a biostars response by lior pachter:
+https://www.biostars.org/p/397671/.
 
-The pipeline performs the following analyses:
-* Alignment using kallisto or alevin (part of salmon)
-* QC of reads using the scater package
+The nuclei data will be processed using kalliso and a custom built DNA and intron
+index for the species of interest. Two matrices will be generated: one for
+spliced transcripts and one for unspliced transcripts, which will be summed
+to obtain the total nuclear transcripts.
 
+To learn how to generate a cDNA and intron index see the following tutorial:
+https://www.kallistobus.tools/velocity_index_tutorial.html.
+
+Important: The mouse cDNA and intron index is about 26GB. Because of this,
+building it and processing data with it requires significantly more RAM than
+typical kallisto workflows, and we recomend using a machine with at least
+64GB RAM for this workflow.
+
+The downstream analysis of the data is then almost identical to the singlecell
+pipeline.
 
 Usage
 =====
@@ -45,7 +56,7 @@ Usage
 Configuration
 -------------
 
-The pipeline uses CGAT-core and CGAT-apps throught the pipeline. Please see installation
+The pipeline uses CGAT-core and CGAT-apps throughout the pipeline. Please see installation
 and setup and installation instructions at `cgat-core documentation <>`_
 
 
@@ -55,21 +66,22 @@ Input files
 The pipeline is ran using fastq files that follow the naming convention Read1: Name.fastq.1.gz
 and read2: Name.fastq.2.gz.
 
- * a fastq file (single /paired end (always paired end for drop seq methods and
-potentially single end or paired end for smartseq2)
+ * a fastq file (single /paired end (always paired end for drop seq methods)
  * a GTF geneset
 
-The default file format assumes the following convention:
+For drop-seq, the default file format assumes the following convention:
 fastq.1.gz and fastq.2.gz for paired data, where fastq.1.gz contains UMI/cellular barcode data and fastq.2.gz contains sequencing reads.
 Chromium outputis of the format: samplename_R1.fastq.gz and samplename_R2.fastq.gz so will require conversion to the default file format above.
 
 Pipeline output
-===============
+==================
 
-The output of running this software is the generation of a SingleCellExperiment object and further downstream analysis including: clustering, pseudotime analysis, velocity time graphs, quality control analysis.
+The output of running this pipeline is the generation of an
+Rmarkdown report with summary statistics. The end user can use this as a base
+to then further develop project specific analyses.
 
 Code
-====
+==================
 
 """
 from ruffus import *
@@ -117,7 +129,73 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 ############################################
 # Build indexes
 ############################################
+# Need to build one index for cDNA and one for intron
 
+# Determine read length - can do this in python
+'''
+$ zcat R1.fastq.gz | head -2 ## note on a mac you would do zcat < R1.fastq.gz | head
+@SRR8742283.1 NS500422:552:HJ5Y3BGX3:1:11101:21875:1038 length=61
+CAGTCNTTTTTTTTAATTTAAAAAAAAAAAAAAGATTTATTAACAGTTTTAGAAGGCAGTT
+
+$ echo -n CAGTCNTTTTTTTTAATTTAAAAAAAAAAAAAAGATTTATTAACAGTTTTAGAAGGCAGTT | wc -c
+61
+L= 61
+'''
+
+# Download the introns bed and cDNA fasta
+'''
+Download the INTRONS BED file with L-1 flank:
+
+Go to the UCSC table browser.
+Select desired species and assembly
+Select group: Genes and Gene Prediction Tracks
+Select track: UCSC Genes (or Refseq, Ensembl, etc.)
+Select table: knownGene
+Select region: genome (or you can test on a single chromosome or smaller region)
+Select output format: BED - browser extensible data
+Enter output file: introns.bed
+Select file type returned: gzip compressed
+Select the ‘get output’ button A second page of options relating to the BED file will appear.
+Under ‘create one BED record per:’. Select ‘Introns plus’
+Add flank L - 1 flank
+Select the ‘get BED’ option
+Save as introns.bed.gz to velocity_index/
+Download the cDNA FASTA file:
+
+Go to the UCSC table browser.
+Select desired species and assembly
+Select group: Genes and Gene Prediction Tracks
+Select track: UCSC Genes (or Refseq, Ensembl, etc.)
+Select table: knownGene
+Select region: genome (or you can test on a single chromosome or smaller region)
+Select output format: sequence
+Enter output file: cDNA.fa.gz
+Select file type returned: gzip compressed
+Hit the ‘get output’ button
+Select genomic and click submit A page of options relating to the FASTA file will appear.
+Select 5' UTR Exons & CDS Exons & 3' UTR Exons
+Select One FASTA record per region (exon, intron, etc.) with 0 extra bases upstream (5') and 0 extra downstream (3')
+Select All upper case
+Select get sequence
+Save as cDNA.fa.gz to velocity_index/
+Note: You may ask why we don’t just download the sequence of introns? The reason is because the FASTA file is large for complex organisms (you can do this for simple organisms) and the UCSC server times out after 20 minutes and results in a corrupted intron FASTA file.
+
+Download the Genome
+
+Go to the website specieid by the track in the UCSC table browser ## Example Gencode 29 GRCh38
+Selected desired species
+Right click FASTA next to Genome sequence, primary assembly (GRCh38)
+Download species.dna.primary_assembly.fa.gz (where species will be your specific species)
+$ wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_29/GRCh38.primary_assembly.genome.fa.gz
+Download the GTF and make a transcripts to genes map
+
+Go to ensembl or the website for whichever track specified in the UCSC table browser
+Selected desired species
+Select Download GTF
+Download species.gtf.gz (where species will be your specific species)
+$ wget  ftp://ftp.ensembl.org/pub/release-97/gtf/homo_sapiens/Homo_sapiens.GRCh38.97.gtf.gz ## Homo sapiens GRCh38 example
+
+'''
 
 @mkdir('geneset.dir')
 @merge([PARAMS['geneset'], PARAMS['geneset2']],
@@ -535,7 +613,7 @@ def BUSpaRse(infiles, outfile):
     '''
 
     bus_text, gtf, t2gmap = infiles
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+    R_ROOT = os.path.join(os.path.dirname(__file__),"pipeline_singlecell","R")
     est_cells = PARAMS['kallisto_expectedcells']
 
     job_memory = '50G'

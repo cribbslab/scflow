@@ -6,7 +6,7 @@ CGAT-sc documentation!
 
 CGAT-sc is a collection of single cell pipelines that allow users to perform some of the standard workflows
 associated wit single cell analysis. This repository is still in development but the aim is to collate a
-series of single cell workflows that allow the 
+series of single cell workflows that allow the
 
 The workflow management systems that underpins all of our pipelines is `CGAT-core <>https://github.com/cgat-developers/cgat-core>`_.
 We demonstrate the functionality of CGAT-core using a simple RNA-seq pipeline in `cgat-showcase <https://github.com/cgat-developers/cgat-showcase>`_.
@@ -55,8 +55,9 @@ These publications will appear here. Watch this space as this is a new repositor
    :maxdepth: 1
    :hidden:
 
-   pipelines/Dropseq.rst
-   pipelines/velocyto.rst
+   pipelines/Singlecell.rst
+   pipelines/Singlenuclei.rst
+   pipelines/Velocyto.rst
 
 .. toctree::
    :caption: Project Info
