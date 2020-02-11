@@ -93,7 +93,7 @@ import sqlite3
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
-import scpipelines.ModuleSC as ModuleQC
+import scpipelines.ModuleSC as ModuleSC
 
 import pandas as pd
 
@@ -151,7 +151,7 @@ def t2g(outfile):
     PY_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
     statement = '''
-       zcat < %(geneset)s | %(PY_SRC_PATH)s/t2g.py  > %(outfile)s'''
+       zcat < %(geneset)s | %(PY_SRC_PATH)s/python/t2g.py  > %(outfile)s'''
 
     P.run(statement)
 
