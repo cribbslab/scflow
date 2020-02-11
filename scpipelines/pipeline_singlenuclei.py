@@ -151,7 +151,7 @@ def t2g(outfile):
     PY_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
     statement = '''
-       zcat < %(geneset)s | %(PY_SRC_PATH)s/python/t2g.py  > %(outfile)s'''
+       zcat < %(geneset)s | %(PY_SRC_PATH)s/python/t2g.py --use_version > %(outfile)s'''
 
     P.run(statement)
 
@@ -174,12 +174,12 @@ def intron_bed2fa(outfile):
 
 
 @transform(intron_bed2fa,
-           regex("(\S+).fa"),
+           regex("geneset.dir/(\S+).fa"),
            r"geneset.dir/\1_transcripts.txt")
 def introns_transcripts(infile, outfile):
     '''get a list of all of the intronic transcript IDs represented in our FASTA file, with version numbers.'''
 
-    statement = '''cat %(infile)s | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3"."$4}' > %(outfile)s'''
+    statement = '''cat %(infile)s | awk '/^>/ {print $0}' | tr "_" " " | tr ">" " " | awk '{print $1}' > %(outfile)s'''
 
     P.run(statement)
 
@@ -190,7 +190,7 @@ def introns_transcripts(infile, outfile):
 def introns_transcripts_no_version(infile, outfile):
     '''list of all of the intronic transcript IDs represented in our FASTA file, without version numbers.'''
 
-    staement = '''cat %(infile)s | tr "." " " | awk '{print $1}' > %(outfile)s '''
+    statement = '''cat %(infile)s | tr "." " " | awk '{print $1}' > %(outfile)s '''
 
     P.run(statement)
 
@@ -219,7 +219,7 @@ def map_trans2gene(infiles, outfile):
 
 
 @merge([map_trans2gene,intron_bed2fa],
-           r"geneset.dir/\introns.correct_header.fa")
+           "geneset.dir/introns.correct_header.fa")
 def fix_intron_fasta(infiles, outfile):
     '''fix all of the headers for the introns FASTA file so that they
     contain the transcript ID, an identifier specifying that the transcript
@@ -233,7 +233,7 @@ def fix_intron_fasta(infiles, outfile):
                 awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' %(tmp_fasta)s  %(introns)s > %(outfile)s '''
 
     P.run(statement)
-    os.unlink()
+    os.unlink(tmp_fasta)
 
 
 @mkdir('geneset.dir')
@@ -248,12 +248,13 @@ def capture_list(outfile):
 
 
     P.run(statement)
-    os.unlink()
+    os.unlink(tmp_cdna)
 
 
+@follows(capture_list)
 @mkdir('geneset.dir')
 @originate("geneset.dir/cDNA_transcripts.to_capture.txt")
-def map_tran_gene(outfile):
+def map_trans_gene(outfile):
     ''''Add an identifier to the transcript IDs'''
 
     tmp_cdna = P.get_temp_filename(".")
@@ -262,6 +263,7 @@ def map_tran_gene(outfile):
                    cat %(tmp_cdna)s | awk '{print $0"."NR}' > %(outfile)s'''
 
     P.run(statement)
+    os.unlink(tmp_cdna)
 
 
 @transform(t2g,
