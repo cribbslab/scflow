@@ -162,14 +162,15 @@ def intron_bed2fa(outfile):
     '''This converts introns bed to introns fa'''
 
     tmp_bed = P.get_temp_filename(".")
+    tmp_genome = P.get_temp_filename(".")
 
     statement = '''zcat < %(intron_bed)s > %(tmp_bed)s &&
-    # index the fa file before next line &&
-    bedtools getfasta -name -fo introns.fa -fi %(genome_file)s -bed %(tmp_bed)s'''
+    zcat < %(genome_file)s > %(tmp_genome)s &&
+    bedtools getfasta -name -fo %(outfile)s -fi %(tmp_genome)s -bed %(tmp_bed)s'''
 
     P.run(statement)
     os.unlink(tmp_bed)
-
+    os.unlink(tmp_genome)
 
 
 @transform(intron_bed2fa,
