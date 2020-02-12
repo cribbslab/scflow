@@ -444,9 +444,13 @@ def bustools_correct(infiles, outfile):
     ''' then
     bustools correct function'''
 
-    # may need a function that collates the whitelists
-    # znd selects the correct whitelist for the correct fastq
-    bus_file, whitelist = infiles
+    bus_file = infiles[0]
+
+    # pick up correct whitelist
+    match = bus_file.replace("kallisto.dir/", "")
+    match = match.replace("/bus/output.bus","")
+    whitelist = match + "_whitelist.txt"
+
 
     statement = '''
 
@@ -454,6 +458,7 @@ def bustools_correct(infiles, outfile):
     '''
 
     P.run(statement)
+
 
 @transform(bustools_correct,
            regex("kallisto.dir/(\S+)/bus/output.correct.bus"),
