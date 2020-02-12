@@ -243,7 +243,7 @@ def capture_list(outfile):
 
     tmp_cdna = P.get_temp_filename(".")
 
-    statement = '''zcat < %(cdna_fasta)s cDNA.fa | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s  &&
+    statement = '''zcat < %(cdna_fasta)s | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s  &&
                    cat %(tmp_cdna)s  | tr "." " " | awk '{print $1}' > %(outfile)s '''
 
 
@@ -267,8 +267,8 @@ def map_trans_gene(outfile):
 
 
 @transform(t2g,
-           regex("(\S+).txt"),
-           r"geneset.dir/cDNA_\1.txt")
+           regex("geneset.dir/(\S+).txt"),
+           r"geneset.dir/cDNA_t2g.txt")
 def map_tr2gene(infile, outfile):
     '''Map the transcripts to genes.'''
 
@@ -281,14 +281,17 @@ def map_tr2gene(infile, outfile):
     P.run(statement)
 
 
-@transform(map_trans2gene,
-           regex("(\S+)_t2g.txt"),
+@transform(map_tr2gene,
+           regex("geneset.dir/(\S+)_t2g.txt"),
            r"geneset.dir/\1.correct_fasta.fa")
 def find_intron_fa_header(infile, outfile):
     '''Fix the INTRONS FASTA header'''
 
-    statement = '''awk '{print ">"$1"."NR" gene_id:"$2" gene_name:"$3}' %(infile)s > geneset.dir/cDNA_fasta_header.txt &&
-                   awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' geneset.dir/cDNA_fasta_header.txt $cDNA_fa >
+    tmp_cdna = P.get_temp_filename(".")
+
+    statement = '''zcat < %(cdna_fasta)s > %(tmp_cdna)s &&
+                   awk '{print ">"$1"."NR" gene_id:"$2" gene_name:"$3}' %(infile)s > geneset.dir/cDNA_fasta_header.txt &&
+                   awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' geneset.dir/cDNA_fasta_header.txt %(tmp_cdna)s >
                   %(outfile)s'''
 
     P.run(statement)
@@ -296,8 +299,8 @@ def find_intron_fa_header(infile, outfile):
 
 @mkdir('kallisto.dir')
 @merge([find_intron_fa_header,fix_intron_fasta, map_tr2gene, map_trans2gene],
-           "kallisto.dir/kallisto.index")
-def buildKallistoIndex(infiles, outfile):
+           "kallisto.dir/kallisto.idx")
+def build_kallisto_index(infiles, outfile):
     '''
     Builds a kallisto index for the reference transcriptome
     Parameters
@@ -313,11 +316,11 @@ def buildKallistoIndex(infiles, outfile):
     '''
     cDNA_correct_header, introns_correct_header, map_tr2gene, map_trans2gene = infiles
 
-    job_memory = "12G"
+    job_memory = "65G"
 
     statement = '''
-    cat %(cDNA_correct_header)s %(introns_correct_header)s > kallisto.dir/cDNA_introns.fa
-    cat %(map_tr2gene)s %(map_trans2gene)s > kallisto.dir/cDNA_introns_t2g.txt
+    cat %(cDNA_correct_header)s %(introns_correct_header)s > kallisto.dir/cDNA_introns.fa &&
+    cat %(map_tr2gene)s %(map_trans2gene)s > kallisto.dir/cDNA_introns_t2g.txt &&
     kallisto index -i %(outfile)s -k %(kallisto_kmer)s kallisto.dir/cDNA_introns.fa
     '''
 
@@ -377,9 +380,9 @@ else:
 @follows(mkdir("kallisto.dir"))
 @collate(SEQUENCEFILES,
          SEQUENCEFILES_REGEX,
-         add_inputs(buildKallistoIndex),
+         add_inputs(build_kallisto_index),
          SEQUENCEFILES_KALLISTO_OUTPUT)
-def runKallistoBus(infiles, outfile):
+def run_kallisto_bus(infiles, outfile):
     '''
     Generates BUS files for single-cell sequencing
 
@@ -421,7 +424,7 @@ def whitelist(infile, outfile):
     P.run(statement)
 
 
-@transform(runKallistoBus,
+@transform(run_kallisto_bus,
            regex("kallisto.dir/(\S+)/bus/output.bus"),
            add_inputs(whitelist),
            r"kallisto.dir/\1/bus/output.correct.bus")
