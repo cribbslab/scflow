@@ -408,18 +408,29 @@ def run_kallisto_bus(infiles, outfile):
     P.run(statement)
 
 
-@collate(SEQUENCEFILES,
-         SEQUENCEFILES_REGEX,
+@transform(run_kallisto_bus,
+           regex("kallisto.dir/./(\S+)/bus/output.bus"),
+           r"kallisto.dir/\1/bus/output.sort.whitelist.bus")
+def bustools_sort_for_whitelist(infile, outfile):
+    '''use bustools sort to sort the corrected bus record '''
+
+    statement = '''
+    bustools sort -o %(outfile)s  -t 4 %(infile)s
+    '''
+
+    P.run(statement)
+
+
+@collate(bustools_sort_for_whitelist,
+         regex("kallisto.dir/(\S+)/bus/output.sort.whitelist.bus"),
          r"\1_whitelist.txt")
 def whitelist(infile, outfile):
     '''use umitools to generate whitelist of barcodes'''
 
+    infile = infile[0]
+
     statement = '''
-                umi_tools whitelist --stdin=%(infile)s
-                --bc-pattern=%(umitools_barcode_pattern)s
-                --extract-method=regex
-                --log2stderr
-                > %(outfile)s
+                bustools whitelist -o %(outfile)s %(infile)s
     '''
 
     P.run(statement)
