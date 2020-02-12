@@ -297,6 +297,7 @@ def find_intron_fa_header(infile, outfile):
     P.run(statement)
 
 
+# In the future it may be necessary to supply a pre-built index as this step takes a long time!
 @mkdir('kallisto.dir')
 @merge([find_intron_fa_header,fix_intron_fasta, map_tr2gene, map_trans2gene],
            "kallisto.dir/kallisto.idx")
@@ -332,11 +333,12 @@ def build_kallisto_index(infiles, outfile):
 ############################################
 
 
+@follows(build_kallisto_index)
 @follows(mkdir("fastqc_pre.dir"))
 @transform(SEQUENCEFILES,
            regex("(\S+).fastq.(\d).gz"),
            r"fastqc_pre.dir/\1.fastq.\2_fastqc.html")
-def runFastQC(infile, outfile):
+def run_fastqc(infile, outfile):
     '''
     Fastqc is ran to determine the quality of the reads from the sequencer
     '''
@@ -389,11 +391,10 @@ def run_kallisto_bus(infiles, outfile):
     infiles: raw sequencing fastq files, kallisto index
 
     '''
-    aligner = 'kallisto_bus'
-    infiles = ModuleSC.check_multiple_read_files(infiles)
-    fastqfile, index = infiles
-    fastqfiles = ModuleSC.check_paired_end(fastqfile, aligner)
-    fastqfiles = " ".join(fastqfiles)
+
+    fastqfile, index = infiles[0]
+    read2 = fastqfile.replace(".fastq.1.gz",".fastq.2.gz")
+    fastqfiles = " ".join([fastqfile, read2])
 
     outfolder = outfile.rsplit('/',1)[0]
 
@@ -402,7 +403,7 @@ def run_kallisto_bus(infiles, outfile):
     -t %(kallisto_threads)s %(fastqfiles)s
     '''
 
-    job_memory = '20G'
+    job_memory = '30G'
 
     P.run(statement)
 
@@ -542,7 +543,7 @@ def merge_matrices(infile, outfile):
 #########################
 
 @follows(mkdir("MultiQC_report.dir"))
-@follows(runFastQC, bustools_count_cdna)
+@follows(run_fastqc, bustools_count_cdna)
 @originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
     '''build mulitqc report'''
