@@ -473,7 +473,7 @@ def bustools_sort(infile, outfile):
     P.run(statement)
 
 
-@transform(bustools_correct,
+@transform(bustools_sort,
            regex("kallisto.dir/(\S+)/bus/output.sort.bus"),
            add_inputs(introns_transcripts_no_version),
            r"kallisto.dir/\1/bus/introns_capture.bus")
@@ -482,8 +482,8 @@ def bustools_capture_intron(infiles, outfile):
 
     infile, capture_list = infiles
 
-    matrix = infile.replace("introns_capture.bus","matrix.ec")
-    trans = infile.replace("introns_capture.bus","transcripts.txt")
+    matrix = infile.replace("output.sort.bus","matrix.ec")
+    trans = infile.replace("output.sort.bus","transcripts.txt")
 
     statement = '''
     bustools capture -s -o %(outfile)s -c %(capture_list)s  -e %(matrix)s -t %(trans)s  %(infile)s
@@ -492,7 +492,7 @@ def bustools_capture_intron(infiles, outfile):
     P.run(statement)
 
 # Bustools capture cDNA and then introns
-@transform(bustools_correct,
+@transform(bustools_sort,
            regex("kallisto.dir/(\S+)/bus/output.sort.bus"),
            add_inputs(capture_list),
            r"kallisto.dir/\1/bus/cDNA_capture.bus")
@@ -501,8 +501,8 @@ def bustools_capture_cdna(infiles, outfile):
 
     infile, capture_list = infiles
 
-    matrix = infile.replace("cDNA_capture.bus","matrix.ec")
-    trans = infile.replace("cDNA_capture.bus","transcripts.txt")
+    matrix = infile.replace("output.sort.bus","matrix.ec")
+    trans = infile.replace("output.sort.bus","transcripts.txt")
 
     statement = '''
     bustools capture -s -o %(outfile)s -c %(capture_list)s  -e %(matrix)s -t %(trans)s  %(infile)s
@@ -512,9 +512,10 @@ def bustools_capture_cdna(infiles, outfile):
 
 @transform(bustools_capture_intron,
            regex("kallisto.dir/(\S+)/bus/introns_capture.bus"),
-           r"kallisto.dir/\1/bus/unspliced/unspliced")
+           r"kallisto.dir/\1/bus/unspliced/unspliced.mtx")
 def bustools_count_intron(infile, outfile):
-# Merge spliced and unspliced
+
+    outfile = outfile.replace(".mtx","")
 
     matrix = infile.replace("introns_capture.bus","matrix.ec")
     trans = infile.replace("introns_capture.bus","transcripts.txt")
@@ -528,9 +529,10 @@ def bustools_count_intron(infile, outfile):
 
 @transform(bustools_capture_cdna,
            regex("kallisto.dir/(\S+)/bus/cDNA_capture.bus"),
-           r"kallisto.dir/\1/bus/spliced/spliced")
+           r"kallisto.dir/\1/bus/spliced/spliced.mtx")
 def bustools_count_cdna(infile, outfile):
-# Merge spliced and unspliced
+
+    outfile = outfile.replace(".mtx","")
 
     matrix = infile.replace("cDNA_capture.bus","matrix.ec")
     trans = infile.replace("cDNA_capture.bus","transcripts.txt")
@@ -542,14 +544,24 @@ def bustools_count_cdna(infile, outfile):
     P.run(statement)
 
 
-@merge([],
+@merge([bustools_count_intron, bustools_count_cdna],
     "geneset.dir/introns_t2g.txt")
-def merge_matrices(infile, outfile):
+def merge_matrices(infiles, outfile):
     '''use python script to merge the spliced and unspliced matrix'''
 
-    PYTHON_ROOT = os.path.join(os.path.dirname(__file__), "py_scripts")
+    unspliced, spliced = infiles
+    unspliced_barcode = unspliced.replace(".mtx",".barcodes.txt")
+    unspliced_genes = unspliced.replace(".mtx",".genes.txt")
 
-    statement = '''python %(PYTHON_ROOT)s/MergeSplicedMatrix.py -o %(outfile)s '''
+    spliced_barcode = spliced.replace(".mtx",".barcodes.txt")
+    spliced_genes = spliced.replace(".mtx",".genes.txt")
+
+    bus_dir = spliced.replace("spliced/spliced.mtx","")
+
+    PYTHON_ROOT = os.path.join(os.path.dirname(__file__), "python")
+
+    statement = '''python %(PYTHON_ROOT)s/MergeSplicedMatrix.py -o %(outfile)s -d %(bus_dir)s -s %(spliced)s
+                   -c %(spliced_barcode)s -t %(spliced_genes)s -u %(unspliced)s -b %(spliced_barcode)s -g %(spliced_genes)s'''
 
     P.run(statement)
 

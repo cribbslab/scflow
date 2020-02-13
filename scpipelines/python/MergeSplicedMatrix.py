@@ -29,19 +29,19 @@ def main(argv=None):
                         help="The spliced .mtx file")
 
     parser.add_argument("-c", "--sp-barcode", dest="spliced_barcode", type=str,
-                        help="The unspliced .mtx file")
+                        help="The spliced .mtx file")
 
-    parser.add_argument("-h", "--sp-genes", dest="spliced_genes", type=str,
-                        help="The unspliced .mtx file")
+    parser.add_argument("-t", "--sp-genes", dest="spliced_genes", type=str,
+                        help="The spliced .mtx file")
 
     parser.add_argument("-u", "--unspliced", dest="unspliced", type=str,
                         help="The unspliced .mtx file")
 
     parser.add_argument("-b", "--unsp-barcode", dest="unspliced_barcode", type=str,
-                        help="The unspliced .mtx file")
+                        help="The unspliced barcode file")
 
     parser.add_argument("-g", "--unsp-genes", dest="unspliced_genes", type=str,
-                        help="The unspliced .mtx file")
+                        help="The unspliced gene file")
     parser.set_defaults(
         bus_path=None,
         output=None,
