@@ -4,20 +4,23 @@
 #
 ##########################
 
-# genomeID
-genome: hg38
-genome_dir: /ifs/mirror/genomes/index/
+# primary assembly downloaded according to documentation instructions
+genome_file: GRCh38.primary_assembly.genome.fa.gz
 
 # Provide a reference geneset (suffix= ".gtf.gz")
 # Geneset should be located in working directory
-geneset: human_geneset_all.gtf.gz
+geneset: Homo_sapiens.GRCh38.97.gtf.gz
+
+# This is the location of the intron.bed.gz
+intron_bed: Refseq-introns.bed.gz
+
 
 # Specify if there is a mixed species input (i.e. mouse and human)
 mixed_species: 0
 
 # If there is a mixed specied input specify the extra genome (in addition to the
 # one already specified)
-genome2: 
+genome2:
 genome_dir2: /ifs/mirror/genomes/index/
 
 # If there is a mixed specied input specify a reference geneset (suffix= ".gtf.gz")
@@ -99,41 +102,13 @@ kallisto:
 
   expectedcells: 1500
 
-salmon:
 
-  # Length of kmer for indexing
-  kmer: 31
+umitools:
 
-  job_memory: 30G
+  barcode_pattern: NNNNNNNNN
 
-  # Number of threads that can be used by alevin to perform the quantification
-  threads: 10
 
-  # Library type
-  # ISR recommended for DropSeq and 10Xv2 technology
-  librarytype: ISR
 
-  # Optional options
-  # See https://salmon.readthedocs.io/en/latest/salmon.html#description-of-important-options
-  # for a list of more salmon options
-  index_options: ''
-
-  run_options: ''
-
-  # Wether to run alevin
-  alevin: 1
-
-  # Single cell technology/protocol to be specified
-  # Allowable sc technology:
-  # dropseq
-  # chromium
-    # for 10x chromium v2 sc protocol
-  # chromiumV3
-  # gemcode
-    # for 10x gemocode v1 sc protocol
-  # celseq
-  # celseq2
-  sctechnology: dropseq
 
 sce:
 
@@ -147,7 +122,7 @@ sce:
 
 qc:
 
-  # Set mitochondrial percent maximum threshold (usually 10-20%) 
+  # Set mitochondrial percent maximum threshold (usually 10-20%)
   max_mito: 5
 
   # Or instead use median + 2 median absolute deviations as mitochondrial threshold (0 or 1)
@@ -190,11 +165,10 @@ downsample_to: 0
 monocle:
   # Gene of interest to be plotted. Ensembl or symbols depending on genesymbol
   gene_marker: "ENSG00000164867"
-  
+
   max_components: 2
-  
+
   num_dim: 6
 
   # +1 to number of clusters you want
   num_clusters: 7
-
