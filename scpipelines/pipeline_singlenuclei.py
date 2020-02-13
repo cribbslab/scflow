@@ -585,7 +585,7 @@ def build_multiqc(infile):
     P.run(statement)
 
 
-@follows(build_multiqc)
+@follows(merge_matrices, build_multiqc)
 def full():
     pass
 
