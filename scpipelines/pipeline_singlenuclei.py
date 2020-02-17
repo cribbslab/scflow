@@ -90,6 +90,7 @@ import sys
 import os
 import re
 import sqlite3
+import glob
 
 import cgatcore.pipeline as P
 import cgatcore.experiment as E
@@ -134,7 +135,7 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 
 @mkdir('geneset.dir')
 @originate("geneset.dir/index.idx.0")
-def build_kallisto_index(infiles, outfile):
+def build_kallisto_index(outfile):
     '''
     Builds a kallisto index for the reference transcriptome
     Parameters
@@ -147,7 +148,7 @@ def build_kallisto_index(infiles, outfile):
     statement = '''
     kb ref -i geneset.dir/index.idx -g geneset.dir/t2g.txt -f1 geneset.dir/cdna.fa
     -f2 geneset.dir/intron.fa -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt
-    --workflow nucleus -n 8 %(genome_file)s %(geneset)s
+    --workflow nucleus -n 8 %(genome_file)s %(geneset)s 2> ref.log
     '''
 
     P.run(statement)
@@ -218,175 +219,22 @@ def run_kallisto_bus(infiles, outfile):
     '''
 
     fastqfile, index = infiles[0]
+    glob_search = "geneset.dir/index*"
+    index_files = glob.glob(glob_search)
+    index_files = ",".join(index_files)
+
     read2 = fastqfile.replace(".fastq.1.gz",".fastq.2.gz")
     fastqfiles = " ".join([fastqfile, read2])
 
     outfolder = outfile.rsplit('/',1)[0]
 
     statement = '''
-    kallisto bus -i %(index)s -o %(outfolder)s -x %(kallisto_sctechnology)s
-    -t %(kallisto_threads)s %(fastqfiles)s
+    kb count -i %(index_files)s -g geneset.dir/t2g.txt 
+    -c1 geneset.dir/cdna_t2c.txt -c2 intron_t2c.txt -x %(kallisto_sctechnology)s
+    -o %(outfolder)s --workflow nucleus --%(kallisto_output_format)s  %(fastqfiles)s
     '''
 
     job_memory = '30G'
-
-    P.run(statement)
-
-
-@transform(run_kallisto_bus,
-           regex("kallisto.dir/./(\S+)/bus/output.bus"),
-           r"kallisto.dir/\1/bus/output.sort.whitelist.bus")
-def bustools_sort_for_whitelist(infile, outfile):
-    '''use bustools sort to sort the corrected bus record '''
-
-    statement = '''
-    bustools sort -o %(outfile)s  -t 4 %(infile)s
-    '''
-
-    P.run(statement)
-
-
-@collate(bustools_sort_for_whitelist,
-         regex("kallisto.dir/(\S+)/bus/output.sort.whitelist.bus"),
-         r"\1_whitelist.txt")
-def whitelist(infile, outfile):
-    '''use umitools to generate whitelist of barcodes'''
-
-    infile = infile[0]
-
-    statement = '''
-                bustools whitelist -o %(outfile)s %(infile)s
-    '''
-
-    P.run(statement)
-
-
-@transform(run_kallisto_bus,
-           regex("kallisto.dir/(\S+)/bus/output.bus"),
-           add_inputs(whitelist),
-           r"kallisto.dir/\1/bus/output.correct.bus")
-def bustools_correct(infiles, outfile):
-    ''' then
-    bustools correct function'''
-
-    bus_file = infiles[0]
-
-    # pick up correct whitelist
-    match = bus_file.replace("kallisto.dir/", "")
-    match = match.replace("/bus/output.bus","")
-    whitelist = match + "_whitelist.txt"
-
-
-    statement = '''
-
-    bustools correct -w %(whitelist)s -o %(outfile)s  %(bus_file)s
-    '''
-
-    P.run(statement)
-
-
-@transform(bustools_correct,
-           regex("kallisto.dir/(\S+)/bus/output.correct.bus"),
-           r"kallisto.dir/\1/bus/output.sort.bus")
-def bustools_sort(infile, outfile):
-    '''use bustools sort to sort the corrected bus record '''
-
-    statement = '''
-    bustools sort -o %(outfile)s  -t 4 %(infile)s
-    '''
-
-    P.run(statement)
-
-
-@transform(bustools_sort,
-           regex("kallisto.dir/(\S+)/bus/output.sort.bus"),
-           add_inputs(introns_transcripts_no_version),
-           r"kallisto.dir/\1/bus/introns_capture.bus")
-def bustools_capture_intron(infiles, outfile):
-    '''use bustools capture for cDNA '''
-
-    infile, capture_list = infiles
-
-    matrix = infile.replace("output.sort.bus","matrix.ec")
-    trans = infile.replace("output.sort.bus","transcripts.txt")
-
-    statement = '''
-    bustools capture -s -o %(outfile)s -c %(capture_list)s  -e %(matrix)s -t %(trans)s  %(infile)s
-    '''
-
-    P.run(statement)
-
-# Bustools capture cDNA and then introns
-@transform(bustools_sort,
-           regex("kallisto.dir/(\S+)/bus/output.sort.bus"),
-           add_inputs(capture_list),
-           r"kallisto.dir/\1/bus/cDNA_capture.bus")
-def bustools_capture_cdna(infiles, outfile):
-    '''use bustools capture for cDNA '''
-
-    infile, capture_list = infiles
-
-    matrix = infile.replace("output.sort.bus","matrix.ec")
-    trans = infile.replace("output.sort.bus","transcripts.txt")
-
-    statement = '''
-    bustools capture -s -o %(outfile)s -c %(capture_list)s  -e %(matrix)s -t %(trans)s  %(infile)s
-    '''
-
-    P.run(statement)
-
-@transform(bustools_capture_intron,
-           regex("kallisto.dir/(\S+)/bus/introns_capture.bus"),
-           r"kallisto.dir/\1/bus/unspliced/unspliced.mtx")
-def bustools_count_intron(infile, outfile):
-
-    outfile = outfile.replace(".mtx","")
-
-    matrix = infile.replace("introns_capture.bus","matrix.ec")
-    trans = infile.replace("introns_capture.bus","transcripts.txt")
-
-    statement = '''
-    bustools count -o %(outfile)s -g kallisto.dir/cDNA_introns_t2g.txt -e %(matrix)s -t %(trans)s --genecounts %(infile)s
-    '''
-
-    P.run(statement)
-
-
-@transform(bustools_capture_cdna,
-           regex("kallisto.dir/(\S+)/bus/cDNA_capture.bus"),
-           r"kallisto.dir/\1/bus/spliced/spliced.mtx")
-def bustools_count_cdna(infile, outfile):
-
-    outfile = outfile.replace(".mtx","")
-
-    matrix = infile.replace("cDNA_capture.bus","matrix.ec")
-    trans = infile.replace("cDNA_capture.bus","transcripts.txt")
-
-    statement = '''
-    bustools count -o %(outfile)s -g kallisto.dir/cDNA_introns_t2g.txt -e %(matrix)s -t %(trans)s --genecounts %(infile)s
-    '''
-
-    P.run(statement)
-
-
-@merge([bustools_count_intron, bustools_count_cdna],
-    "geneset.dir/introns_t2g.txt")
-def merge_matrices(infiles, outfile):
-    '''use python script to merge the spliced and unspliced matrix'''
-
-    unspliced, spliced = infiles
-    unspliced_barcode = unspliced.replace(".mtx",".barcodes.txt")
-    unspliced_genes = unspliced.replace(".mtx",".genes.txt")
-
-    spliced_barcode = spliced.replace(".mtx",".barcodes.txt")
-    spliced_genes = spliced.replace(".mtx",".genes.txt")
-
-    bus_dir = spliced.replace("spliced/spliced.mtx","")
-
-    PYTHON_ROOT = os.path.join(os.path.dirname(__file__), "python")
-
-    statement = '''python %(PYTHON_ROOT)s/MergeSplicedMatrix.py -o %(outfile)s -d %(bus_dir)s -s %(spliced)s
-                   -c %(spliced_barcode)s -t %(spliced_genes)s -u %(unspliced)s -b %(spliced_barcode)s -g %(spliced_genes)s'''
 
     P.run(statement)
 
@@ -396,7 +244,7 @@ def merge_matrices(infiles, outfile):
 #########################
 
 @follows(mkdir("MultiQC_report.dir"))
-@follows(run_fastqc, bustools_count_cdna)
+@follows(run_fastqc)
 @originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
     '''build mulitqc report'''
@@ -410,7 +258,7 @@ def build_multiqc(infile):
     P.run(statement)
 
 
-@follows(merge_matrices, build_multiqc)
+@follows(run_kallisto_bus, build_multiqc)
 def full():
     pass
 
