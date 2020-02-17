@@ -131,198 +131,23 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 ############################################
 # Need to build one index for cDNA and one for intron
 
-# Determine read length - need documentation  for how to download the data according to lior
-'''
-$ zcat R1.fastq.gz | head -2 ## note on a mac you would do zcat < R1.fastq.gz | head
-@SRR8742283.1 NS500422:552:HJ5Y3BGX3:1:11101:21875:1038 length=61
-CAGTCNTTTTTTTTAATTTAAAAAAAAAAAAAAGATTTATTAACAGTTTTAGAAGGCAGTT
-
-$ echo -n CAGTCNTTTTTTTTAATTTAAAAAAAAAAAAAAGATTTATTAACAGTTTTAGAAGGCAGTT | wc -c
-61
-L= 61
-'''
 
 @mkdir('geneset.dir')
-@originate("geneset.dir/tr2g.txt")
-def t2g(outfile):
-    '''This function will convert transcript to genes using t2g
-       script'''
-
-    PY_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-
-    statement = '''
-       zcat < %(geneset)s | %(PY_SRC_PATH)s/python/t2g.py --use_version > %(outfile)s'''
-
-    P.run(statement)
-
-
-@mkdir('geneset.dir')
-@originate("geneset.dir/introns.fa")
-def intron_bed2fa(outfile):
-    '''This converts introns bed to introns fa'''
-
-    tmp_bed = P.get_temp_filename(".")
-    tmp_genome = P.get_temp_filename(".")
-
-    statement = '''zcat < %(intron_bed)s > %(tmp_bed)s &&
-    zcat < %(genome_file)s > %(tmp_genome)s &&
-    bedtools getfasta -name -fo %(outfile)s -fi %(tmp_genome)s -bed %(tmp_bed)s'''
-
-    P.run(statement)
-    os.unlink(tmp_bed)
-    os.unlink(tmp_genome)
-
-
-@transform(intron_bed2fa,
-           regex("geneset.dir/(\S+).fa"),
-           r"geneset.dir/\1_transcripts.txt")
-def introns_transcripts(infile, outfile):
-    '''get a list of all of the intronic transcript IDs represented in our FASTA file, with version numbers.'''
-
-    statement = '''cat %(infile)s | awk '/^>/ {print $0}' | tr "_" " " | tr ">" " " | awk '{print $1}' > %(outfile)s'''
-
-    P.run(statement)
-
-
-@transform(introns_transcripts,
-           regex("geneset.dir/(\S+)_transcripts.txt"),
-           r"geneset.dir/\1_transcripts_no_version.txt")
-def introns_transcripts_no_version(infile, outfile):
-    '''list of all of the intronic transcript IDs represented in our FASTA file, without version numbers.'''
-
-    statement = '''cat %(infile)s | tr "." " " | awk '{print $1}' > %(outfile)s '''
-
-    P.run(statement)
-
-
-@transform(introns_transcripts,
-           regex("geneset.dir/(\S+)_transcripts.txt"),
-           r"geneset.dir/\1_transcripts.to_capture.txt")
-def add_identifier(infile, outfile):
-    '''add an identifier to the transcript IDs '''
-
-    statement = '''cat %(infile)s | awk '{print $0"."NR"-I"}' > %(outfile)s'''
-
-    P.run(statement)
-
-
-@merge([introns_transcripts,t2g],
-       "geneset.dir/introns_t2g.txt")
-def map_trans2gene(infiles, outfile):
-    '''map the transcripts to their respective genes.'''
-
-    introns_transcripts, tr2g  = infiles
-
-    statement = '''awk 'NR==FNR{a[$1]=$2; b[$1]=$3;next} {$2=a[$1];$3=b[$1]} 1' %(tr2g)s %(introns_transcripts)s > %(outfile)s'''
-
-    P.run(statement)
-
-
-@merge([map_trans2gene,intron_bed2fa],
-           "geneset.dir/introns.correct_header.fa")
-def fix_intron_fasta(infiles, outfile):
-    '''fix all of the headers for the introns FASTA file so that they
-    contain the transcript ID, an identifier specifying that the transcript
-    is an “intronic” transcript, and a unique number to avoid duplicates.'''
-
-    introns_t2g, introns = infiles
-
-    tmp_fasta = P.get_temp_filename(".")
-
-    statement = '''awk '{print ">"$1"."NR"-I"" gene_id:"$2" gene_name:"$3}' %(introns_t2g)s > %(tmp_fasta)s  &&
-                awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' %(tmp_fasta)s  %(introns)s > %(outfile)s '''
-
-    P.run(statement)
-    os.unlink(tmp_fasta)
-
-
-@mkdir('geneset.dir')
-@originate("geneset.dir/cDNA_transcripts_no_version.txt")
-def capture_list(outfile):
-    '''Get the transcripts to capture list and transcripts to genes for cDNA'''
-
-    tmp_cdna = P.get_temp_filename(".")
-
-    statement = '''zcat < %(cdna_fasta)s | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s  &&
-                   cat %(tmp_cdna)s  | tr "." " " | awk '{print $1}' > %(outfile)s '''
-
-
-    P.run(statement)
-    os.unlink(tmp_cdna)
-
-
-@follows(capture_list)
-@mkdir('geneset.dir')
-@originate("geneset.dir/cDNA_transcripts.to_capture.txt")
-def map_trans_gene(outfile):
-    ''''Add an identifier to the transcript IDs'''
-
-    tmp_cdna = P.get_temp_filename(".")
-
-    statement = '''zcat < %(cdna_fasta)s | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s &&
-                   cat %(tmp_cdna)s | awk '{print $0"."NR}' > %(outfile)s'''
-
-    P.run(statement)
-    os.unlink(tmp_cdna)
-
-
-@transform(t2g,
-           regex("geneset.dir/(\S+).txt"),
-           r"geneset.dir/cDNA_t2g.txt")
-def map_tr2gene(infile, outfile):
-    '''Map the transcripts to genes.'''
-
-    tmp_cdna = P.get_temp_filename(".")
-
-    statement = '''zcat < %(cdna_fasta)s | awk '/^>/ {print $0}' | tr "_" " " | awk '{print $3}' > %(tmp_cdna)s &&
-                   awk 'NR==FNR{a[$1]=$2; b[$1]=$3;next} {$2=a[$1];$3=b[$1]} 1' %(infile)s %(tmp_cdna)s  > %(outfile)s'''
-
-
-    P.run(statement)
-
-
-@transform(map_tr2gene,
-           regex("geneset.dir/(\S+)_t2g.txt"),
-           r"geneset.dir/\1.correct_fasta.fa")
-def find_intron_fa_header(infile, outfile):
-    '''Fix the INTRONS FASTA header'''
-
-    tmp_cdna = P.get_temp_filename(".")
-
-    statement = '''zcat < %(cdna_fasta)s > %(tmp_cdna)s &&
-                   awk '{print ">"$1"."NR" gene_id:"$2" gene_name:"$3}' %(infile)s > geneset.dir/cDNA_fasta_header.txt &&
-                   awk -v var=1 'FNR==NR{a[NR]=$0;next}{ if ($0~/^>/) {print a[var], var++} else {print $0}}' geneset.dir/cDNA_fasta_header.txt %(tmp_cdna)s >
-                  %(outfile)s'''
-
-    P.run(statement)
-
-
-# In the future it may be necessary to supply a pre-built index as this step takes a long time!
-@mkdir('kallisto.dir')
-@merge([find_intron_fa_header,fix_intron_fasta, map_tr2gene, map_trans2gene],
-           "kallisto.dir/kallisto.idx")
+@originate("geneset.dir/index.idx.0")
 def build_kallisto_index(infiles, outfile):
     '''
     Builds a kallisto index for the reference transcriptome
     Parameters
     ----------
-    infile: str
-       path to reference transcriptome - fasta file containing transcript
-       sequences
-    kallisto_kmer: int
-       :term: `PARAMS` kmer size for Kallisto.  Default is 31.
-       Kallisto will ignores transcripts shorter than this.
-    outfile: str
-       path to output file
     '''
-    cDNA_correct_header, introns_correct_header, map_tr2gene, map_trans2gene = infiles
+
 
     job_memory = "65G"
 
     statement = '''
-    cat %(cDNA_correct_header)s %(introns_correct_header)s > kallisto.dir/cDNA_introns.fa &&
-    cat %(map_tr2gene)s %(map_trans2gene)s > kallisto.dir/cDNA_introns_t2g.txt &&
-    kallisto index -i %(outfile)s -k %(kallisto_kmer)s kallisto.dir/cDNA_introns.fa
+    kb ref -i geneset.dir/index.idx -g geneset.dir/t2g.txt -f1 geneset.dir/cdna.fa
+    -f2 geneset.dir/intron.fa -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt
+    --workflow nucleus -n 8 %(genome_file)s %(geneset)s
     '''
 
     P.run(statement)
