@@ -5,15 +5,17 @@
 ##########################
 
 # primary assembly downloaded according to documentation instructions
-genome_file: GRCh38.primary_assembly.genome.fa.gz
+genome_file: Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
 
 # Provide a reference geneset (suffix= ".gtf.gz")
 # Geneset should be located in working directory
-geneset: Homo_sapiens.GRCh38.97.gtf.gz
+geneset: Homo_sapiens.GRCh38.99.gtf.gz
 
 # This is the location of the intron.bed.gz
-intron_bed: Refseq-introns.bed.gz
+intron_bed: introns.bed.gz
 
+# This is the location of the cDNA fasta
+cdna_fasta: cDNA.fa.gz
 
 # Specify if there is a mixed species input (i.e. mouse and human)
 mixed_species: 0
@@ -100,14 +102,21 @@ kallisto:
   # Not that 10Xv3 is not supported in version 0.44 of kallisto
   sctechnology: DropSeq
 
-  expectedcells: 1500
+  # whether to output as loom or h5
+  # Must specify:
+  # loom
+  # h5ad
+  output_format: loom 
 
-
-umitools:
-
-  barcode_pattern: NNNNNNNNN
-
-
+  # Which workflow to use:
+  # options include: standard,lamanno,nucleus,kite,kite:10xFB
+  # Type of workflow. Use `lamanno` for RNA velocity based
+  #                      on La Manno et al. 2018 logic. Use `nucleus` for RNA
+  #                      velocity on single-nucleus RNA-seq reads. Use `kite`
+  #                      for feature barcoding. Use `kite:10xFB` for 10x
+  #                      Genomics Feature Barcoding technology. (default:
+  #                      standard)
+  workflow: nucleus
 
 
 sce:
