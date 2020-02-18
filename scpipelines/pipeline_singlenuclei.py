@@ -230,11 +230,12 @@ def run_kallisto_bus(infiles, outfile):
 
     statement = '''
     kb count -i %(index_files)s -g geneset.dir/t2g.txt 
-    -c1 geneset.dir/cdna_t2c.txt -c2 intron_t2c.txt -x %(kallisto_sctechnology)s
-    -o %(outfolder)s --workflow nucleus --%(kallisto_output_format)s  %(fastqfiles)s
+    -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt -x %(kallisto_sctechnology)s
+    -o %(outfolder)s --workflow %(kallisto_workflow)s --%(kallisto_output_format)s  %(fastqfiles)s
+    2> %(outfolder)s_kblog.log
     '''
 
-    job_memory = '30G'
+    job_memory = '50G'
 
     P.run(statement)
 
@@ -244,7 +245,7 @@ def run_kallisto_bus(infiles, outfile):
 #########################
 
 @follows(mkdir("MultiQC_report.dir"))
-@follows(run_fastqc)
+@follows(run_kallisto_bus)
 @originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
     '''build mulitqc report'''
