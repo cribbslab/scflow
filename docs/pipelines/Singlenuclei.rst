@@ -1,20 +1,40 @@
 
-============
-singlenuclei
-============
+===========
+kallistobus
+===========
 
 Overview
 ========
 
-This pipeline performs alignment free based quantification of drop-seq, 10X
-single-nuclei sequencing analysis using wither kallisto or salmon.
-Pseudoalignment is performed on the RNA reads,
-using kallisto or Alevin and the resulting data is quantitatively
-and qualitatively analysed.
+This pipeline performs alignment free based quantification using the kallisto bus tools
+pipeline. For further information on the code that is wrapped up in this pipeline please
+refer to to the following `documentation <https://github.com/pachterlab/kb_python>`_
 
-The pipeline performs the following analyses:
-* Alignment using kallisto or alevin (part of salmon)
-* QC of reads using the scater package
+This pipeline runs kallisto bustools and runs alignment, counting and outputs either a 
+loom or h5ad file that can be further imported into Seurat or Scanpy.
+
+You have the option of running the following quantification:
+* standard - will generate a standard pseudoaligned analysis output
+* lamanno -  for RNA- velocity analysis based on la Manno et al 2018
+* kite - for feature barcoding
+* kite:10xFB - feature barcoding for 10X genomics 
+
+A number of technologies are supported by kallisto bustools:
+* 10XV1
+* 10XV2
+* 10XV3
+* CELSEQ
+* CELSEQ2
+* DROPSEQ
+* INDROPSV1
+* INDROPSV2
+* INDROPSV3
+* SCRUBSEQ
+* SURECELL
+
+
+All of these options are set within the pipeline.yml configuration file. Please see
+more info below.
 
 Input files
 -----------
@@ -35,7 +55,12 @@ format above.
 Configuring the pipeline
 ------------------------
 
-[describe how to set config values]
+To set the input values for the pipeline you need to modify a configuration
+file. To generate this yml file run the following::
+
+   scflow kallistobus config -v5
+
+Then open up the pipeline.yml file and modify the default values before running the pipeline.
 
 Running the pipeline
 --------------------
@@ -48,16 +73,12 @@ commandline flag `--no-cluster`.
 
 The following command will run the pipeline::
 
-   scflow singlenuclei make full -v5
+   scflow kallistobus make full -v5
 
-
-Report generation
------------------
-
-The pipeline also generates Rmarkdown reports by running the following command::
-
-   scflow singlenuclei make build_report -v5
 
 
 output
 ------
+
+The output of the piepline is a bus record for each sample than can be combined using downstream tools
+such as Seurat or Scanpy.
