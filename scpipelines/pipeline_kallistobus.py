@@ -235,7 +235,7 @@ def run_kallisto_bus(infiles, outfile):
     2> %(outfolder)s_kblog.log
     '''
 
-    job_memory = '50G'
+    job_memory = '100G'
 
     P.run(statement)
 
@@ -244,22 +244,22 @@ def run_kallisto_bus(infiles, outfile):
 # Multiqc
 #########################
 
-@follows(mkdir("MultiQC_report.dir"))
+#@follows(mkdir("MultiQC_report.dir"))
+#@follows(run_kallisto_bus)
+#@originate("MultiQC_report.dir/multiqc_report.html")
+#def build_multiqc(infile):
+#    '''build mulitqc report'''#
+#
+#    statement = (
+#        "export LANG=en_GB.UTF-8 && "
+#        "export LC_ALL=en_GB.UTF-8 && "
+#        "multiqc . -f && "
+#        "mv multiqc_report.html MultiQC_report.dir/")
+
+#    P.run(statement)
+
+
 @follows(run_kallisto_bus)
-@originate("MultiQC_report.dir/multiqc_report.html")
-def build_multiqc(infile):
-    '''build mulitqc report'''
-
-    statement = (
-        "export LANG=en_GB.UTF-8 && "
-        "export LC_ALL=en_GB.UTF-8 && "
-        "multiqc . -f && "
-        "mv multiqc_report.html MultiQC_report.dir/")
-
-    P.run(statement)
-
-
-@follows(run_kallisto_bus, build_multiqc)
 def full():
     pass
 
