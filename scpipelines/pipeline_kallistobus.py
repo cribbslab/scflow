@@ -148,7 +148,7 @@ def build_kallisto_index(outfile):
     statement = '''
     kb ref -i geneset.dir/index.idx -g geneset.dir/t2g.txt -f1 geneset.dir/cdna.fa
     -f2 geneset.dir/intron.fa -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt
-    --workflow nucleus -n 8 %(genome_file)s %(geneset)s 2> ref.log
+    --workflow %(kallisto_workflow)s -n 8 %(genome_file)s %(geneset)s 2> ref.log
     '''
 
     P.run(statement)
