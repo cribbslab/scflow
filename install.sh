@@ -223,11 +223,11 @@ conda_install() {
 
     log "downloading miniconda"
     # download and install conda
-    curl -O https://repo.continuum.io/miniconda/${MINICONDA}
+    wget https://repo.continuum.io/miniconda/${MINICONDA} -O miniconda.sh;
 
     log "installing miniconda"
-    bash ${MINICONDA} -b -p $CONDA_INSTALL_DIR
-    source /Users/travis/build/Acribbs/scflow/scflow/conda-install/bin/activate
+    bash miniconda.sh -b -p $HOME/miniconda
+    source "$HOME/miniconda/etc/profile.d/conda.sh"
     hash -r
 
     # install cgat environment
