@@ -10,7 +10,7 @@
 </p>
 
 
-This repository contains a collection of pipelines that aid the analysis of single cell sequencing experiments. Currently there is one pipeline implimented that allows the analysis of drop-seq and 10X sequencing analysis. Current pipelines in development: 1) velocyto pipeline 2) smart-seq2 pipeline.
+This repository contains a collection of pipelines that aid the analysis of single cell sequencing experiments. Currently there is one pipeline implimented that allows the analysis of drop-seq and 10X sequencing analysis. Current pipelines in development: 1) pseudoalignment scpipeline 2) velocyto pipeline 2) kallisto bustools pipeline.
 
 ## Installation
 
@@ -20,7 +20,7 @@ You can install scflow using pip, this will only install the package without any
 
 	pip install scflow
 
-### Conda installation - in progress
+### Conda installation - **in progress**
 
 The preferred method for installation is through conda. Currently this installation is still in working progress. Preferably the 
 installation should be in a seperate environment::
