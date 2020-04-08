@@ -27,9 +27,9 @@ Input files
 -----------
 
 The pipeline is ran using fastq files that follow the naming convention Read1: Name.fastq.1.gz
-and read2: Name.fastq.2.gz. 
+and read2: Name.fastq.2.gz.
 
- 
+
 Pipeline output
 ==================
 
@@ -56,6 +56,10 @@ PARAMS = P.get_parameters(
     ["%s/pipeline.yml" % os.path.splitext(__file__)[0],
      "../pipeline.yml",
      "pipeline.yml"])
+
+ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kallistobus","python")
+R_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kallistobus", "R")
+
 
 try:
     PARAMS['data']
@@ -95,8 +99,8 @@ def index_genome_star(infiles, outfile):
     threads = PARAMS['star_threads']
 
     statement = """STAR
-                   --runThreadN %(threads)s 
-                   --runMode genomeGenerate 
+                   --runThreadN %(threads)s
+                   --runMode genomeGenerate
                    --genomeDir star_index.dir/
                    --genomeFastaFiles %(genome)s"""
 
@@ -133,12 +137,12 @@ def fastq_to_bam(infile, outfile):
 
     job_memory = '10G'
 
-    statement = """picard FastqToSam 
-                   F1=%(infile)s 
-                   F2=%(second_read)s 
-                   O=%(outfile)s 
+    statement = """picard FastqToSam
+                   F1=%(infile)s
+                   F2=%(second_read)s
+                   O=%(outfile)s
                    SM=%(name)s"""
-    
+
     job_memory = '20G'
     P.run(statement)
 
@@ -154,15 +158,15 @@ def cell_barcode_bam(infile, outfile):
 
     name = infile.replace("_unmapped.bam","")
 
-    statement = """TagBamWithReadSequenceExtended 
+    statement = """TagBamWithReadSequenceExtended
                    INPUT=%(infile)s
-                   OUTPUT=%(outfile)s 
-                   SUMMARY=%(name)s_tagged_Cellular.bam_summary.txt 
-                   BASE_RANGE=1-12 
-                   BASE_QUALITY=10 
-                   BARCODED_READ=1 
-                   DISCARD_READ=False 
-                   TAG_NAME=XC 
+                   OUTPUT=%(outfile)s
+                   SUMMARY=%(name)s_tagged_Cellular.bam_summary.txt
+                   BASE_RANGE=1-12
+                   BASE_QUALITY=10
+                   BARCODED_READ=1
+                   DISCARD_READ=False
+                   TAG_NAME=XC
                    NUM_BASES_BELOW_QUALITY=1 """
 
 
@@ -181,18 +185,18 @@ def molecular_barcode_bam(infile, outfile):
 
     name = infile.replace("_tagged_Cell.bam", "")
 
-    statement = """TagBamWithReadSequenceExtended 
-                   INPUT=%(infile)s 
-                   OUTPUT=%(outfile)s 
-                   SUMMARY=%(name)s_tagged_Molecular.bam_summary.txt 
-                   BASE_RANGE=13-20 
-                   BASE_QUALITY=10 
-                   BARCODED_READ=1 
-                   DISCARD_READ=True 
-                   TAG_NAME=XM 
+    statement = """TagBamWithReadSequenceExtended
+                   INPUT=%(infile)s
+                   OUTPUT=%(outfile)s
+                   SUMMARY=%(name)s_tagged_Molecular.bam_summary.txt
+                   BASE_RANGE=13-20
+                   BASE_QUALITY=10
+                   BARCODED_READ=1
+                   DISCARD_READ=True
+                   TAG_NAME=XM
                    NUM_BASES_BELOW_QUALITY=1 """
 
-    job_memory = '30G' 
+    job_memory = '30G'
 
     P.run(statement)
 
@@ -205,11 +209,11 @@ def filter_bam(infile, outfile):
     filter the bam file to reject XQ tag
     """
 
-    statement = """FilterBam 
-                   TAG_REJECT=XQ 
-                   INPUT=%(infile)s 
+    statement = """FilterBam
+                   TAG_REJECT=XQ
+                   INPUT=%(infile)s
                    OUTPUT=%(outfile)s"""
-    
+
     job_memory = '10G'
 
     P.run(statement)
@@ -224,14 +228,14 @@ def trim_starting_sequence(infile, outfile):
 
     name = infile.replace("_tagged_filtered.bam", "")
 
-    statement = """TrimStartingSequence 
-                   INPUT=%(infile)s 
-                   OUTPUT=%(outfile)s 
-                   OUTPUT_SUMMARY=%(name)s_adapter_trimming_report.txt 
-                   SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG 
-                   MISMATCHES=0 
+    statement = """TrimStartingSequence
+                   INPUT=%(infile)s
+                   OUTPUT=%(outfile)s
+                   OUTPUT_SUMMARY=%(name)s_adapter_trimming_report.txt
+                   SEQUENCE=AAGCAGTGGTATCAACGCAGAGTGAATGGG
+                   MISMATCHES=0
                    NUM_BASES=5"""
-    
+
     job_memory  ='10G'
 
     P.run(statement)
@@ -246,16 +250,16 @@ def polyA_trimmer(infile, outfile):
     """
 
     name = infile.replace("_tagged_trimmed_smart.bam", "")
-    
 
-    statement = """PolyATrimmer 
+
+    statement = """PolyATrimmer
                    INPUT=%(infile)s
                    OUTPUT=%(outfile)s
-                   OUTPUT_SUMMARY=%(name)s_polyA_trimming_report.txt 
-                   MISMATCHES=0 
-                   NUM_BASES=6 
+                   OUTPUT_SUMMARY=%(name)s_polyA_trimming_report.txt
+                   MISMATCHES=0
+                   NUM_BASES=6
                    USE_NEW_TRIMMER=true"""
-  
+
     job_memory = '20G'
 
     P.run(statement)
@@ -273,7 +277,7 @@ def bam_to_fastq(infile, outfile):
     statement = """picard SamToFastq
                    INPUT=%(infile)s
                    FASTQ=%(outfile)s"""
-    
+
     job_memory = '20G'
 
     P.run(statement)
@@ -296,9 +300,9 @@ def star_mapping(infiles, outfile):
     outfile_name = name.replace(".fastq","")
     threads = PARAMS['star_threads']
 
-    statement = """STAR 
-                   --readFilesIn %(fastq)s 
-                   --runThreadN %(threads)s 
+    statement = """STAR
+                   --readFilesIn %(fastq)s
+                   --runThreadN %(threads)s
                    --genomeDir star_index.dir
                    --outSAMmultNmax 1
                    --outSAMunmapped Within
@@ -317,7 +321,7 @@ def sort_query_name(infile,outfile):
     Sort bam file using picard program SortSam
     """
 
-    statement = """ picard SortSam 
+    statement = """ picard SortSam
                     INPUT=%(infile)s
                     OUTPUT=%(outfile)s
                     SORT_ORDER=queryname """
@@ -337,7 +341,6 @@ def recover_tags(infiles, outfile):
 
     mapped_bam, genome_fasta = infiles
     unmapped_bam = "data.dir/" + os.path.split(mapped_bam)[1].replace("Aligned.sorted_qn.out.bam", "polyA_filtered.bam")
-    ROOT = os.path.dirname(__file__)
     mergebam = ROOT + "/MergeBam.py"
 
     statement = ''' python %(mergebam)s --unmapped %(unmapped_bam)s --aligned %(mapped_bam)s -o %(outfile)s '''
@@ -392,7 +395,7 @@ def mergeBAMFiles(infiles, outfile):
     statement = '''
     samtools merge %(tmp_bam)s %(infiles)s >& %(outfile)s_merge.log &&
     samtools sort %(tmp_bam)s -o %(outfile)s &&
-    samtools index %(outfile)s 
+    samtools index %(outfile)s
     '''
 
     job_memory = '20G'
@@ -419,7 +422,7 @@ def extract_geneset(infile, outfile):
     ''' Gunzip geneset gtf file '''
 
     statement = '''gunzip -c %(infile)s > %(outfile)s'''
-           
+
     P.run(statement)
 
 @follows(mkdir('dropest.dir'))
@@ -444,15 +447,14 @@ def run_dropest(infiles, outfile):
 
     dropEst_out = "dropest.dir/" + sample_name + "_dropEst"
     # dropEst dumps filtered bam file in current directory, move to dropest.dir
-    bam_out = sample_name + ".merged.aligned.coord.filtered.bam" 
+    bam_out = sample_name + ".merged.aligned.coord.filtered.bam"
 
-    ROOT = os.path.dirname(__file__)
     config_file = ROOT + "/BarcodeFileDropest.py"
 
     # Not sure if -f (lowercase) is giving the problems. When removed struggled with UMIs. Try without
 
     statement = """python %(config_file)s --input %(bamfile)s --barcode_suffix %(barcode_suffix)s --config %(generic_config_path)s &&
-                   dropest -m -f -F -L eiEIBA -g %(gtffile)s -o %(dropEst_out)s -c %(new_config)s %(bamfile)s && 
+                   dropest -m -f -F -L eiEIBA -g %(gtffile)s -o %(dropEst_out)s -c %(new_config)s %(bamfile)s &&
                    mv -T %(bam_out)s %(outfile)s"""
 
     job_memory = '50G'
@@ -465,18 +467,18 @@ def run_dropest(infiles, outfile):
 @transform(run_dropest,
            regex("dropest.dir/(\S+)\.merged\.aligned\.coord\.filtered\.bam"),
            r"velocyto.dir/\1/correct_\1.bam")
-def dropest_bc_correct(infile, outfile): 
+def dropest_bc_correct(infile, outfile):
     """
     Velocyto tools to make a new error corrected bam file
     """
 
     sample_name = infile.replace(".merged.aligned.coord.filtered.bam", "")
     #bam_path = "./velocyto.dir/" + sample_name + "/" + infile
-    rds_path = sample_name + "_dropEst.rds" 
+    rds_path = sample_name + "_dropEst.rds"
     # not sure if right rds file, could be _dropEst.matrices.rds
- 
+
     statement = """velocyto tools dropest-bc-correct -o  %(outfile)s %(infile)s %(rds_path)s"""
-    
+
     job_memory = '20G'
 
     P.run(statement)
@@ -486,8 +488,8 @@ def dropest_bc_correct(infile, outfile):
            regex("velocyto.dir/(\S+)/correct_(\S+).bam"),
            r"velocyto.dir/\1/cellsorted_correct_\1.bam")
 def CB_sort(infile, outfile):
-    ''' 
-    First step of velocyto is to sort using samtools by CB. 
+    '''
+    First step of velocyto is to sort using samtools by CB.
     Doing this step first helps with parellelisation when running bulk jobs.
     Avoids runtimes errors using velocyto run.
     '''
@@ -505,7 +507,7 @@ def CB_sort(infile, outfile):
 def velocyto_run_dropest(infiles, outfile):
     """
     Generate a loom file using BAM file preprocessed with dropEst tools.
-    """ 
+    """
 
     bamfile, gtf_file = infiles
     output_folder = os.path.split(bamfile)[0]
@@ -523,7 +525,7 @@ def velocyto_run_dropest(infiles, outfile):
     else:
         mask = ""
 
-    statement = """ velocyto run-dropest %(whitelist)s -o %(output_folder)s  -e %(sample_name)s %(mask)s %(bamfile)s %(gtf_file)s > 
+    statement = """ velocyto run-dropest %(whitelist)s -o %(output_folder)s  -e %(sample_name)s %(mask)s %(bamfile)s %(gtf_file)s >
     %(sample_name)s_loom.log"""
 
     job_memory = '50G'
@@ -539,13 +541,10 @@ def loom_analysis(infile, outfile):
     into one large seurat object with annotations for each sample, ready for the monocle library.
     '''
 
-
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
-
     statement = """ Rscript %(R_ROOT)s/velocyto_analysis.R -l %(infile)s """
 
     job_memory = '20G'
-   
+
     P.run(statement)
 
 @follows()
