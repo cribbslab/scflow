@@ -108,6 +108,9 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
+
+JUPYTER_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kallistobus","Jupyter")
+
 # Determine the location of the input fastq files
 
 try:
@@ -229,7 +232,7 @@ def run_kallisto_bus(infiles, outfile):
     outfolder = outfile.rsplit('/',1)[0]
 
     statement = '''
-    kb count -i %(index_files)s -g geneset.dir/t2g.txt 
+    kb count -i %(index_files)s -g geneset.dir/t2g.txt
     -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt -x %(kallisto_sctechnology)s
     -o %(outfolder)s --workflow %(kallisto_workflow)s --%(kallisto_output_format)s  %(fastqfiles)s
     2> %(outfolder)s_kblog.log
@@ -239,6 +242,30 @@ def run_kallisto_bus(infiles, outfile):
 
     P.run(statement)
 
+#########################
+# Scanpy analysis
+#########################
+
+@transform(run_kallisto_bus,
+           regex("kallisto.dir/(\S+)/bus/output.bus"),
+           r"kallisto.dir/\1/Scanpy_analysis.md")
+def run_scanpy(infile, outfile):
+    '''
+    This function will run the scanpy workflow jupyter notebook
+    then will render the document into a .md file
+
+    '''
+
+    jupyter = JUPYTER_ROOT + "/Scanpy_analysis.ipynb"
+    jupyter_nb = outfile.replace(".md", ".ipynb")
+    nb_file = outfile.replace("Scanpy_analysis.md", "")
+
+    statement = '''
+    cp %(jupyter)s %(jupyter_nb)s &&
+    cd %(nb_file)s &&
+    jupyter nbconvert --to=markdown --execute Scanpy_analysis.ipynb'''
+
+    P.run(statement)
 
 #########################
 # Multiqc

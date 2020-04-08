@@ -57,8 +57,8 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
-ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kallistobus","python")
-R_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kallistobus", "R")
+ROOT = os.path.join(os.path.dirname(__file__), "pipeline_velocyto","python")
+R_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_velocyto", "R")
 
 
 try:
