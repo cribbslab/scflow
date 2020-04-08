@@ -95,6 +95,8 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
+R_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_singlecell","R")
+
 # Determine the location of the input fastq files
 
 try:
@@ -475,7 +477,6 @@ def readAlevinSCE(infile,outfile):
     Creates a single cell experiment class in R and saves as an r object
     '''
     working_dir = os.getcwd()
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'alevin'
@@ -506,7 +507,6 @@ def readBusSCE(infile, outfile):
     '''
 
     working_dir = os.getcwd()
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'kallisto'
@@ -535,7 +535,6 @@ def BUSpaRse(infiles, outfile):
     '''
 
     bus_text, gtf, t2gmap = infiles
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     est_cells = PARAMS['kallisto_expectedcells']
 
     job_memory = '50G'
