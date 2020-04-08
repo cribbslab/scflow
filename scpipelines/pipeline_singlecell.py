@@ -95,6 +95,8 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
+R_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_singlecell","R")
+
 # Determine the location of the input fastq files
 
 try:
@@ -475,7 +477,6 @@ def readAlevinSCE(infile,outfile):
     Creates a single cell experiment class in R and saves as an r object
     '''
     working_dir = os.getcwd()
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'alevin'
@@ -506,7 +507,6 @@ def readBusSCE(infile, outfile):
     '''
 
     working_dir = os.getcwd()
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     species = PARAMS['sce_species']
     gene_name = PARAMS['sce_genesymbol']
     pseudo = 'kallisto'
@@ -535,7 +535,6 @@ def BUSpaRse(infiles, outfile):
     '''
 
     bus_text, gtf, t2gmap = infiles
-    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
     est_cells = PARAMS['kallisto_expectedcells']
 
     job_memory = '50G'
@@ -572,34 +571,6 @@ def build_multiqc(infile):
         "mv multiqc_report.html MultiQC_report.dir/")
 
     P.run(statement)
-
-#########################
-# QC step - needs some work so have commented out at the moment
-#########################
-
-#@follows(build_multiqc)
-#@follows(mkdir("QC_report.dir"))
-#@transform(combine_alevin_bus,
-#           regex("(\S+/\S+/\S+)/sce.rds"),
-#           r"\1/pass.rds")
-#def run_qc(infile, outfile):
-#    """
-#    Runs an Rmarkdown report that allows users to visualise and set their
-#    quality parameters according to the data. The aim is for the pipeline
-#    to generate default thresholds then the user can open the Rmarkdown in
-#    rstudio and re-run the report, modifying parameters changes to suit the
-#    data
-#    """
-#
-#    inf_dir = os.path.dirname(infile)
-#    NOTEBOOK_ROOT = os.path.join(os.path.dirname(__file__), "Rmarkdown")
-#
-#    job_memory = 'unlimited'
-#
-#    statement = '''cp %(NOTEBOOK_ROOT)s/Sample_QC.Rmd %(inf_dir)s &&
-#                   R -e "rmarkdown::render('%(inf_dir)s/Sample_QC.Rmd',encoding = 'UTF-8')"'''
-#
-#    P.run(statement)
 
 @follows(combine_alevin_bus, build_multiqc)
 def full():

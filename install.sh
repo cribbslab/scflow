@@ -227,7 +227,7 @@ conda_install() {
 
     log "installing miniconda"
     bash ${MINICONDA} -b -p $CONDA_INSTALL_DIR
-    source ${CONDA_INSTALL_DIR}/bin/activate
+    source /Users/travis/build/Acribbs/scflow/scflow/conda-install/bin/activate
     hash -r
 
     # install cgat environment
