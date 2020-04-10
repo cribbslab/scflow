@@ -15,7 +15,7 @@ check.packages <- function(pkg){
 }
 
 packages<-c("Seurat", "tidyverse", "BiocManager", "Matrix", "cowplot", "ggplot2",
-            "scales", "devtools", "reticulate")
+            "scales", "devtools", "stringr")
 check.packages(packages)
 
 
@@ -25,8 +25,8 @@ check_biocmanager <- function(pkg){
     install.packages(pkg)
   sapply(pkg, require, character.only = TRUE)}
 
-packages<-c("tximport", "scater", "limma", "EnsDb.Hsapiens.v75",
-            "AnnotationHub", "ensembldb", "SingleCellExperiment")
+packages<-c("tximport", "SingleCellExperiment", "", "",
+            "", "", "")
 check_biocmanager(packages)
 
 # these packages are not currently on any package manager so you will need to

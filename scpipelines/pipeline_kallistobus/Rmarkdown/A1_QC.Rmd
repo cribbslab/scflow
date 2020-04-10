@@ -20,41 +20,30 @@ library(scales)
 library(tximport)
 
 # Specify the sample directory that you would like analysed:
-sample_files <- c("mouse-1_S7", "mouse-2_S5", "mouse-3_S4",
-                  "mouse-4_S9", "mouse-5_S8", "mouse-7_S6",
-                  "mouse-8_S1")
+samples <- str_replace(Sys.glob("../kallisto.dir/*"), "../kallisto.dir/", "")
 ```
 
 
 Next we will load the counts data into memory using the tximport package. In addition to this we will load the barcodes generated from salmon and will import a list of genes.
 
 ```{r}
-for (i in sample_files){
-  # Import count matrix
-  txi <- tximport(gsub("SAMPLE_FILE",i , "salmon.dir/SAMPLE_FILE/alevin/quants_mat.gz"), type="alevin")
-  # Import barcodes
-  cell_ids <- read_tsv(gsub("SAMPLE_FILE",i ,"salmon.dir/SAMPLE_FILE/alevin/raw_cb_frequency.txt"),
-                      col_names = FALSE)$X1
-  # Import genes
-  genes <- read_tsv(gsub("SAMPLE_FILE",i ,"salmon.dir/SAMPLE_FILE/alevin/quants_mat_cols.txt"),
-                    col_names = FALSE)$X1
-  assign(paste("txi", i, sep = "."), txi)
-  assign(paste("cell_ids", i, sep = "."), cell_ids)
-  assign(paste("genes", i, sep = "."), genes)
-}
-```
 
-# Convert to a sparse matrix for more efficient computation
-
-Single-cell data suffers from having a lot of missing data (aks zero values). Therefore, if we were to load all of the data into memory and performed operations on that data it would take longer and be momeory inefficient. Moreover, when you start to work on higher dimensional data your machine may run out of memory. Therefore, we convert our data into a sparse matrix
-
-```{r}
-for (i in sample_files){
-  txi <- get(gsub("SAMPLE_FILE",i , "txi.SAMPLE_FILE"))
-  counts <- as(txi$counts, "dgCMatrix")
+for (i in samples){
+  name <- paste("../kallisto.dir/", i, "/seurat_output.rds", sep="")
+  so <- readRDS(name)
+  counts <- as.matrix(so@assays$RNA@counts)
+  counts <- counts <- as(counts, "dgCMatrix")
+  metadata <- as.data.frame(so@meta.data)
+  assign(paste("so", i, sep = "."), so)
   assign(paste("counts", i, sep = "."), counts)
+  assign(paste("metadata", i, sep = "."), metadata)
+  rm(so)
+  rm(counts)
+  rm(metadata)
 }
+
 ```
+
 
 # Creating metadata object with some QC metrics
 
@@ -65,7 +54,7 @@ We will create the metadata with only the cell IDs:
 ```{r}
 for (i in sample_files){
   counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
-  metadata <- data.frame(row.names = colnames(counts), cells = colnames(counts), stringsAsFactors = F)
+  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
   # Add number of UMIs for each gene per cell to metadata
   metadata$nUMI <- Matrix::colSums(counts)
   # Add number of genes detected per cell to metadata
@@ -76,82 +65,36 @@ for (i in sample_files){
   metadata$sample <- gsub("SAMPLE_FILE",i ,"SAMPLE_FILE")
   
   assign(paste("metadata", i, sep = "."), metadata)
+  rm(counts)
+  rm(metadata)
 }
 ```
 
 
 
-# Using annotations file to generate additional QC metrics
+# Generate additional QC metrics
 
-We will be using AnnotationHub, which allows accession to a wide variety of online databases and other resources, to query Ensembl annotations made available through ensembldb. Ensembldb is a package that retrieves annotation for the databases directly from the Ensembl Perl API.
 
-The main reason for using AnnotationHub is because it has one of the best gene annotations when compared to other R applications/frameworks to tap into annotations. 
-
-```{r}
-# Connect to AnnotationHub
-ah <- AnnotationHub()
-
-# Access the Ensembl database for organism
-ahDb <- query(ah, 
-              pattern = c("Homo sapiens", "EnsDb"), 
-              ignore.case = TRUE)
-```
-
-```{r, include=FALSE}
-# Check versions of databases available
-ahDb %>% 
-  mcols()
-```
+We can not add more infomation about mitochondrian genes and their relationship with UMIs
 
 ```{r}
-# Acquire the latest annotation files
-id <- ahDb %>%
-  mcols() %>%
-  rownames() %>%
-  tail(n = 1)
-edb <- ah[[id]]
+anno <- grch38 %>% dplyr::filter(biotype == "protein_coding") %>% 
+    dplyr::select(ensgene, symbol, chr, start, end, description) 
 
-# Extract gene-level information from database
-annotations <- genes(edb, 
-                     return.type = "data.frame")
-knitr::kable(head(annotations))
-```
+mito <- grep("^MT", anno$symbol, value=TRUE)
 
-# Select annotations of interest
-
-```{r}
-annotations <- annotations %>%
-  dplyr::select(gene_id, gene_name, gene_biotype, seq_name, description, entrezid)
-```
-
-# Extract IDs for mitochondrial genes
-
-Determining mitochrondrial content is an important feature that wll allow us to detect cells where the capture efficiency of the RNA is low. We can use this to filter bad cells that will have little to no MT genes or too high MT content.
-
-```{r}
-mt <- annotations %>% 
-  dplyr::filter(seq_name == "MT") %>%
-  dplyr::pull(gene_id)
-```
-
-# Adding metrics to metadata
-
-Now that we have information about which genes are mitochondrial, we can quanitify whether we have contamination.
-
-```{r}
 for (i in sample_files){
-  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
   metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-  # Number of UMIs assigned to mitochondrial genes
-  metadata$mtUMI <- Matrix::colSums(counts[which(rownames(counts) %in% mt),], na.rm = T)
-
-  # Ensure all NAs receive zero counts
-  metadata$mtUMI[is.na(metadata$mtUMI)] <- 0
-
+  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
+  
+  metadata$mtUMI <- Matrix::colSums(counts[which(rownames(counts) %in% mito),], na.rm = T)
+  
   # Calculate of mitoRatio per cell
   metadata$mitoRatio <- metadata$mtUMI/metadata$nUMI
   assign(paste("metadata", i, sep = "."), metadata)
 }
+
+
 ```
 
 # Filtering!!!
@@ -370,7 +313,9 @@ for (i in sample_files){
   se <- get(gsub("SAMPLE_FILE",i , "se.SAMPLE_FILE"))
 
 # Filter out low quality reads using selected thresholds - these will change with experiment
-keep <- metrics %>%
+keep <-
+  metrics %>%
+  tibble::rownames_to_column("cells") %>% 
   dplyr::filter(nUMI > 20 , 
                 nGene > 20,
                 log10GenesPerUMI > 0.4,
