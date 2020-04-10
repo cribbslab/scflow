@@ -273,6 +273,18 @@ def run_scanpy(infile, outfile):
 @originate("Report.dir/Final_report/QC_report.html")
 def run_rmarkdown(outfile):
 
+    infiles = glob.glob("kallisto.dir/*/Scanpy_analysis.md")
+
+    n = 1
+    for infile in infiles:
+        path, name = os.path.split(infile)
+        prefix = "A" + str(n)
+        path = os.path.split(path)[1]
+        name = prefix + "_" + path + "_scanpy.md"
+        dest = "Report.dir/" + name
+        copyfile(infile, dest)
+        n = n +1
+
     RMD_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           "pipeline_kallistobus","Rmarkdown"))
 
