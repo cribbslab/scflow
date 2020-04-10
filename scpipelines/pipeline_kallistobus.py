@@ -108,6 +108,9 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
+
+JUPYTER_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kallistobus","Jupyter")
+
 # Determine the location of the input fastq files
 
 try:
@@ -229,7 +232,7 @@ def run_kallisto_bus(infiles, outfile):
     outfolder = outfile.rsplit('/',1)[0]
 
     statement = '''
-    kb count -i %(index_files)s -g geneset.dir/t2g.txt 
+    kb count -i %(index_files)s -g geneset.dir/t2g.txt
     -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt -x %(kallisto_sctechnology)s
     -o %(outfolder)s --workflow %(kallisto_workflow)s --%(kallisto_output_format)s  %(fastqfiles)s
     2> %(outfolder)s_kblog.log
@@ -239,24 +242,66 @@ def run_kallisto_bus(infiles, outfile):
 
     P.run(statement)
 
-
 #########################
-# Multiqc
+# Scanpy analysis
 #########################
 
-#@follows(mkdir("MultiQC_report.dir"))
-#@follows(run_kallisto_bus)
-#@originate("MultiQC_report.dir/multiqc_report.html")
-#def build_multiqc(infile):
-#    '''build mulitqc report'''#
-#
-#    statement = (
-#        "export LANG=en_GB.UTF-8 && "
-#        "export LC_ALL=en_GB.UTF-8 && "
-#        "multiqc . -f && "
-#        "mv multiqc_report.html MultiQC_report.dir/")
+@transform(run_kallisto_bus,
+           regex("kallisto.dir/(\S+)/bus/output.bus"),
+           r"kallisto.dir/\1/Scanpy_analysis.md")
+def run_scanpy(infile, outfile):
+    '''
+    This function will run the scanpy workflow jupyter notebook
+    then will render the document into a .md file
 
-#    P.run(statement)
+    '''
+
+    jupyter = JUPYTER_ROOT + "/Scanpy_analysis.ipynb"
+    jupyter_nb = outfile.replace(".md", ".ipynb")
+    nb_file = outfile.replace("Scanpy_analysis.md", "")
+
+    statement = '''
+    cp %(jupyter)s %(jupyter_nb)s &&
+    cd %(nb_file)s &&
+    jupyter nbconvert --to=markdown --execute Scanpy_analysis.ipynb'''
+
+    P.run(statement)
+
+
+@follows(mkdir("Report.dir"))
+@follows(run_scanpy)
+@originate("Report.dir/Final_report/QC_report.html")
+def run_rmarkdown(outfile):
+
+    infiles = glob.glob("kallisto.dir/*/Scanpy_analysis.md")
+
+    n = 1
+    for infile in infiles:
+        path, name = os.path.split(infile)
+        prefix = "A" + str(n)
+        path = os.path.split(path)[1]
+        name = prefix + "_" + path + "_scanpy.md"
+        dest = "Report.dir/" + name
+        copyfile(infile, dest)
+        n = n +1
+
+    RMD_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                          "pipeline_kallistobus","Rmarkdown"))
+
+    cwd = os.getcwd()
+    job_memory = "5G"
+    # Needs to be re-written so that the whole report is now rendered
+    statement = '''cp %(RMD_SRC_PATH)s/* Report.dir/ &&
+                   cd Report.dir &&
+                   R -e "rmarkdown::render_site()"''' % locals()
+
+    P.run(statement)
+
+    statement = """
+    ln -s Report.dir/Final_report/index.html ./FinalReport.html
+    """
+
+    P.run(statement)
 
 
 @follows(run_kallisto_bus)

@@ -1,0 +1,349 @@
+---
+title: "Quality Control"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=FALSE, warning=FALSE,message=FALSE,error=FALSE)
+library(stringr)
+library(Seurat)
+
+```
+
+# Import data into Seurat object
+
+The first stage of the pipeline is to create a seurat object by running the Scanpy workflow jupyter notebook.
+
+```{r import}
+
+samples <- str_replace(Sys.glob("../kallisto.dir/*"), "../kallisto.dir/", "")
+
+for (i in samples){
+  name <- paste("../kallisto.dir/", i, "/seurat_output.rds", sep="")
+  so <- readRDS(name)
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+  
+  }
+
+```
+
+# Clean cells from data using previous QC metrics
+
+In the first Rmarkdown we ran a series of quality steps to filter our cells and remove bad cells. Before using Seurat to perform further filtering, we will remove these here.
+
+```{r}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  metrics <- readRDS(gsub("SAMPLE_FILE",i , "SALMPLE_FILE_metrics_clean_mouse1.rds"))
+  so <- subset(so, cells= rownames(metrics))
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+  }
+
+
+```
+
+
+# Establsh features
+
+The next stage is to allow Seurat to Calculate the percentage features for selection for downstream analysis. 
+
+```{r}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  Idents(so) <- i
+  so$condition <- i
+  so[["percent.mt"]] <- PercentageFeatureSet(so, pattern = "^MT-")
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+  }
+
+```
+
+# View quality statistics {.tabset .tabset-fade}
+
+Visualising the numbers of counts, number of features and percent mitochondrial features is important for determining the quality of the sample. There is some contension regarding the filtering of mitochondrial reads in droplet based sequencing approaches. Some usually filter out cells that express mito reads of > 5%, while others suggest that filtering is not necessary. 
+
+```{r, results='asis'}
+dir.create("Figures.dir",showWarnings = FALSE)
+
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+
+  cat("## ",i,"\n")
+  print(VlnPlot(so, features = c("nFeature_RNA", "nUMI","nCount_RNA", "percent.mt"), ncol = 3))
+  cat('\n\n')
+}
+```
+
+# Remove bad quality cells {.tabset .tabset-fade}
+
+Setting thresholds on cells is important for filtering out all bad quality samples. Here we set thresholds on numbers of features and mitochrondrial content. As mentioned before there is contention surrounding mitochrondrian filtering. My preference is to first run the pipeline with and then without filtering and evaluate to see if there is a significant difference.
+
+```{r, results='asis'}
+dir.create("Figures.dir",showWarnings = FALSE)
+
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  so <- subset(so, subset = nFeature_RNA > 50 & nFeature_RNA < 6000 & percent.mt < 5)
+  cat("## ",i,"\n")
+  print(VlnPlot(so, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
+  cat('\n\n')
+  
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+}
+```
+
+# Normalise and find variable features {.tabset .tabset-fade}
+
+Next the counts matrix needs to be normalised and variable genes identified. 
+
+```{r, results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  so <- NormalizeData(so , verbose = FALSE)
+  so <- FindVariableFeatures(so, selection.method = "vst", 
+        nfeatures = 2000, verbose = FALSE)
+  plot1 <- FeatureScatter(so, feature1 = "nCount_RNA", feature2 = "percent.mt")
+  plot2 <- FeatureScatter(so, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+  cat("## ",i,"\n")
+  print(plot1 + plot2)
+  cat('\n\n')
+  
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+}
+```
+
+# Plot highly variable genes {.tabset .tabset-fade}
+
+```{r, results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+
+  top10 <- head(VariableFeatures(so), 10)
+
+# plot variable features with and without labels
+  plot1 <- VariableFeaturePlot(so)
+  plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+  cat("## ",i,"\n")
+  print(plot1 + plot2)
+  cat('\n\n')
+  
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+}
+```
+
+# Scale data
+
+Next, we apply a linear transformation (‘scaling’) that is a standard pre-processing step prior to dimensional reduction techniques like PCA. The ScaleData function:
+
+Shifts the expression of each gene, so that the mean expression across cells is 0
+Scales the expression of each gene, so that the variance across cells is 1
+This step gives equal weight in downstream analyses, so that highly-expressed genes do not dominate
+The results of this are stored in so[["RNA"]]@scale.data
+
+```{r}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  all.genes <- rownames(so)
+  so <- ScaleData(so, features = all.genes)
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+}
+```
+
+# Perform linear dimensional reduction
+
+Next we perform PCA on the scaled data. By default, only the previously determined variable features are used as input, but can be defined using features argument if you wish to choose a different subset.
+
+```{r}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  so <- RunPCA(so, features = VariableFeatures(object = so))
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+}
+```
+
+# Visualise the loadings {.tabset .tabset-fade}
+
+
+```{r, results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  cat("## ",i,"\n")
+  print(VizDimLoadings(so, dims = 1:2, reduction = "pca"))
+  cat('\n\n')
+  rm(so)
+}
+```
+
+# Visualise the PCA plot {.tabset .tabset-fade}
+
+
+```{r, results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  cat("## ",i,"\n")
+  print(DimPlot(so, reduction = "pca"))
+  cat('\n\n')
+  rm(so)
+}
+```
+
+# Visualise by heatmap {.tabset .tabset-fade}
+
+In particular DimHeatmap allows for easy exploration of the primary sources of heterogeneity in a dataset, and can be useful when trying to decide which PCs to include for further downstream analyses. Both cells and features are ordered according to their PCA scores. Setting cells to a number plots the ‘extreme’ cells on both ends of the spectrum, which dramatically speeds plotting for large datasets. Though clearly a supervised analysis, we find this to be a valuable tool for exploring correlated feature sets.
+
+```{r, results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  cat("## ",i,"\n")
+  print(DimHeatmap(so, dims = 1:3, cells = 500, balanced = TRUE))
+  cat('\n\n')
+  rm(so)
+}
+```
+
+# Determine the ‘dimensionality’ of the dataset
+
+To overcome the extensive technical noise in any single feature for scRNA-seq data, Seurat clusters cells based on their PCA scores, with each PC essentially representing a ‘metafeature’ that combines information across a correlated feature set. The top principal components therefore represent a robust compression of the dataset. However, how many componenets should we choose to include? 10? 20? 100?
+
+In Macosko et al, we implemented a resampling test inspired by the JackStraw procedure. We randomly permute a subset of the data (1% by default) and rerun PCA, constructing a ‘null distribution’ of feature scores, and repeat this procedure. We identify ‘significant’ PCs as those who have a strong enrichment of low p-value features.
+
+## Jackstraw plot {.tabset .tabset-fade}
+
+```{r, results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  so <- JackStraw(so, num.replicate = 100)
+so <- ScoreJackStraw(so, dims = 1:20)
+  cat("### ",i,"\n")
+  print(JackStrawPlot(so, dims = 1:15))
+  cat('\n\n')
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+}
+```
+
+## Elbow plot{.tabset .tabset-fade}
+
+
+An alternative heuristic method generates an ‘Elbow plot’: a ranking of principle components based on the percentage of variance explained by each one (ElbowPlot function). In this example, we can observe an ‘elbow’ around PC9-10, suggesting that the majority of true signal is captured in the first 10 PCs.
+
+
+```{r, results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  cat("### ",i,"\n")
+  print(ElbowPlot(so))
+  cat('\n\n')
+  rm(so)
+}
+```
+
+# Cluster the cells {.tabset .tabset-fade}
+
+Seurat v3 applies a graph-based clustering approach, building upon initial strategies in (Macosko et al). Importantly, the distance metric which drives the clustering analysis (based on previously identified PCs) remains the same. However, our approach to partioning the cellular distance matrix into clusters has dramatically improved. Our approach was heavily inspired by recent manuscripts which applied graph-based clustering approaches to scRNA-seq data [SNN-Cliq, Xu and Su, Bioinformatics, 2015] and CyTOF data [PhenoGraph, Levine et al., Cell, 2015]. Briefly, these methods embed cells in a graph structure - for example a K-nearest neighbor (KNN) graph, with edges drawn between cells with similar feature expression patterns, and then attempt to partition this graph into highly interconnected ‘quasi-cliques’ or ‘communities’.
+
+As in PhenoGraph, we first construct a KNN graph based on the euclidean distance in PCA space, and refine the edge weights between any two cells based on the shared overlap in their local neighborhoods (Jaccard similarity). This step is performed using the FindNeighbors function, and takes as input the previously defined dimensionality of the dataset (first 10 PCs).
+
+To cluster the cells, we next apply modularity optimization techniques such as the Louvain algorithm (default) or SLM [SLM, Blondel et al., Journal of Statistical Mechanics], to iteratively group cells together, with the goal of optimizing the standard modularity function. The FindClusters function implements this procedure, and contains a resolution parameter that sets the ‘granularity’ of the downstream clustering, with increased values leading to a greater number of clusters. We find that setting this parameter between 0.4-1.2 typically returns good results for single-cell datasets of around 3K cells. Optimal resolution often increases for larger datasets. The clusters can be found using the Idents function.
+
+```{r, results='asis'}
+
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  
+  so <- FindNeighbors(so, dims = 1:10)
+  so <- FindClusters(so, resolution = 0.5)
+  so <- RunUMAP(so, dims = 1:10)
+  cat("## ",i,"\n")
+  print(DimPlot(so, reduction = "umap"))
+  cat('\n\n')
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+}
+
+```
+
+# Finding differentially expressed features (cluster biomarkers) {.tabset .tabset-fade}
+
+Seurat can help you find markers that define clusters via differential expression. By default, it identifes positive and negative markers of a single cluster (specified in ident.1), compared to all other cells. FindAllMarkers automates this process for all clusters, but you can also test groups of clusters vs. each other, or against all cells.
+
+The min.pct argument requires a feature to be detected at a minimum percentage in either of the two groups of cells, and the thresh.test argument requires a feature to be differentially expressed (on average) by some amount between the two groups. You can set both of these to 0, but with a dramatic increase in time - since this will test a large number of features that are unlikely to be highly discriminatory. As another option to speed up these computations, max.cells.per.ident can be set. This will downsample each identity class to have no more cells than whatever this is set to. While there is generally going to be a loss in power, the speed increases can be significiant and the most highly differentially expressed features will likely still rise to the top.
+
+```{r, results='asis'}
+
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  
+  so.markers <- Seurat::FindAllMarkers(so, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  genes <- so.markers$gene[1:3]
+  cat("## ",i,"\n")
+  print(VlnPlot(so, features = genes))
+  cat('\n\n')
+  
+  assign(paste("so.markers", i, sep = "."), so.markers)
+  rm(so.markers)
+  rm(so)
+}
+
+
+
+```
+
+
+# Plot Features {.tabset .tabset-fade}
+
+```{r,results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  so.markers  <- get(gsub("SAMPLE_FILE",i , "so.markers.SAMPLE_FILE"))
+  
+  genes <- so.markers$gene[1:3]
+  cat("## ",i,"\n")
+  print(FeaturePlot(so, features = genes))
+  cat('\n\n')
+  rm(so.markers)
+}
+
+```
+
+# Plot heatmap of top10 markers for each cluster {.tabset .tabset-fade}
+
+```{r, results='asis'}
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  so.markers  <- get(gsub("SAMPLE_FILE",i , "so.markers.SAMPLE_FILE"))
+  
+  top10 <- so.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logFC)
+  
+  cat("## ",i,"\n")
+  print(FeaturePlot(so, features = genes, order = TRUE))
+  cat('\n\n')
+
+  rm(so.markers)
+  rm(so)
+}
+```
+
+
+# Save final data object to RDS
+
+```{r}
+
+for (i in samples){
+  so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  output <- paste(i, ".postqc.rds", sep="")
+  saveRDS(so, file=output)
+  rm(so)
+}
+```

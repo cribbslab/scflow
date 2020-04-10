@@ -42,41 +42,9 @@ copyright: Cribbs Group, Botnar Research Centre (2019)
 data: 0
 
 
-################################################################
-## merge options
-################################################################
-merge:
-  # input pattern
-  # For example, if your files are called:
-  #    CLLP80-S1-1-L001.fastq.1.gz
-  #    CLLP80-S1-1-L001.fastq.2.gz
-  #    CLLP80-S1-1-L002.fastq.1.gz
-  #    CLLP80-S1-1-L002.fastq.2.gz
-  # and you want to create files/ folder starting with:
-  #    CLLP80-S1-1
-  #
-  # choose the following input and output patterns:
-  #
-  # pattern_input= (.*)-(S\d)-(\d)-(L\d+)
-  # pattern_output= \1-\2-\3
-  # Note that the file extension will be added by the pipeline. The
-  # pattern must not include this.
-
-  # hgmm_100_S1_L001_001.fastq.1.gz
-  # hgmm_100_S1_L001_001.fastq.2.gz
-  # hgmm_100_S1_L002_001.fastq.1.gz
-  # hgmm_100_S1_L002_001.fastq.2.gz
-
-  # pattern_input: (\S\d+)-(.*)_(L\d+)
-  # pattern_output: \1_\2_\3_
-  # to create:
-  # N70x-cell_lane.fastq.1.gz
-
-  pattern_input: ''
-  pattern_output: ''
 
 #######################
-# Kallisto
+# Kallisto options
 #######################
 
 kallisto:
@@ -106,7 +74,7 @@ kallisto:
   # Must specify:
   # loom
   # h5ad
-  output_format: loom 
+  output_format: h5ad
 
   # Which workflow to use:
   # options include: standard,lamanno,nucleus,kite,kite:10xFB
@@ -116,68 +84,34 @@ kallisto:
   #                      for feature barcoding. Use `kite:10xFB` for 10x
   #                      Genomics Feature Barcoding technology. (default:
   #                      standard)
-  workflow: nucleus
+  workflow: standard
 
+  # Expected number of cells
+  num_cells: 3000
 
-sce:
+###########################################
+# Running Jupyter notebook Scanpy filtering
+###########################################
 
-  # Species information for annotation
-  # human
-  # mouse
-  species: human
+# Once you have ran the pipelpeline to full task then
+# the next step is to perform filtering on all of your data.
+# I would suggest that you first run this with default settings
+# Look at the output and then delete the output files, modify the
+# settings below then re-run the pipeline.
 
-  # Whether to use gene symbols for SCE or ensembl IDs.
-  genesymbol: 0
+filtering:
 
-qc:
+  # Set the minimum nuber of counts for each cell
+  min_counts: 50
 
-  # Set mitochondrial percent maximum threshold (usually 10-20%)
-  max_mito: 5
+  # Set the maximum counts for each cell
+  max_counts: 5000
 
-  # Or instead use median + 2 median absolute deviations as mitochondrial threshold (0 or 1)
-  mito_median_absolute_deviation: 1
+  # Set the maximum percentage of mitochrondria to threshold below
+  percent_mito: 0.2
 
-  # Threshold for minimum number of transcripts per cell (usually 500-1000)
-  min_transcripts: 100
+  # Set the minimum number of genes for each cell
+  min_genes: 50
 
-  # Whether spike ins are used, e.g. smart seq data
-  spike_ins: 0
-
-DE:
-  # 1 or 0, to run or not
-  wilcoxon: 1
-
-  # Sample name of the control
-  sample1: 'N701_WT'
-
-  # Sample to compare to the control
-  sample2: 'N704_CFZ'
-
-  pseudo_bulk: 1
-
-seurat:
-  mingenes: 50
-
-  maxmitopercent: 0.1
-
-  npcs: 5
-
-  # resultion for finding seurat clusters
-  resolution: 0.8
-
-  algorithm: 3
-
-# Specifying this value will downsample the number of cells
-downsample_active: 0
-downsample_to: 0
-
-monocle:
-  # Gene of interest to be plotted. Ensembl or symbols depending on genesymbol
-  gene_marker: "ENSG00000164867"
-
-  max_components: 2
-
-  num_dim: 6
-
-  # +1 to number of clusters you want
-  num_clusters: 7
+  # Filter genes that express greater than ? genes - filter out 0 counts
+  zero_genes: 10
