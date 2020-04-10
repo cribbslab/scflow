@@ -1,0 +1,142 @@
+---
+title: "Integrate data"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+The aim of this Rmardown document is to integrate all of the samples together in one seurat object. This Rmarkdown page will only render if there are more than 2 samples in the analysis.
+
+# Import the Seurat objects
+```{r}
+library(Seurat)
+library(scClassify)
+library(annotables)
+library(harmony)
+# Import single cell experiment class object from 
+samples <- str_replace(Sys.glob("../kallisto.dir/*"), "../kallisto.dir/", "")
+
+# Stop if only one file
+if (length(samples) == 1){
+  knitr::knit_exit()
+}
+
+sce <- readRDS("integrated_CCA.rds")
+```
+
+# Run harmony
+
+```{r}
+options(repr.plot.height = 2.5, repr.plot.width = 6)
+sce <- SCTransform(sce, verbose = FALSE)
+sce <- RunHarmony(sce, "orig.ident", plot_convergence = TRUE, assay.use="SCT")
+```
+
+# Run Dim plot to see embeddings
+
+```{r}
+harmony_embeddings <- Embeddings(sce, 'harmony')
+DimPlot(object = sce, reduction = "harmony", pt.size = .1, group.by = "orig.ident")
+```
+
+# 
+
+```{r}
+VlnPlot(object = sce, features = "harmony_1", group.by = "orig.ident", pt.size = .1)
+```
+
+# Downstream analysis
+
+```{r}
+sce <- sce %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.5) %>% 
+    identity()
+```
+
+
+# UMAP embeddings with harmony
+
+```{r}
+options(repr.plot.height = 4, repr.plot.width = 10)
+DimPlot(sce, reduction = "umap", group.by = "orig.ident", pt.size = .1, split.by = 'orig.ident')
+```
+
+```{r}
+options(repr.plot.height = 4, repr.plot.width = 6)
+DimPlot(sce, reduction = "umap", label = TRUE, pt.size = .1)
+```
+
+# Classification
+
+```{r}
+# Load the pre-trained classifier
+classifier <- readRDS("jointPBMCClass.rds")
+```
+
+# Generate logcounts
+
+We will next generate logcounts as this is a pre-requisit for running scClassify.This ist stored in the sce object as logcounts
+
+```{r}
+data <- as.data.frame(sce@assays$RNA@data)
+data$gene <- rownames(data)
+
+sym2en <- data %>%
+  dplyr::select(`gene`) %>% 
+  dplyr::inner_join(grch38, by = c("gene" = "symbol")) %>% 
+  dplyr::select(gene, ensgene)
+
+sym2en <- sym2en[!duplicated(sym2en [,c('gene')]),]
+
+data <- dplyr::left_join(data, sym2en, by="gene")
+data <- na.omit(data)
+data$gene <- NULL
+rownames(data) <- data$ensgene
+data$ensgene <- NULL
+
+data <- as.matrix(data)
+```
+
+
+# Classify cells
+
+Next, we perform predict_scClassify with our pretrained model trainRes = trainClassExample to predict the cell types of our query data matrix exprsMat_wang_subset_sparse. Here, we used pearson and spearman as similarity metrics.
+
+```{r}
+pred_res <- predict_scClassify(exprsMat_test = data,
+                               trainRes = classifier@listData$`PBMC_tenX(V3)`,
+                               algorithm = "WKNN",
+                               features = c("limma"),
+                               similarity = c("pearson", "spearman"),
+                               prob_threshold = 0.7,
+                               verbose = TRUE)
+
+table(pred_res$pearson_WKNN_limma$predRes)
+```
+
+# Predictions now added as meta data into experiment
+
+The predictions can now be added into the meta data or exported to be added as input to 
+
+```{r}
+sce$celltypes <-  pred_res$ensembleRes["cellTypes"]
+
+sce@meta.data
+```
+
+# Map the classifier over the data
+
+```{r}
+
+
+Idents(sce) <- sce@meta.data$celltypes
+png("celltypes_UMAP.png", width = 2000, height = 500)
+DimPlot(sce, reduction = "umap", split.by = "celltypes")
+dev.off()
+DimPlot(sce, reduction = "umap", split.by = "seurat_clusters")
+
+
+DimPlot(sce, reduction = "umap", label = TRUE, pt.size = .1)
+```

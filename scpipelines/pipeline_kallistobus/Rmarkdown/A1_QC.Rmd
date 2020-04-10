@@ -162,7 +162,7 @@ We will explore the following metrics through visualizations to decide on which 
 * Mitochondrial counts ratio
 * Novelty
 
-# Visualize the number of cell counts per cell {.tabset}
+# Visualize the number of cell counts per cell {.tabset .tabset-fade}
 
 ```{r, results='asis', echo = FALSE}
 for (i in sample_files){
@@ -178,7 +178,7 @@ cat('\n\n')
 }
 ```
 
-# UMI counts (transcripts) per cell {.tabset}
+# UMI counts (transcripts) per cell {.tabset .tabset-fade}
 
 The UMI counts per cell should generally be above 500, although usable, it’s still low if between 500-1000 counts. If UMIs per cell is 500-1000 counts, then the cells probably should have been sequenced more deeply.
 
@@ -198,7 +198,7 @@ cat('\n\n')
 }
 ```
 
-# Genes detected per cell {.tabset}
+# Genes detected per cell {.tabset .tabset-fade}
 
 Seeing gene detection in the range of 500-5000 is normal for inDrop analysis. Similar expectations for gene detection as for UMI detection, although may be a bit lower than UMIs.
 
@@ -217,7 +217,7 @@ cat('\n\n')
 }
 ```
 
-# Ncells vs Ngenes {.tabset}
+# Ncells vs Ngenes {.tabset .tabset-fade}
 
 ```{r, results='asis', echo = FALSE}
 for (i in sample_files){
@@ -235,7 +235,7 @@ cat('\n\n')
 ```
 
 
-# UMIs vs. genes detected {.tabset}
+# UMIs vs. genes detected {.tabset .tabset-fade}
 
 Poor quality cells are likely to have low genes and UMIs per cell. Therefore, a poor sample is likely to have cells in the lower left of the graph. Good cells should exhibit both higher number of genes per cell and higher numbers of UMIs. We also expect similar lines with similar slopes for all samples.
 
@@ -259,7 +259,7 @@ cat('\n\n')
 ```
 
 
-# Mitochondrial counts ratio {.tabset}
+# Mitochondrial counts ratio {.tabset .tabset-fade}
 
 This metric can identify whether there is a large amount of mitochondrial contamination from dead or dying cells. Poor quality samples for mitochondrial counts would have larger peaks above the 0.1 mitochondrial ratio mark, unless it is expected based on sample type.
 
@@ -279,7 +279,7 @@ cat('\n\n')
 }
 ```
 
-# Novelty {.tabset}
+# Novelty {.tabset .tabset-fade}
 
 We can see the samples where we sequenced each cell less have a higher overall novelty, that is because we have not started saturating the sequencing for any given gene for these samples. Outlier cells in these samples might be cells that have a less complex RNA species than other cells. Sometimes we can detect contamination with low complexity cell types like red blood cells via this metric. Generally, we expect the novelty score to be above 0.80.
 
@@ -341,7 +341,7 @@ assign(paste("metrics_clean", i, sep = "."), metrics_clean)
 
 After performing the filtering, it’s recommended to look back over the metrics to make sure that your data matches your expectations and is good for downstream analysis.
 
-# Cell counts {.tabset}
+# Cell counts {.tabset .tabset-fade}
 
 After filtering, we should not have more cells than we sequenced. Generally we aim to have about the number we sequenced or a bit less. With 2,700 cells sequenced, we would expect to return around this number of cells. We have about 2,480 returned after filtering, which is pretty good.
 
@@ -359,7 +359,7 @@ cat('\n\n')
 }
 ```  
 
-# Cells versus genes {.tabset}
+# Cells versus genes {.tabset .tabset-fade}
 
 ```{r, results='asis', echo = FALSE}
 for (i in sample_files){
@@ -378,7 +378,7 @@ cat('\n\n')
 
 
 
-# UMI counts {.tabset}
+# UMI counts {.tabset .tabset-fade}
 
 The filtering using a threshold of 500 has removed the cells with low numbers of UMIs from the analysis.
 
@@ -400,7 +400,7 @@ cat('\n\n')
 }
 ```
 
-# UMIs vs genes {.tabset}
+# UMIs vs genes {.tabset .tabset-fade}
 
 ```{r, results='asis', echo = FALSE}
 for (i in sample_files){
