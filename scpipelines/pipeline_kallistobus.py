@@ -267,23 +267,29 @@ def run_scanpy(infile, outfile):
 
     P.run(statement)
 
-#########################
-# Multiqc
-#########################
 
-#@follows(mkdir("MultiQC_report.dir"))
-#@follows(run_kallisto_bus)
-#@originate("MultiQC_report.dir/multiqc_report.html")
-#def build_multiqc(infile):
-#    '''build mulitqc report'''#
-#
-#    statement = (
-#        "export LANG=en_GB.UTF-8 && "
-#        "export LC_ALL=en_GB.UTF-8 && "
-#        "multiqc . -f && "
-#        "mv multiqc_report.html MultiQC_report.dir/")
+@follows(mkdir("Report.dir"))
+@follows(run_scanpy)
+@originate("Report.dir/Final_report/QC_report.html")
+def run_rmarkdown(outfile):
 
-#    P.run(statement)
+    RMD_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                          "pipeline_kallistobus","Rmarkdown"))
+
+    cwd = os.getcwd()
+    job_memory = "5G"
+    # Needs to be re-written so that the whole report is now rendered
+    statement = '''cp %(RMD_SRC_PATH)s/* Report.dir/ &&
+                   cd Report.dir &&
+                   R -e "rmarkdown::render_site()"''' % locals()
+
+    P.run(statement)
+
+    statement = """
+    ln -s Report.dir/Final_report/index.html ./FinalReport.html
+    """
+
+    P.run(statement)
 
 
 @follows(run_kallisto_bus)
