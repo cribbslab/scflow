@@ -5,42 +5,14 @@
 ##########################
 
 # primary assembly downloaded according to documentation instructions
-genome_file: Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+genome_file: GRCm38_GRCh38_primary_assembly.fa.gz
 
 # Provide a reference geneset (suffix= ".gtf.gz")
 # Geneset should be located in working directory
-geneset: Homo_sapiens.GRCh38.99.gtf.gz
-
-# This is the location of the intron.bed.gz
-intron_bed: introns.bed.gz
-
-# This is the location of the cDNA fasta
-cdna_fasta: cDNA.fa.gz
-
-# Specify if there is a mixed species input (i.e. mouse and human)
-mixed_species: 0
-
-# If there is a mixed specied input specify the extra genome (in addition to the
-# one already specified)
-genome2:
-genome_dir2: /ifs/mirror/genomes/index/
-
-# If there is a mixed specied input specify a reference geneset (suffix= ".gtf.gz")
-# Geneset should be located in working directory
-geneset2:
-
-# Location of the single cell directory
-sc_dir: '/ifs/projects/adam/single-cell-test/'
-
-# Project name
-projectname: test
+geneset: GRCm38_GRCh38.gtf.gz
 
 # Copyright statement
 copyright: Cribbs Group, Botnar Research Centre (2019)
-
-# Location of the data. 0 for the current directory
-data: 0
-
 
 ################################################################
 ## merge options
@@ -106,7 +78,7 @@ kallisto:
   # Must specify:
   # loom
   # h5ad
-  output_format: loom 
+  output_format: h5ad
 
   # Which workflow to use:
   # options include: standard,lamanno,nucleus,kite,kite:10xFB
@@ -116,7 +88,7 @@ kallisto:
   #                      for feature barcoding. Use `kite:10xFB` for 10x
   #                      Genomics Feature Barcoding technology. (default:
   #                      standard)
-  workflow: nucleus
+  workflow: standard
 
 
 sce:
