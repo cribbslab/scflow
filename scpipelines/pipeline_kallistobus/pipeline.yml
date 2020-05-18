@@ -5,46 +5,50 @@
 ##########################
 
 # primary assembly downloaded according to documentation instructions
-genome_file: Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+genome_file: GRCm38_GRCh38_primary_assembly.fa.gz
 
 # Provide a reference geneset (suffix= ".gtf.gz")
 # Geneset should be located in working directory
-geneset: Homo_sapiens.GRCh38.99.gtf.gz
-
-# This is the location of the intron.bed.gz
-intron_bed: introns.bed.gz
-
-# This is the location of the cDNA fasta
-cdna_fasta: cDNA.fa.gz
-
-# Specify if there is a mixed species input (i.e. mouse and human)
-mixed_species: 0
-
-# If there is a mixed specied input specify the extra genome (in addition to the
-# one already specified)
-genome2:
-genome_dir2: /ifs/mirror/genomes/index/
-
-# If there is a mixed specied input specify a reference geneset (suffix= ".gtf.gz")
-# Geneset should be located in working directory
-geneset2:
-
-# Location of the single cell directory
-sc_dir: '/ifs/projects/adam/single-cell-test/'
-
-# Project name
-projectname: test
+geneset: GRCm38_GRCh38.gtf.gz
 
 # Copyright statement
 copyright: Cribbs Group, Botnar Research Centre (2019)
 
-# Location of the data. 0 for the current directory
-data: 0
+################################################################
+## merge options
+################################################################
+merge:
+  # input pattern
+  # For example, if your files are called:
+  #    CLLP80-S1-1-L001.fastq.1.gz
+  #    CLLP80-S1-1-L001.fastq.2.gz
+  #    CLLP80-S1-1-L002.fastq.1.gz
+  #    CLLP80-S1-1-L002.fastq.2.gz
+  # and you want to create files/ folder starting with:
+  #    CLLP80-S1-1
+  #
+  # choose the following input and output patterns:
+  #
+  # pattern_input= (.*)-(S\d)-(\d)-(L\d+)
+  # pattern_output= \1-\2-\3
+  # Note that the file extension will be added by the pipeline. The
+  # pattern must not include this.
 
+  # hgmm_100_S1_L001_001.fastq.1.gz
+  # hgmm_100_S1_L001_001.fastq.2.gz
+  # hgmm_100_S1_L002_001.fastq.1.gz
+  # hgmm_100_S1_L002_001.fastq.2.gz
 
+  # pattern_input: (\S\d+)-(.*)_(L\d+)
+  # pattern_output: \1_\2_\3_
+  # to create:
+  # N70x-cell_lane.fastq.1.gz
+
+  pattern_input: ''
+  pattern_output: ''
 
 #######################
-# Kallisto options
+# Kallisto
 #######################
 
 kallisto:
@@ -86,32 +90,66 @@ kallisto:
   #                      standard)
   workflow: standard
 
-  # Expected number of cells
-  num_cells: 3000
 
-###########################################
-# Running Jupyter notebook Scanpy filtering
-###########################################
+sce:
 
-# Once you have ran the pipelpeline to full task then
-# the next step is to perform filtering on all of your data.
-# I would suggest that you first run this with default settings
-# Look at the output and then delete the output files, modify the
-# settings below then re-run the pipeline.
+  # Species information for annotation
+  # human
+  # mouse
+  species: human
 
-filtering:
+  # Whether to use gene symbols for SCE or ensembl IDs.
+  genesymbol: 0
 
-  # Set the minimum nuber of counts for each cell
-  min_counts: 50
+qc:
 
-  # Set the maximum counts for each cell
-  max_counts: 5000
+  # Set mitochondrial percent maximum threshold (usually 10-20%)
+  max_mito: 5
 
-  # Set the maximum percentage of mitochrondria to threshold below
-  percent_mito: 0.2
+  # Or instead use median + 2 median absolute deviations as mitochondrial threshold (0 or 1)
+  mito_median_absolute_deviation: 1
 
-  # Set the minimum number of genes for each cell
-  min_genes: 50
+  # Threshold for minimum number of transcripts per cell (usually 500-1000)
+  min_transcripts: 100
 
-  # Filter genes that express greater than ? genes - filter out 0 counts
-  zero_genes: 10
+  # Whether spike ins are used, e.g. smart seq data
+  spike_ins: 0
+
+DE:
+  # 1 or 0, to run or not
+  wilcoxon: 1
+
+  # Sample name of the control
+  sample1: 'N701_WT'
+
+  # Sample to compare to the control
+  sample2: 'N704_CFZ'
+
+  pseudo_bulk: 1
+
+seurat:
+  mingenes: 50
+
+  maxmitopercent: 0.1
+
+  npcs: 5
+
+  # resultion for finding seurat clusters
+  resolution: 0.8
+
+  algorithm: 3
+
+# Specifying this value will downsample the number of cells
+downsample_active: 0
+downsample_to: 0
+
+monocle:
+  # Gene of interest to be plotted. Ensembl or symbols depending on genesymbol
+  gene_marker: "ENSG00000164867"
+
+  max_components: 2
+
+  num_dim: 6
+
+  # +1 to number of clusters you want
+  num_clusters: 7
