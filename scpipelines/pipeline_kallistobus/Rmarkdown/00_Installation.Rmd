@@ -25,16 +25,16 @@ check_biocmanager <- function(pkg){
     install.packages(pkg)
   sapply(pkg, require, character.only = TRUE)}
 
-packages<-c("tximport", "SingleCellExperiment", "", "",
-            "", "", "")
+packages<-c("tximport", "SingleCellExperiment")
 check_biocmanager(packages)
 
 # these packages are not currently on any package manager so you will need to
 # install these individually from github using devtools (installed above).
 
-devtools::install_github("cole-trapnell-lab/garnett")
-devtools::install_github("SydneyBioX/scClassify")
-devtools::install_github("hemberg-lab/SC3")
+devtools::install_github("Acribbs/siteymlgen")
+#devtools::install_github("cole-trapnell-lab/garnett")
+#devtools::install_github("SydneyBioX/scClassify")
+#devtools::install_github("hemberg-lab/SC3")
 
 
 ```

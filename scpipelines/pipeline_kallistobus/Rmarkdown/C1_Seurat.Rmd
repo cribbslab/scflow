@@ -10,6 +10,7 @@ output:
 knitr::opts_chunk$set(cache=FALSE, warning=FALSE,message=FALSE,error=FALSE)
 library(stringr)
 library(Seurat)
+library(tidyverse)
 
 ```
 
@@ -75,7 +76,7 @@ for (i in samples){
   so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
 
   cat("## ",i,"\n")
-  print(VlnPlot(so, features = c("nFeature_RNA", "nUMI","nCount_RNA", "percent.mt"), ncol = 3))
+  print(VlnPlot(so, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
   cat('\n\n')
 }
 ```
@@ -324,7 +325,7 @@ for (i in samples){
   so  <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
   so.markers  <- get(gsub("SAMPLE_FILE",i , "so.markers.SAMPLE_FILE"))
   
-  top10 <- so.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logFC)
+  top10 <- so.markers %>% dplyr::group_by(cluster) %>% top_n(n = 10, wt = avg_logFC)
   
   cat("## ",i,"\n")
   print(FeaturePlot(so, features = genes, order = TRUE))
