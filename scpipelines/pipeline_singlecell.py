@@ -116,6 +116,56 @@ SEQUENCESUFFIXES = ("*.fastq.gz",
 SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
                        for suffix_name in SEQUENCESUFFIXES])
 
+
+
+############################################
+# Perform read quality steps
+############################################
+
+
+@follows(mkdir("fastqc_pre.dir"))
+@transform(SEQUENCEFILES,
+           regex("(\S+).fastq.(\d).gz"),
+           r"fastqc_pre.dir/\1.fastq.\2_fastqc.html")
+def run_fastqc(infile, outfile):
+    '''
+    Fastqc is ran to determine the quality of the reads from the sequencer
+    '''
+    # paired end mode
+    if "fastq.1.gz" in infile:
+        second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
+        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s %(second_read)s"
+
+    else:
+        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
+
+    P.run(statement)
+
+
+@follows(run_fastqc)
+@follows(mkdir("fastq_post.dir"))
+@transform(SEQUENCEFILES,
+           regex("(\S+).fastq.(\d).gz"),
+           [r"fastq_post.dir/\1.fastq.1.gz",
+            r"fastq_post.dir/\1.fastq.2.gz"])
+def run_fastp(infile, outfiles):
+    '''
+    Fastp will trim the quality of the reads to improve mappability
+    '''
+    out_first = outfiles[0]
+    out_second = outfiles[1]
+
+    report_out = out_first.replace(".fastq.1.gz", ".html")
+
+    # paired end mode
+    if "fastq.1.gz" in infile:
+        second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
+
+        statement = "fastp -i %(infile)s -I %(second_read)s -o %(out_first)s -O %(out_second)s -h %(report_out)s -q 10 -w 8"
+
+        P.run(statement)
+
+
 ############################################
 # Build indexes
 ############################################
@@ -283,29 +333,6 @@ def getTranscript2GeneMap(outfile):
         for key, value in sorted(transcript2gene_dict.items()):
             outf.write("%s\t%s\n" % (key, value))
 
-############################################
-# Perform read quality steps
-############################################
-
-
-@follows(mkdir("fastqc_pre.dir"))
-@transform(SEQUENCEFILES,
-           regex("(\S+).fastq.(\d).gz"),
-           r"fastqc_pre.dir/\1.fastq.\2_fastqc.html")
-def runFastQC(infile, outfile):
-    '''
-    Fastqc is ran to determine the quality of the reads from the sequencer
-    '''
-    # paired end mode
-    if "fastq.1.gz" in infile:
-        second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
-        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s %(second_read)s"
-
-    else:
-        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
-
-    P.run(statement)
-
 
 ############################################
 # Pseudoalignment
@@ -340,7 +367,7 @@ else:
 
 @active_if(PARAMS['salmon_alevin'])
 @follows(mkdir("salmon.dir"))
-@collate(SEQUENCEFILES,
+@transform(run_fastp,
          SEQUENCEFILES_REGEX,
          add_inputs(buildSalmonIndex, getTranscript2GeneMap),
          SEQUENCEFILES_SALMON_OUTPUT)
@@ -352,14 +379,12 @@ def runSalmonAlevin(infiles, outfile):
     '''
 
     aligner = 'salmon_alevin'
-    infiles = ModuleSC.check_multiple_read_files(infiles)
-    fastqfile, index, t2gmap = infiles
-    fastqfiles = ModuleSC.check_paired_end(fastqfile, aligner)
+    fastqfiles, index, t2gmap = infiles
     if isinstance(fastqfiles, list):
-        CB_UMI_fastq = " ".join(fastqfiles[0])
-        reads_fastq = " ".join(fastqfiles[1])
+        CB_UMI_fastq = fastqfiles[0]
+        reads_fastq = fastqfiles[1]
 
-    outfolder = outfile.rsplit('/',2)[0]
+    outfolder = outfile.rsplit('/',2)[0].replace("salmon.dir/fastq_post.dir/", "salmon.dir/")
 
     salmon_options = PARAMS['salmon_run_options']
 
@@ -527,7 +552,7 @@ def combine_alevin_bus(infiles, outfiles):
 #########################
 
 @follows(mkdir("MultiQC_report.dir"))
-@follows(runFastQC, runSalmonAlevin)
+@follows(run_fastqc, runSalmonAlevin)
 @originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
     '''build mulitqc report'''
