@@ -462,38 +462,6 @@ def busCount(infiles, outfile):
 
     P.run(statement)
 
-#########################
-# SCE object
-#########################
-
-@follows(mkdir("SCE.dir"))
-@active_if(PARAMS['salmon_alevin'])
-@transform(runSalmonAlevin,
-           regex(r"salmon.dir/(.*)/alevin/quants_mat.gz"),
-           r"SCE.dir/\1/alevin/sce.rds")
-def readAlevinSCE(infile,outfile):
-    '''
-    Collates alevin count matrices for each sample
-    Creates a single cell experiment class in R and saves as an r object
-    '''
-    working_dir = os.getcwd()
-    species = PARAMS['sce_species']
-    gene_name = PARAMS['sce_genesymbol']
-    pseudo = 'alevin'
-    if PARAMS['downsample_active']:
-        downsample = "-d" + PARAMS['downsample_to']
-    else:
-        downsample = ""
-
-    job_memory = "40G"
-
-    statement = '''
-    Rscript %(R_ROOT)s/sce.R -w %(working_dir)s -i %(infile)s -o %(outfile)s --species %(species)s --genesymbol %(gene_name)s --pseudoaligner %(pseudo)s %(downsample)s
-    '''
-
-    P.run(statement)
-
-
 ## Kallisto SCE object
 @follows(mkdir("SCE.dir"))
 @active_if(PARAMS['kallisto_bustools'])
@@ -559,7 +527,7 @@ def combine_alevin_bus(infiles, outfiles):
 #########################
 
 @follows(mkdir("MultiQC_report.dir"))
-@follows(runFastQC)
+@follows(runFastQC, runSalmonAlevin)
 @originate("MultiQC_report.dir/multiqc_report.html")
 def build_multiqc(infile):
     '''build mulitqc report'''
@@ -571,6 +539,18 @@ def build_multiqc(infile):
         "mv multiqc_report.html MultiQC_report.dir/")
 
     P.run(statement)
+
+
+@follows(mkdir("Report.dir"))
+def copy_report(infile):
+    '''Copy the Rmarkdown report to current directory'''
+
+    RMARKDOWN_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_singlecell","Rmarkdown")
+
+    statement = '''cp %(RMARKDOWN_ROOT)s/* Report.dir/'''
+
+    P.run(statement)
+
 
 @follows(combine_alevin_bus, build_multiqc)
 def full():
