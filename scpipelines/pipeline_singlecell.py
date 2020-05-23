@@ -542,6 +542,8 @@ def build_multiqc(infile):
 
 
 @follows(mkdir("Report.dir"))
+@follows(build_multiqc)
+@originate("Report.dir/_site.yml")
 def copy_report(infile):
     '''Copy the Rmarkdown report to current directory'''
 
@@ -552,7 +554,7 @@ def copy_report(infile):
     P.run(statement)
 
 
-@follows(combine_alevin_bus, build_multiqc)
+@follows(combine_alevin_bus, copy_report)
 def full():
     pass
 
