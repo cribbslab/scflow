@@ -95,7 +95,7 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
-R_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_singlecell","R")
+R_ROOT = os.path.join(os.path.dirname(__file__), "scpipelines", "pipeline_singlecell","R")
 
 # Determine the location of the input fastq files
 
@@ -161,7 +161,7 @@ def run_fastp(infile, outfiles):
     if "fastq.1.gz" in infile:
         second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
 
-        statement = "fastp -i %(infile)s -I %(second_read)s -o %(out_first)s -O %(out_second)s -h %(report_out)s -q 10 -w 8"
+        statement = "fastp -i %(infile)s -I %(second_read)s -o %(out_first)s -O %(out_second)s -h %(report_out)s -q 10 -w 8 %(fastp_options)s"
 
         P.run(statement)
 
