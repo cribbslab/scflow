@@ -404,7 +404,7 @@ def runSalmonAlevin(infiles, outfile):
 
 @active_if(PARAMS['kallisto_bustools'])
 @follows(mkdir("kallisto.dir"))
-@collate(SEQUENCEFILES,
+@collate(run_fastp,
          SEQUENCEFILES_REGEX,
          add_inputs(buildKallistoIndex, getTranscript2GeneMap),
          SEQUENCEFILES_KALLISTO_OUTPUT)
