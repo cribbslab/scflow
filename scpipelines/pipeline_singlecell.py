@@ -416,16 +416,17 @@ def runKallistoBus(infiles, outfile):
 
     '''
     aligner = 'kallisto_bus'
-    infiles = ModuleSC.check_multiple_read_files(infiles)
+
     fastqfile, index, t2gmap = infiles
-    fastqfiles = ModuleSC.check_paired_end(fastqfile, aligner)
-    fastqfiles = " ".join(fastqfiles)
+    if isinstance(fastqfiles, list):
+        CM_UMI_fastq = fastqfiles[0]
+        reads_fastq = fastqfiles[1]
 
     outfolder = outfile.rsplit('/',1)[0]
 
     statement = '''
     kallisto bus -i %(index)s -o %(outfolder)s -x %(kallisto_sctechnology)s
-    -t %(kallisto_threads)s %(fastqfiles)s
+    -t %(kallisto_threads)s %(CM_UMI_fastq)s %(reads_fastq)s
     '''
 
     job_memory = '20G'
@@ -539,14 +540,6 @@ def BUSpaRse(infiles, outfile):
     P.run(statement)
 
 
-@transform((BUSpaRse, readAlevinSCE),
-           regex(r"SCE.dir/(\S+)/(\S+)/(\S+).rds"),
-           r"SCE.dir/\1/\2/sce.rds")
-def combine_alevin_bus(infiles, outfiles):
-    '''
-    dummy task to combine alevin and bus output into one task
-    '''
-
 #########################
 # Multiqc
 #########################
@@ -579,7 +572,7 @@ def copy_report(infile):
     P.run(statement)
 
 
-@follows(combine_alevin_bus, copy_report)
+@follows(runSalmonAlevin, BUSpaRse, copy_report)
 def full():
     pass
 
