@@ -1,0 +1,425 @@
+---
+title: "Quality Control of sc samples"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+The first notebook will introduce you the quality control concepts that will be critical for detecting the "good" cells from the "bad" cells. QC is the most critical step in any single-cell workflow and you should ideally spend at least 70% of your time on quality checking the data.
+
+We have a saying, "crap in crap out". Bioinformatic software will always give you an answer no matter the quality of the data. You need to be smart about what is fed into the software so you can be confident of the biological interpretability.
+
+The first thing we will do is load the required packages:
+
+```{r, cache=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(Seurat)
+library(SingleCellExperiment)
+library(Matrix)
+library(ggplot2)
+library(scales)
+library(tximport)
+library(annotables)
+
+# Specify the sample directory that you would like analysed:
+sample_files <- str_replace(Sys.glob("salmon.dir/*"), "salmon.dir/", "")
+```
+
+
+Next we will load the counts data into memory using the tximport package. In addition to this we will load the barcodes generated from salmon and will import a list of genes.
+
+```{r}
+
+for (i in sample_files){
+  name <- paste("salmon.dir/", i, "/alevin/quants_mat.gz", sep="")
+  txi <- tximport(name, type="alevin")
+  so <- CreateSeuratObject(counts = txi$counts ,  project = "Adam")
+  metadata <- as.data.frame(so@meta.data)
+  counts = as.data.frame(so@assays$RNA@counts)
+  assign(paste("so", i, sep = "."), so)
+  assign(paste("counts", i, sep = "."), counts)
+  assign(paste("metadata", i, sep = "."), metadata)
+  rm(so)
+  rm(txi)
+  rm(metadata)
+}
+
+```
+
+
+# Creating metadata object with some QC metrics
+
+Now that we have a counts matrix with the genes as row names and cells as columns, we can create our metadata with information about the different metrics to evaluate during quality control assessment.
+
+We will create the metadata with only the cell IDs:
+
+```{r}
+for (i in sample_files){
+  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
+  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
+  # Add number of UMIs for each gene per cell to metadata
+  metadata$nUMI <- Matrix::colSums(counts)
+  # Add number of genes detected per cell to metadata
+  metadata$nGene <- Matrix::colSums(counts > 0)
+  # Add number of UMIs per gene for each cell to metadata
+  metadata$log10GenesPerUMI <- log10(metadata$nGene) / log10(metadata$nUMI)
+  # Add sample name associated with each cell to metadata 
+  metadata$sample <- gsub("SAMPLE_FILE",i ,"SAMPLE_FILE")
+  
+  assign(paste("metadata", i, sep = "."), metadata)
+  rm(counts)
+  rm(metadata)
+}
+```
+
+
+
+# Generate additional QC metrics
+
+
+We can not add more infomation about mitochondrian genes and their relationship with UMIs
+
+```{r}
+anno <- grch38 %>% dplyr::filter(biotype == "protein_coding") %>% 
+    dplyr::select(ensgene, symbol, chr, start, end, description) 
+
+mito <- grep("^MT", anno$symbol, value=TRUE)
+
+for (i in sample_files){
+  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
+  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
+  
+  metadata$mtUMI <- Matrix::colSums(counts[which(rownames(counts) %in% mito),], na.rm = T)
+  
+  # Calculate of mitoRatio per cell
+  metadata$mitoRatio <- metadata$mtUMI/metadata$nUMI
+  assign(paste("metadata", i, sep = "."), metadata)
+}
+
+
+```
+
+# Filtering!!!
+
+This is very important to get correct as any "bad cells" will ultimately end up ruining your downstream analysis.
+
+## Initial filtering
+
+Prior to assessing our metrics, we are going to perform a very minimal filtering of those cells with less than 100 UMIs to get rid of the cells that are clearly junk, containing less than 100 UMIs.
+
+```{r}
+for (i in sample_files){
+  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
+  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
+# Keep cells with nUMI greater than 100
+idx <- which(metadata$nUMI > 5)
+
+# Extract the counts for those cells
+counts_c <- counts[, idx]
+
+# Extract the metadata for those cells
+metadata_c <- metadata[idx,]
+assign(paste("metadata_c", i, sep = "."), metadata)
+}
+```
+
+# Saving metrics to single cell experiment
+
+Before we assess our metrics we are going to save all of the work we have done thus far to a single cell experiment object, which is a standard object for single cell data in R (https://www.bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html).
+
+```{r}
+for (i in sample_files){
+  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
+  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
+# Save data to single cell experiment variable
+se <- SingleCellExperiment(assays=list(counts=counts), 
+                           colData = metadata)
+                           
+# Create .RData object to load at any time
+saveRDS(se, gsub("SAMPLE_FILE",i ,"SAMPLE_FILE_raw_se.rds"))
+assign(paste("se", i, sep = "."), se)
+}
+```
+
+# Assessing the quality metrics
+
+Now that we have generated the various metrics to assess, we can explore them with visualizations. We will create our metrics file from the metadata stored in the single cell experiments.
+
+```{r}
+for (i in sample_files){
+  se <- get(gsub("SAMPLE_FILE",i , "se.SAMPLE_FILE"))
+# Create a data frame containing the metrics for visualizations
+metrics <- colData(se) %>%
+  as.data.frame
+assign(paste("metrics", i, sep = "."), metrics)
+}
+```
+
+We will explore the following metrics through visualizations to decide on which cells are low quality and should be removed from the analysis:
+
+* Cell counts
+* UMI counts per cell
+* Genes detected per cell
+* UMIs vs. genes detected
+* Mitochondrial counts ratio
+* Novelty
+
+# Visualize the number of cell counts per cell {.tabset .tabset-fade}
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
+# Visualize the number of cell counts per cell
+cat("## ",i,"\n")
+plt <- metrics %>% 
+  ggplot(aes(x=sample, fill=sample)) + 
+  geom_bar() + 
+  ggtitle("Number of Cells")
+print(plt)
+cat('\n\n')
+}
+```
+
+# UMI counts (transcripts) per cell {.tabset .tabset-fade}
+
+The UMI counts per cell should generally be above 500, although usable, it’s still low if between 500-1000 counts. If UMIs per cell is 500-1000 counts, then the cells probably should have been sequenced more deeply.
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
+# Visualize the number UMIs/transcripts per cell
+cat("## ",i,"\n")
+plt <- metrics %>% 
+        ggplot(aes(color=sample, x=nUMI, fill= sample)) + 
+        geom_density() + 
+        scale_x_log10() + 
+        ylab("log10 cell density") +
+        geom_vline(xintercept = 50)
+plot(plt)
+cat('\n\n')
+}
+```
+
+# Genes detected per cell {.tabset .tabset-fade}
+
+Seeing gene detection in the range of 500-5000 is normal for inDrop analysis. Similar expectations for gene detection as for UMI detection, although may be a bit lower than UMIs.
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
+# Visualize the distribution of genes detected per cell via histogram
+cat("## ",i,"\n")
+plt <- metrics %>% 
+        ggplot(aes(color=sample, x=nGene, fill= sample)) + 
+        geom_density() + 
+        scale_x_log10() + 
+        geom_vline(xintercept = 20)
+print(plt)
+cat('\n\n')
+}
+```
+
+# Ncells vs Ngenes {.tabset .tabset-fade}
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
+# Visualize the distribution of genes detected per cell via histogram
+cat("## ",i,"\n")
+# Visualize the distribution of genes detected per cell via boxplot
+plt <- metrics %>% 
+        ggplot(aes(x=sample, y=log10(nGene), fill=sample)) + 
+        geom_boxplot() + 
+        ggtitle("NCells vs NGenes")
+print(plt)
+cat('\n\n')
+}
+```
+
+
+# UMIs vs. genes detected {.tabset .tabset-fade}
+
+Poor quality cells are likely to have low genes and UMIs per cell. Therefore, a poor sample is likely to have cells in the lower left of the graph. Good cells should exhibit both higher number of genes per cell and higher numbers of UMIs. We also expect similar lines with similar slopes for all samples.
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
+# Visualize the distribution of genes detected per cell via histogram
+cat("## ",i,"\n")
+# Visualize the correlation between genes detected and number of UMIs and determine whether strong presence of cells with low numbers of genes/UMIs
+plt <- metrics %>% 
+  ggplot(aes(x=nUMI, y=nGene, color=mitoRatio)) + 
+  geom_point() + 
+  stat_smooth(method=lm) +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  geom_vline(xintercept = 800) +
+  facet_wrap(~sample)
+print(plt)
+cat('\n\n')
+}
+```
+
+
+# Mitochondrial counts ratio {.tabset .tabset-fade}
+
+This metric can identify whether there is a large amount of mitochondrial contamination from dead or dying cells. Poor quality samples for mitochondrial counts would have larger peaks above the 0.1 mitochondrial ratio mark, unless it is expected based on sample type.
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
+# Visualize the distribution of genes detected per cell via histogram
+cat("## ",i,"\n")
+# Visualize the distribution of mitochondrial gene expression detected per cell
+metrics %>% 
+        ggplot(aes(color=sample, x=mitoRatio, fill=sample)) + 
+        geom_density() + 
+        scale_x_log10() + 
+        geom_vline(xintercept = 0.3)
+print(plt)
+cat('\n\n')
+}
+```
+
+# Novelty {.tabset .tabset-fade}
+
+We can see the samples where we sequenced each cell less have a higher overall novelty, that is because we have not started saturating the sequencing for any given gene for these samples. Outlier cells in these samples might be cells that have a less complex RNA species than other cells. Sometimes we can detect contamination with low complexity cell types like red blood cells via this metric. Generally, we expect the novelty score to be above 0.80.
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
+# Visualize the distribution of genes detected per cell via histogram
+cat("## ",i,"\n")
+# Visualize the overall novelty of the gene expression by visualizing the genes detected per UMI
+plt <- metrics %>%
+        ggplot(aes(x=log10GenesPerUMI, color = sample, fill=sample)) +
+        geom_density()
+print(plt)
+cat('\n\n')
+}
+```
+
+
+# Filtering
+
+Now that we have visualized the various metrics, we can decide on the thresholds to use to remoe the low quality. Often the recommendations mentioned earlier are a rough guideline, but the specific experiment needs to inform the exact thresholds chosen. We will use the following thresholds:
+
+* nUMI > 500
+* nGene > 500
+* log10GenesPerUMI > 0.8
+* mitoRatio < 0.1
+
+```{r}
+for (i in sample_files){
+  metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
+  se <- get(gsub("SAMPLE_FILE",i , "se.SAMPLE_FILE"))
+
+# Filter out low quality reads using selected thresholds - these will change with experiment
+keep <-
+  metrics %>%
+  tibble::rownames_to_column("cells") %>% 
+  dplyr::filter(nUMI > 200, 
+                nGene > 200,
+                log10GenesPerUMI > 0.4,
+                mitoRatio < 0.1) %>% 
+  pull(cells)
+
+# Subset the cells to only include those that meet the thresholds specified
+se_c <- se[ ,keep]
+
+# Save subset to new metrics variable
+metrics_clean <- colData(se_c) %>%
+ as.data.frame()
+
+# Save cleaned single-cell experimnet as .RData to load at any time
+saveRDS(se_c, file = gsub("SAMPLE_FILE",i,"SAMPLE_FILE_se_filtered.rds"))
+saveRDS(metrics_clean, gsub("SAMPLE_FILE",i ,"SAMPLE_FILE_metrics_clean.rds"))
+assign(paste("metrics_clean", i, sep = "."), metrics_clean)
+}
+```
+
+
+# Re-assess QC metrics
+
+After performing the filtering, it’s recommended to look back over the metrics to make sure that your data matches your expectations and is good for downstream analysis.
+
+# Cell counts {.tabset .tabset-fade}
+
+After filtering, we should not have more cells than we sequenced. Generally we aim to have about the number we sequenced or a bit less. With 2,700 cells sequenced, we would expect to return around this number of cells. We have about 2,480 returned after filtering, which is pretty good.
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics_clean <- get(gsub("SAMPLE_FILE",i , "metrics_clean.SAMPLE_FILE"))
+## Cell counts
+cat("## ",i,"\n")
+plt <- metrics_clean %>% 
+  ggplot(aes(x=sample, fill = sample)) + 
+  geom_bar() + 
+  ggtitle("NCells")
+print(plt)
+cat('\n\n')
+}
+```  
+
+# Cells versus genes {.tabset .tabset-fade}
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics_clean <- get(gsub("SAMPLE_FILE",i , "metrics_clean.SAMPLE_FILE"))
+## Cell counts
+cat("## ",i,"\n")
+# Cells versus genes
+plt <- metrics_clean %>% 
+  ggplot(aes(x=sample, y=log10(nGene), fill = sample)) + 
+  geom_boxplot() + 
+  ggtitle("NCells vs NGenes")  
+print(plt)
+cat('\n\n')
+}
+```
+
+
+
+# UMI counts {.tabset .tabset-fade}
+
+The filtering using a threshold of 500 has removed the cells with low numbers of UMIs from the analysis.
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics_clean <- get(gsub("SAMPLE_FILE",i , "metrics_clean.SAMPLE_FILE"))
+## Cell counts
+
+cat("## ",i,"\n")
+# UMI counts
+plt <- metrics_clean %>% 
+  ggplot(aes(fill=sample, x=nUMI)) + 
+  geom_density() + 
+  scale_x_log10() + 
+  ylab("log10 cell density") +
+  geom_vline(xintercept = 500)
+print(plt)
+cat('\n\n')
+}
+```
+
+# UMIs vs genes {.tabset .tabset-fade}
+
+```{r, results='asis', echo = FALSE}
+for (i in sample_files){
+  metrics_clean <- get(gsub("SAMPLE_FILE",i , "metrics_clean.SAMPLE_FILE"))
+## Cell counts
+cat("## ",i,"\n")
+# UMIs vs genes
+plt <- metrics_clean %>% 
+  ggplot(aes(x=nUMI, y=nGene, color=mitoRatio)) + 
+  geom_point() + 
+  stat_smooth(method=lm) +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  geom_vline(xintercept = 800) +
+  facet_wrap(~sample)
+print(plt)
+cat('\n\n')
+}
+```
