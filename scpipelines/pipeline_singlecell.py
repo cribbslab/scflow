@@ -422,7 +422,7 @@ def runKallistoBus(infiles, outfile):
         CM_UMI_fastq = fastqfiles[0]
         reads_fastq = fastqfiles[1]
 
-    outfolder = outfile.rsplit('/',1)[0]
+    outfolder = outfile.rsplit('/',1)[0].replace("fastq_post.dir/", "")
 
     statement = '''
     kallisto bus -i %(index)s -o %(outfolder)s -x %(kallisto_sctechnology)s

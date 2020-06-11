@@ -88,7 +88,7 @@ kallisto:
   #                      for feature barcoding. Use `kite:10xFB` for 10x
   #                      Genomics Feature Barcoding technology. (default:
   #                      standard)
-  workflow: standard
+  workflow: --workflow standard
 
 
 sce:
