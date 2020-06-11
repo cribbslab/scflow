@@ -417,7 +417,7 @@ def runKallistoBus(infiles, outfile):
     '''
     aligner = 'kallisto_bus'
 
-    fastqfile, index, t2gmap = infiles
+    fastqfiles, index, t2gmap = infiles[0]
     if isinstance(fastqfiles, list):
         CM_UMI_fastq = fastqfiles[0]
         reads_fastq = fastqfiles[1]
