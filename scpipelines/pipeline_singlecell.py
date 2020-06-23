@@ -193,26 +193,18 @@ def buildReferenceSalmon(infiles, outfile):
 
     if PARAMS['mixed_species']:
         genome_file2 = PARAMS['genome2']
-        tmp1 = P.get_temp_filename('.')
-        tmp2 = P.get_temp_filename('.')
+        tmp1_g = P.get_temp_filename('.')
+        tmp2_g = P.get_temp_filename('.')
+        tmp_trans1 = P.get_temp_filename('.')
+        tmp_trans2 = P.get_temp_filename('.')
         statement = '''
-                       zcat %(geneset1)s |
-                       awk '$3=="exon"'|
-                       cgat gff2fasta
-                       --is-gtf
-                       --genome-file=%(genome_file1)s
-                       --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(tmp1)s &&
-                       zcat %(geneset2)s |
-                       awk '$3=="exon"'|
-                       cgat gff2fasta
-                       --is-gtf
-                       --genome-file=%(genome_file2)s
-                       --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(tmp2)s &&
-                       cat %(tmp1)s %(tmp2)s > %(outfile)s &&
-                       samtools faidx %(outfile)s
-                       '''
+                    guzip %(genome_file1)s > %(tmp1_g)s &&
+                    gunzip %(genome_file2)s > %(tmp2_g)s &&
+                    grep "^>" %(tmp1_g)s %(tmp2_g)s | cut -d " " -f 1 > decoys.txt &&
+                    sed -i.bak -e 's/>//g' decoys.txt &&
+                    zcat %(prim_trans1)s  > %(tmp_trans1)s &&
+                    zcat %(prim_trans2)s  > %(tmp_trans2)s &&
+                    '''
     else:
         statement = '''
                        grep "^>" <(gunzip -c %(genome_file1)s) | cut -d " " -f 1 > decoys.txt &&
@@ -316,7 +308,7 @@ def buildSalmonIndex(infile, outfile):
     P.run(statement)
 
 @active_if(PARAMS['kallisto_bustools'])
-@transform(buildReferenceTranscriptome,
+@transform(buildReferenceKallisto,
            suffix(".fa"),
            ".kallisto.index")
 def buildKallistoIndex(infile, outfile):
