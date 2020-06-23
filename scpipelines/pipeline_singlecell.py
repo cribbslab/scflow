@@ -172,14 +172,11 @@ def run_fastp(infile, outfiles):
 
 
 @mkdir('geneset.dir')
-@merge([PARAMS['geneset'], PARAMS['geneset2']],
+@merge([PARAMS['prim_trans1'], PARAMS['prim_trans2']],
            r"geneset.dir/geneset_all.fa")
-def buildReferenceTranscriptome(infiles, outfile):
+def buildReferenceSalmon(infiles, outfile):
     '''
-    Builds a reference transcriptome from the provided GTF geneset - generates
-    a fasta file containing the sequence of each feature labelled as
-    "exon" in the GTF.
-    --fold-at specifies the line length in the output fasta file
+    Builds a reference transcriptome and decoy sequneces for alevin and kallisto
     Parameters
     ----------
     infile: str
@@ -191,9 +188,64 @@ def buildReferenceTranscriptome(infiles, outfile):
     outfile: str
         path to output file
     '''
-    geneset1, geneset2 = infiles
-    genome_file1 = os.path.abspath(
-        os.path.join(PARAMS["genome_dir"], PARAMS["genome"] + ".fa"))
+    prim_trans1, prim_trans2 = infiles
+    genome_file1 = PARAMS['genome1']
+
+    if PARAMS['mixed_species']:
+        genome_file2 = PARAMS['genome2']
+        tmp1 = P.get_temp_filename('.')
+        tmp2 = P.get_temp_filename('.')
+        statement = '''
+                       zcat %(geneset1)s |
+                       awk '$3=="exon"'|
+                       cgat gff2fasta
+                       --is-gtf
+                       --genome-file=%(genome_file1)s
+                       --fold-at=60 -v 0
+                       --log=%(outfile)s.log > %(tmp1)s &&
+                       zcat %(geneset2)s |
+                       awk '$3=="exon"'|
+                       cgat gff2fasta
+                       --is-gtf
+                       --genome-file=%(genome_file2)s
+                       --fold-at=60 -v 0
+                       --log=%(outfile)s.log > %(tmp2)s &&
+                       cat %(tmp1)s %(tmp2)s > %(outfile)s &&
+                       samtools faidx %(outfile)s
+                       '''
+    else:
+        statement = '''
+                       grep "^>" <(gunzip -c %(genome_file1)s) | cut -d " " -f 1 > decoys.txt &&
+                       sed -i.bak -e 's/>//g' decoys.txt &&
+                       cat %(prim_trans1)s %(genome_file1)s > %(outfile)s
+                       '''
+
+    P.run(statement)
+
+    if PARAMS['mixed_species']:
+        os.unlink(tmp1)
+        os.unlink(tmp2)
+
+
+@mkdir('geneset.dir')
+@merge([PARAMS['prim_trans1'], PARAMS['prim_trans2']],
+           r"geneset.dir/geneset_all.fa")
+def buildReferenceKallisto(infiles, outfile):
+    '''
+    Builds a reference transcriptome and decoy sequneces for alevin and kallisto
+    Parameters
+    ----------
+    infile: str
+        path to the GTF file containing transcript and gene level annotations
+    genome_dir: str
+        :term: `PARAMS` the directory of the reference genome
+    genome: str
+        :term: `PARAMS` the filename of the reference genome (without .fa)
+    outfile: str
+        path to output file
+    '''
+    prim_trans1, prim_trans2 = infiles
+    genome_file1 = PARAMS['genome1']
 
     if PARAMS['mixed_species']:
         genome_file2 = os.path.abspath(
@@ -220,23 +272,20 @@ def buildReferenceTranscriptome(infiles, outfile):
                        '''
     else:
         statement = '''
-                       zcat %(geneset1)s |
-                       awk '$3=="exon"'|
-                       cgat gff2fasta
-                       --is-gtf
-                       --genome-file=%(genome_file1)s
-                       --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(outfile)s &&
-                       samtools faidx %(outfile)s
+                       grep "^>" <(gunzip -c %(genome_file1)s) | cut -d " " -f 1 > decoys.txt &&
+                       sed -i.bak -e 's/>//g' decoys.txt &&
+                       cat %(prim_trans1)s %(genome_file1)s > %(outfile)s
                        '''
 
     P.run(statement)
+
     if PARAMS['mixed_species']:
         os.unlink(tmp1)
         os.unlink(tmp2)
 
+
 @active_if(PARAMS['salmon_alevin'])
-@transform(buildReferenceTranscriptome,
+@transform(buildReferenceSalmon,
            suffix(".fa"),
            ".salmon.index")
 def buildSalmonIndex(infile, outfile):
@@ -261,7 +310,7 @@ def buildSalmonIndex(infile, outfile):
 
     statement = '''
     rm -rf %(outfile)s;
-    salmon index -k %(salmon_kmer)i %(salmon_index_options)s -t %(infile)s -i %(outfile)s
+    salmon index -p 12 -d decoys.txt %(salmon_index_options)s -t %(infile)s -i %(outfile)s --gencode
     '''
 
     P.run(statement)

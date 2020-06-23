@@ -4,34 +4,30 @@
 #
 ##########################
 
-# genomeID
-genome: hg38
-genome_dir: /ifs/mirror/genomes/index/
+# Download primary transcripts e.g.:
+# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/gencode.v34.transcripts.fa.gz
+prim_trans1: gencode.v34.transcripts.fa.gz
 
-# Provide a reference geneset (suffix= ".gtf.gz")
-# Geneset should be located in working directory
-geneset: human_geneset_all.gtf.gz
+# Download genome e.g.:
+# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/GRCh38.primary_assembly.genome.fa.gz
+genome1: GRCh38.primary_assembly.genome.fa.gz
+
 
 # Specify if there is a mixed species input (i.e. mouse and human)
 mixed_species: 0
 
-# If there is a mixed specied input specify the extra genome (in addition to the
-# one already specified)
-genome2: 
-genome_dir2: /ifs/mirror/genomes/index/
+# Download primary transcripts e.g.:
+# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/gencode.v34.transcripts.fa.gz
+prim_trans2: gencode.v34.transcripts.fa.gz
 
-# If there is a mixed specied input specify a reference geneset (suffix= ".gtf.gz")
-# Geneset should be located in working directory
-geneset2:
+# Download genome e.g.:
+# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/GRCh38.primary_assembly.genome.fa.gz
+genome2: GRCh38.primary_assembly.genome.fa.gz
 
-# Location of the single cell directory
-sc_dir: '/ifs/projects/adam/single-cell-test/'
 
-# Project name
-projectname: test
 
 # Copyright statement
-copyright: Cribbs Group, Botnar Research Centre (2019)
+copyright: Cribbs Group, Botnar Research Centre (2020)
 
 # Location of the data. 0 for the current directory
 data: 0
