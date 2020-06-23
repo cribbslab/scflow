@@ -17,18 +17,19 @@ genome1: GRCh38.primary_assembly.genome.fa.gz
 geneset1: gencode.v34.primary_assembly.annotation.gtf.gz
 
 # Specify if there is a mixed species input (i.e. mouse and human)
-mixed_species: 0
+mixed_species: 1
 
 # Download primary transcripts e.g.:
-# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/gencode.v34.transcripts.fa.gz
-prim_trans2: gencode.v34.transcripts.fa.gz
+# 
+# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M25/gencode.vM25.transcripts.fa.gz
+prim_trans2: gencode.vM25.transcripts.fa.gz
 
 # Download genome e.g.:
-# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/GRCh38.primary_assembly.genome.fa.gz
-genome2: GRCh38.primary_assembly.genome.fa.gz
+# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M25/GRCm38.primary_assembly.genome.fa.gz
+genome2: GRCm38.primary_assembly.genome.fa.gz
 
-
-geneset2: human_geneset_all.gtf.gz
+# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M25/gencode.vM25.primary_assembly.annotation.gtf.gz
+geneset2: gencode.vM25.primary_assembly.annotation.gtf.gz
 
 
 # Copyright statement

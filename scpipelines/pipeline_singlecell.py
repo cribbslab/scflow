@@ -173,7 +173,7 @@ def run_fastp(infile, outfiles):
 
 @mkdir('geneset.dir')
 @merge([PARAMS['prim_trans1'], PARAMS['prim_trans2']],
-           r"geneset.dir/geneset_all.fa")
+           r"geneset.dir/geneset_all.fa.gz")
 def buildReferenceSalmon(infiles, outfile):
     '''
     Builds a reference transcriptome and decoy sequneces for alevin and kallisto
@@ -193,19 +193,12 @@ def buildReferenceSalmon(infiles, outfile):
 
     if PARAMS['mixed_species']:
         genome_file2 = PARAMS['genome2']
-        tmp1_g = P.get_temp_filename('.')
-        tmp2_g = P.get_temp_filename('.')
-        tmp_trans1 = P.get_temp_filename('.')
-        tmp_trans2 = P.get_temp_filename('.')
+
         statement = '''
-                    guzip %(genome_file1)s > %(tmp1_g)s &&
-                    gunzip %(genome_file2)s > %(tmp2_g)s &&
-                    grep "^>" %(tmp1_g)s %(tmp2_g)s | cut -d " " -f 1 > decoys.txt &&
-                    sed -i.bak -e 's/>//g' decoys.txt &&
-                    zcat %(prim_trans1)s  > %(tmp_trans1)s &&
-                    zcat %(prim_trans2)s  > %(tmp_trans2)s &&
-                    cat %(tmp_trans1)s %(tmp_trans2)s %(tmp1_g)s %(tmp2_g)s > %(outfile)s
-                    '''
+                       grep "^>" <(gunzip -c %(genome_file1)s %(genome_file2)s) | cut -d " " -f 1 > decoys.txt &&
+                       sed -i.bak -e 's/>//g' decoys.txt &&
+                       cat %(prim_trans1)s %(prim_trans2)s %(genome_file1)s %(genome_file1)s > %(outfile)s
+                       '''
     else:
         statement = '''
                        grep "^>" <(gunzip -c %(genome_file1)s) | cut -d " " -f 1 > decoys.txt &&
@@ -215,11 +208,6 @@ def buildReferenceSalmon(infiles, outfile):
 
     P.run(statement)
 
-    if PARAMS['mixed_species']:
-        os.unlink(tmp1_g)
-        os.unlink(tmp2_g)
-        os.unlink(tmp_trans1)
-        os.unlink(tmp_trans)
 
 @mkdir('geneset.dir')
 @merge([PARAMS['prim_trans1'], PARAMS['prim_trans2']],
@@ -242,27 +230,13 @@ def buildReferenceKallisto(infiles, outfile):
     genome_file1 = PARAMS['genome1']
 
     if PARAMS['mixed_species']:
-        genome_file2 = os.path.abspath(
-        os.path.join(PARAMS["genome_dir2"], PARAMS["genome2"] + ".fa"))
+        genome_file2 = PARAMS['genome2']
         tmp1 = P.get_temp_filename('.')
         tmp2 = P.get_temp_filename('.')
         statement = '''
-                       zcat %(geneset1)s |
-                       awk '$3=="exon"'|
-                       cgat gff2fasta
-                       --is-gtf
-                       --genome-file=%(genome_file1)s
-                       --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(tmp1)s &&
-                       zcat %(geneset2)s |
-                       awk '$3=="exon"'|
-                       cgat gff2fasta
-                       --is-gtf
-                       --genome-file=%(genome_file2)s
-                       --fold-at=60 -v 0
-                       --log=%(outfile)s.log > %(tmp2)s &&
-                       cat %(tmp1)s %(tmp2)s > %(outfile)s &&
-                       samtools faidx %(outfile)s
+                       grep "^>" <(gunzip -c %(genome_file1)s %(genome_file2)s) | cut -d " " -f 1 > decoys.txt &&
+                       sed -i.bak -e 's/>//g' decoys.txt &&
+                       cat %(prim_trans1)s %(prim_trans2)s %(genome_file1)s %(genome_file1)s > %(outfile)s
                        '''
     else:
         statement = '''
@@ -280,7 +254,7 @@ def buildReferenceKallisto(infiles, outfile):
 
 @active_if(PARAMS['salmon_alevin'])
 @transform(buildReferenceSalmon,
-           suffix(".fa"),
+           suffix(".fa.gz"),
            ".salmon.index")
 def buildSalmonIndex(infile, outfile):
     '''
@@ -311,7 +285,7 @@ def buildSalmonIndex(infile, outfile):
 
 @active_if(PARAMS['kallisto_bustools'])
 @transform(buildReferenceKallisto,
-           suffix(".fa"),
+           suffix(".fa.gz"),
            ".kallisto.index")
 def buildKallistoIndex(infile, outfile):
     '''
@@ -337,33 +311,17 @@ def buildKallistoIndex(infile, outfile):
     P.run(statement)
 
 
+@follows(buildReferenceSalmon)
 @originate("transcript2geneMap.tsv")
 def getTranscript2GeneMap(outfile):
     ''' Extract a 1:1 map of transcript_id to gene_id from the geneset '''
 
     geneset1 = PARAMS['geneset1']
 
-    statement = """bioawk -c gff '$feature=="transcript" {print $group}' <(gunzip -c %(geneset1)s) | 
-                   awk -F ' ' '{print substr($4,2,length($4)-3) "\t" substr($2,2,length($2)-3)}' - > %(outfile)s
+    statement = """grep "^>" <(zcat geneset.dir/geneset_all.fa.gz) | cut -d "|" -f 1,6 --output-delimiter=$'\t' - | sed 's/[>"gene_symbol:"]//g' > %(outfile)s
 """
     
     P.run(statement, to_cluster=False)
-
-    if PARAMS['mixed_species']:
-        geneset2 = PARAMS['geneset2']
-        tmp = P.get_temp_filename('.')
-
-        statement = """cat  %(geneset1)s %(geneset2)s > %(tmp)s"""
-
-        P.run(statement)
-
-        statement = """bioawk -c gff '$feature=="transcript" {print $group}' <(gunzip -c %(tmp)s) | 
-                   awk -F ' ' '{print substr($4,2,length($4)-3) "\t" substr($2,2,length($2)-3)}' - > %(outfile)s
-"""
-        P.run(statement, to_cluster=False)
-        os.unlink(tmp)
-
-
 
 
 ############################################
