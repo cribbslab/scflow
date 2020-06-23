@@ -161,7 +161,7 @@ def run_fastp(infile, outfiles):
     if "fastq.1.gz" in infile:
         second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
 
-        statement = "fastp -i %(infile)s -I %(second_read)s -o %(out_first)s -O %(out_second)s -h %(report_out)s -q 10 -w 8 %(fastp_options)s"
+        statement = "fastp -i %(infile)s -I %(second_read)s -o %(out_first)s -O %(out_second)s -h %(report_out)s  %(fastp_options)s"
 
         P.run(statement)
 
