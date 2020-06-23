@@ -204,6 +204,7 @@ def buildReferenceSalmon(infiles, outfile):
                     sed -i.bak -e 's/>//g' decoys.txt &&
                     zcat %(prim_trans1)s  > %(tmp_trans1)s &&
                     zcat %(prim_trans2)s  > %(tmp_trans2)s &&
+                    cat %(tmp_trans1)s %(tmp_trans2)s %(tmp1_g)s %(tmp2_g)s > %(outfile)s
                     '''
     else:
         statement = '''
@@ -215,9 +216,10 @@ def buildReferenceSalmon(infiles, outfile):
     P.run(statement)
 
     if PARAMS['mixed_species']:
-        os.unlink(tmp1)
-        os.unlink(tmp2)
-
+        os.unlink(tmp1_g)
+        os.unlink(tmp2_g)
+        os.unlink(tmp_trans1)
+        os.unlink(tmp_trans)
 
 @mkdir('geneset.dir')
 @merge([PARAMS['prim_trans1'], PARAMS['prim_trans2']],
@@ -339,40 +341,27 @@ def buildKallistoIndex(infile, outfile):
 def getTranscript2GeneMap(outfile):
     ''' Extract a 1:1 map of transcript_id to gene_id from the geneset '''
 
-    iterator = GTF.iterator(iotools.open_file(PARAMS['geneset']))
-    transcript2gene_dict = {}
+    geneset1 = PARAMS['geneset1']
 
-    for entry in iterator:
+    R_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "R"))
 
-        # Check the same transcript_id is not mapped to multiple gene_ids!
-        if entry.transcript_id in transcript2gene_dict:
-            if not entry.gene_id == transcript2gene_dict[entry.transcript_id]:
-                raise ValueError('''multipe gene_ids associated with
-                the same transcript_id %s %s''' % (
-                    entry.gene_id,
-                    transcript2gene_dict[entry.transcript_id]))
-        else:
-            transcript2gene_dict[entry.transcript_id] = entry.gene_id
+    statement = """Rscript %(R_ROOT)s/t2g.R -i %(geneset1)s -o %(outfile)s"""
+    
+    tmp = P.get_temp_filename('.')
 
     if PARAMS['mixed_species']:
-        iterator = GTF.iterator(iotools.open_file(PARAMS['geneset2']))
+        geneset2 = PARAMS['geneset2']
 
-        for entry in iterator:
+        statement = """cat  %(geneset1)s %(geneset2)s > %(tmp)s"""
 
-            # Check the same transcript_id is not mapped to multiple gene_ids!
-            if entry.transcript_id in transcript2gene_dict:
-                if not entry.gene_id == transcript2gene_dict[entry.transcript_id]:
-                    raise ValueError('''multipe gene_ids associated with
-                                     the same transcript_id %s %s''' % (
-                            entry.gene_id,
-                            transcript2gene_dict[entry.transcript_id]))
-            else:
-                transcript2gene_dict[entry.transcript_id] = entry.gene_id
+        P.run(statement)
 
-    with iotools.open_file(outfile, "w") as outf:
-        outf.write("transcript_id\tgene_id\n")
-        for key, value in sorted(transcript2gene_dict.items()):
-            outf.write("%s\t%s\n" % (key, value))
+        statement = """Rscript %(R_ROOT)s/t2g.R -i %(tmp)s -o %(outfile)s"""
+
+    P.run(statement, to_cluster=False)
+    os.unlink(tmp)
+
+
 
 
 ############################################
