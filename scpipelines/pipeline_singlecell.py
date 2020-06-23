@@ -343,23 +343,25 @@ def getTranscript2GeneMap(outfile):
 
     geneset1 = PARAMS['geneset1']
 
-    R_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "R"))
-
-    statement = """Rscript %(R_ROOT)s/t2g.R -i %(geneset1)s -o %(outfile)s"""
+    statement = """bioawk -c gff '$feature=="transcript" {print $group}' <(gunzip -c %(geneset1)s) | 
+                   awk -F ' ' '{print substr($4,2,length($4)-3) "\t" substr($2,2,length($2)-3)}' - > %(outfile)s
+"""
     
-    tmp = P.get_temp_filename('.')
+    P.run(statement, to_cluster=False)
 
     if PARAMS['mixed_species']:
         geneset2 = PARAMS['geneset2']
+        tmp = P.get_temp_filename('.')
 
         statement = """cat  %(geneset1)s %(geneset2)s > %(tmp)s"""
 
         P.run(statement)
 
-        statement = """Rscript %(R_ROOT)s/t2g.R -i %(tmp)s -o %(outfile)s"""
-
-    P.run(statement, to_cluster=False)
-    os.unlink(tmp)
+        statement = """bioawk -c gff '$feature=="transcript" {print $group}' <(gunzip -c %(tmp)s) | 
+                   awk -F ' ' '{print substr($4,2,length($4)-3) "\t" substr($2,2,length($2)-3)}' - > %(outfile)s
+"""
+        P.run(statement, to_cluster=False)
+        os.unlink(tmp)
 
 
 

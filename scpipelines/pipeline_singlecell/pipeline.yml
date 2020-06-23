@@ -13,8 +13,8 @@ prim_trans1: gencode.v34.transcripts.fa.gz
 genome1: GRCh38.primary_assembly.genome.fa.gz
 
 # Download gtf e.g.
-# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/gencode.v34.annotation.gtf.gz
-geneset1: gencode.v34.annotation.gtf.gz
+# ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/gencode.v34.primary_assembly.annotation.gtf.gz
+geneset1: gencode.v34.primary_assembly.annotation.gtf.gz
 
 # Specify if there is a mixed species input (i.e. mouse and human)
 mixed_species: 0
