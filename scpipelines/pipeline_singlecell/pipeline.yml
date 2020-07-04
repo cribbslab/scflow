@@ -32,6 +32,11 @@ genome2: GRCm38.primary_assembly.genome.fa.gz
 geneset2: gencode.vM25.primary_assembly.annotation.gtf.gz
 
 
+# transcript to gene or transcript
+# Need to specify transcript or gene
+map2: transcript
+
+
 # Copyright statement
 copyright: Cribbs Group, Botnar Research Centre (2020)
 

@@ -211,7 +211,7 @@ def buildReferenceSalmon(infiles, outfile):
 
 @mkdir('geneset.dir')
 @merge([PARAMS['prim_trans1'], PARAMS['prim_trans2']],
-           r"geneset.dir/geneset_all.fa")
+           r"geneset.dir/geneset_all.fa.gz")
 def buildReferenceKallisto(infiles, outfile):
     '''
     Builds a reference transcriptome and decoy sequneces for alevin and kallisto
@@ -317,8 +317,14 @@ def getTranscript2GeneMap(outfile):
     ''' Extract a 1:1 map of transcript_id to gene_id from the geneset '''
 
     geneset1 = PARAMS['geneset1']
+    mapped2 = PARAMS['map2']
 
-    statement = """grep "^>" <(zcat geneset.dir/geneset_all.fa.gz) | cut -d "|" -f 1,6 --output-delimiter=$'\t' - | sed 's/[>"gene_symbol:"]//g' > %(outfile)s
+    if mapped2 == "transcript":
+        column = "2"
+    else:
+        column = "6"
+
+    statement = """grep "^>" <(zcat geneset.dir/geneset_all.fa.gz) | cut -d "|" -f 1,%(column)s --output-delimiter=$'\t' - | sed 's/[>"gene_symbol:"]//g' > %(outfile)s
 """
     
     P.run(statement, to_cluster=False)
