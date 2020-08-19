@@ -20,12 +20,12 @@ opt = parse_args(opt_parser);
 
 
 if(opt$input2 != FALSE){
-	tr2g <- transcript2gene(fasta_file = c(opt$input1, opt$input2),
+	tr2g <- BUSpaRse::transcript2gene(fasta_file = c(opt$input1, opt$input2),
                         kallisto_out_path = opt$out)
 
 
 }else{
-	tr2g <- transcript2gene(fasta_file = opt$input1,
+	tr2g <- BUSpaRse::transcript2gene(fasta_file = opt$input1,
                         kallisto_out_path = opt$out)
 }
 

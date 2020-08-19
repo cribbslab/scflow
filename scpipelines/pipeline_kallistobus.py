@@ -225,6 +225,7 @@ def run_kallisto_bus(infiles, outfile):
     P.run(statement)
 
 
+@jobs_limit(1)
 @transform(run_kallisto_bus,
            regex("(\S+)/output.bus"),
            r"\1/tr2gene.tsv")
@@ -233,13 +234,11 @@ def build_tr2g(infile, outfile):
 
     R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 
-    out_dir = infile.replace("output.bus", "")
-
     if PARAMS['mixed_species']:
         input1, input2 = PARAMS['geneset'].split(" ")
         
-        statement = """Rscript %(R_PATH)s/make_tr2gene.R -i %(input1)s -j %(input2)s -o %(out_dir)s
-                       -f %(outfile)s"""
+        statement = """Rscript %(R_PATH)s/make_tr2gene.R -i %(input1)s -j %(input2)s -o %(infile)s/
+                       -f %(outfile)s 2> %(outfile)s.log"""
     else:
         statement = """Rscript  %(R_PATH)s/make_tr2gene.R -i %(geneset)s -o %(out_dir)s -f %(outfile)s"""
 
@@ -247,16 +246,50 @@ def build_tr2g(infile, outfile):
 
 
 @transform(run_kallisto_bus,
-           regex(""),
-           add_inputs(build_tr2g),
-           r"")
+           suffix(".bus"),
+           "_sorted.bus")
 def bustools_sort(infile, outfile):
     """
     Generate a sorted bus file
     """
 
+    tmp = P.get_temp_filename(".")
+
+    statement = """bustools sort -T %(tmp)s -t %(kallisto_threads)s -o %(outfile)s %(infile)s/output.bus"""
+
+    P.run(statement)
+
+@transform(bustools_sort,
+           regex("(\S+)/output_sorted.bus"),
+           r"\1/genecount/genes.barcodes.txt")
+def bustools_count(infile, outfile):
+    """Generate a counts file from bus record"""
+
+    out_dir = outfile.replace("genes.barcodes.txt", "genes")
+    tr2g = infile.replace("output_sorted.bus","tr2gene.tsv")
+    mat = infile.replace("output_sorted.bus","output.bus/matrix.ec")
+    trans = infile.replace("output_sorted.bus","output.bus/transcripts.txt")
     
 
+
+    statement = """bustools count -o %(out_dir)s -g %(tr2g)s -e %(mat)s -t %(trans)s --genecounts 2> %(out_dir)s.count.log %(infile)s"""
+    P.run(statement)
+
+
+@active_if(PARAMS['mixed_species'])
+@transform(bustools_count,
+           regex("(\S+)/genes.barcodes.txt"),
+           r"\1")
+def barnyard_plot(infile, outfile):
+    """Construct a barnyard plot from bus file """
+
+    infile = infile.replace("/genes.barcodes.txt", "")
+
+    R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
+
+    statement = """Rscript %(R_PATH)s/plot_barnyard.R -i %(infile)s -o %(outfile)s"""
+
+    P.run(statement)
 
 
 @follows(run_kallisto_bus)

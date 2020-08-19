@@ -3,21 +3,31 @@ library(DropletUtils)
 library(Seurat)
 library(ggplot2)
 
-tr2g <- transcript2gene(fasta_file = c("./data/Homo_sapiens.GRCh38.cdna.all.fa.gz", "./data/Mus_musculus.GRCm38.cdna.all.fa.gz"),
-                        kallisto_out_path = "./output/out_hgmmDS/")
-head(tr2g)
 
-save_tr2g_bustools(tr2g, "./output/tr2g_hgmm.tsv")
+library(optparse)
+
+option_list = list(
+  make_option(c("-i", "--input"), type="character", default="", 
+              help="input dir", metavar="character"),
+  make_option(c("-o", "--out"), type="character", default="", 
+              help="output dir name [default= %default]", metavar="character"),
+	      );
+ 
+
+opt_parser = OptionParser(option_list=option_list);
+opt = parse_args(opt_parser);
 
 
-res_mat <- read_count_output("./output/out_hgmmDS/genecount",
+
+res_mat <- read_count_output(opt$input,
                              name = "genes", tcc = FALSE)
-dim(res_mat)
+
 tot_counts <- Matrix::colSums(res_mat)
-summary(tot_counts)
 
 bc_rank <- barcodeRanks(res_mat)
 
+out_pdf = paste0(opt$out, "/kneeplot.pdf")
+pdf(out_pdf)
 qplot(bc_rank$total, bc_rank$rank, geom = "line") +
   geom_vline(xintercept = metadata(bc_rank)$knee, color = "blue", linetype = 2) +
   geom_vline(xintercept = metadata(bc_rank)$inflection, color = "green", linetype = 2) +
@@ -26,6 +36,7 @@ qplot(bc_rank$total, bc_rank$rank, geom = "line") +
   scale_x_log10() +
   scale_y_log10() +
   labs(y = "Barcode rank", x = "Total UMI count")
+dev.off()
 
 
 res_mat <- res_mat[, tot_counts > metadata(bc_rank)$inflection]
@@ -49,5 +60,8 @@ cell_species <- cell_species %>%
     TRUE ~ "mixed"
   ))
 
+out_pdf = paste0(opt$out, "/barnyard.pdf")
+pdf(out_pdf)
 ggplot(cell_species, aes(n_human_umi, n_mouse_umi, color = species)) +
   geom_point(size = 0.5)
+dev.off()
