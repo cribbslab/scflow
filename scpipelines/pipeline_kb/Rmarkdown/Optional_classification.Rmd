@@ -1,0 +1,396 @@
+---
+title: "Classification"
+output: html_document
+---
+
+Classification of your clusters in single cell datasets is a very important task as it allows you to make interpretable relationships between cell heterogeneity and your biological question or experiment. This task has historically been quite challenging to do for new data and relies on shutting a bunch of PhD students in a locked room and not letting them out until they have looked at the gene expression patterns of all the cells and related this back to literature.
+
+However, more recently there has been an explosion on the number of models that have been developed to allow you to accurately classify your cells of interest. A list of some of the available software can be found here:
+* https://academic.oup.com/nar/article/47/8/e48/5364134
+* https://www.biorxiv.org/content/10.1101/532093v1
+* https://www.biorxiv.org/content/10.1101/369538v2
+
+In this tutroial we will use the scClassify method that was recently published as a pre-print: https://www.biorxiv.org/content/10.1101/776948v1 
+
+Navigate to the following link to download the PBMC classifier .rds object: https://sydneybiox.github.io/scClassify/
+
+Today because of time constraints we will only go through how to predict cells, however in your own time, if you have your own data you can train a classifier.  
+
+# Load and import the data 
+
+We will use the log-transformed (size-factor normalized) matrices as query datasets, where each row refers to a gene and each column a cell.The output can then be combined within the seurat object and visualised.
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+library(scClassify)
+library(Matrix)
+library(Seurat)
+library(scater)
+library(annotables)
+library(tidyverse)
+```
+
+# Load the classifier
+
+Here we will take a preloaded classifier andfor PBMCs that we will use to classify our cells in our dataset.
+
+```{r}
+# Load the pre-trained classifier
+classifier <- readRDS("jointPBMCClass.rds")
+```
+
+```{r}
+# Import single cell experiment class object from 
+sce <- readRDS("integrated.rds")
+
+# To access metadata
+#colData(sce)
+# To access gene meta data
+#rowData(sce)
+# To access sparse count matric
+#assay(sce)
+```
+
+# Generate logcounts
+
+We will next generate logcounts as this is a pre-requisit for running scClassify.This ist stored in the sce object as logcounts
+
+```{r}
+data <- as.data.frame(GetAssayData(sce))
+data$gene <- rownames(data)
+
+sym2en <- data %>%
+  select(`gene`) %>% 
+  dplyr::inner_join(grch38, by = c("gene" = "symbol")) %>% 
+  select(gene, ensgene)
+
+sym2en <- sym2en[!duplicated(sym2en [,c('gene')]),]
+
+data <- dplyr::left_join(data, sym2en, by="gene")
+data <- na.omit(data)
+data$gene <- NULL
+rownames(data) <- data$ensgene
+data$ensgene <- NULL
+
+data <- as.matrix(data)
+```
+
+# Classify cells
+
+Next, we perform predict_scClassify with our pretrained model trainRes = trainClassExample to predict the cell types of our query data matrix exprsMat_wang_subset_sparse. Here, we used pearson and spearman as similarity metrics.
+
+```{r}
+pred_res <- predict_scClassify(exprsMat_test = data,
+                               trainRes = classifier@listData$`PBMC_tenX(V3)`,
+                               algorithm = "WKNN",
+                               features = c("limma"),
+                               similarity = c("pearson", "spearman"),
+                               prob_threshold = 0.7,
+                               verbose = TRUE)
+
+table(pred_res$pearson_WKNN_limma$predRes)
+```
+
+# Predictions now added as meta data into experiment
+
+The predictions can now be added into the meta data or exported to be added as input to 
+
+```{r}
+sce$celltypes <-  pred_res$ensembleRes["cellTypes"]
+
+sce@meta.data
+```
+
+
+
+# Map the classifier over the data
+
+```{r}
+
+
+Idents(sce) <- sce@meta.data$celltypes
+png("celltypes_UMAP.png", width = 2000, height = 500)
+DimPlot(sce, reduction = "umap", split.by = "celltypes")
+dev.off()
+DimPlot(sce, reduction = "umap", split.by = "seurat_clusters")
+
+```
+
+# Rename
+
+```{r}
+new.cluster.ids <- c("Naive CD4 T", "Myeloma cells", "CD8 cytotoxic T cell", "Memory CD4 T",  "B cell", "CD14 monocyte", "Megakaryocyte", "B cell", "unknown", "B cell", "B cell")
+
+
+Idents(sce) <- sce@meta.data$seurat_clusters                     
+names(new.cluster.ids) <- levels(sce)
+sce <- RenameIdents(sce, new.cluster.ids)
+DimPlot(sce, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+
+```
+
+
+
+# Identify differential expression between conditions - Myeloma cells
+
+```{r}
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+sce$treatment <- paste(Idents(sce), sce$condition, sep = "_")
+sce$celltype <- Idents(sce)
+Idents(sce) <- "treatment"
+response.gsk <- FindMarkers(sce, ident.1 = "Myeloma cells_gsk", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.casin <- FindMarkers(sce, ident.1 = "Myeloma cells_casin", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.halo <- FindMarkers(sce, ident.1 = "Myeloma cells_halofuginone", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.ncp <- FindMarkers(sce, ident.1 = "Myeloma cells_ncp26", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.gak <- FindMarkers(sce, ident.1 = "Myeloma cells_gak", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.verteporfin <- FindMarkers(sce, ident.1 = "Myeloma cells_verteporfin", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+
+SAMPLE_FILE <- c("gsk","casin","halo","ncp","gak","verteporfin")
+for(x in SAMPLE_FILE){
+
+  
+  
+  
+  res <- get(gsub("SAMPLE_FILE",x , "response.SAMPLE_FILE"))
+  file = paste0("results/", x, "_myeloma_cells.csv", sep="")
+  write.csv(res, file=file)
+
+}
+
+```
+
+
+# Identify differential expression between conditions - Naive CD4 T
+
+```{r}
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+
+response.gsk <- FindMarkers(sce, ident.1 = "Naive CD4 T_gsk", ident.2 = "Naive CD4 T_dmso", verbose = FALSE)
+response.casin <- FindMarkers(sce, ident.1 = "Naive CD4 T_casin", ident.2 = "Naive CD4 T_dmso", verbose = FALSE)
+response.halo <- FindMarkers(sce, ident.1 = "Naive CD4 T_halofuginone", ident.2 = "Naive CD4 T_dmso", verbose = FALSE)
+response.ncp <- FindMarkers(sce, ident.1 = "Naive CD4 T_ncp26", ident.2 = "Naive CD4 T_dmso", verbose = FALSE)
+response.gak <- FindMarkers(sce, ident.1 = "Naive CD4 T_gak", ident.2 = "Naive CD4 T_dmso", verbose = FALSE)
+response.verteporfin <- FindMarkers(sce, ident.1 = "Naive CD4 T_verteporfin", ident.2 = "Naive CD4 T_dmso", verbose = FALSE)
+
+SAMPLE_FILE <- c("gsk","casin","halo","ncp","gak","verteporfin")
+for(x in SAMPLE_FILE){
+
+  
+  
+  
+  res <- get(gsub("SAMPLE_FILE",x , "response.SAMPLE_FILE"))
+  file = paste0("results/", x, "_naive_CD4_t.csv", sep="")
+  write.csv(res, file=file)
+
+}
+
+```
+
+# Identify differential expression between conditions - CD8 cytotoxic T cell
+
+```{r}
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+
+response.gsk <- FindMarkers(sce, ident.1 = "CD8 cytotoxic T cell_gsk", ident.2 = "CD8 cytotoxic T cell_dmso", verbose = FALSE)
+response.casin <- FindMarkers(sce, ident.1 = "CD8 cytotoxic T cell_casin", ident.2 = "CD8 cytotoxic T cell_dmso", verbose = FALSE)
+response.halo <- FindMarkers(sce, ident.1 = "CD8 cytotoxic T cell_halofuginone", ident.2 = "CD8 cytotoxic T cell_dmso", verbose = FALSE)
+response.ncp <- FindMarkers(sce, ident.1 = "CD8 cytotoxic T cell_ncp26", ident.2 = "CD8 cytotoxic T cell_dmso", verbose = FALSE)
+#response.gak <- FindMarkers(sce, ident.1 = "CD8 cytotoxic T cell_gak", ident.2 = "CD8 cytotoxic T cell_dmso", verbose = FALSE)
+response.verteporfin <- FindMarkers(sce, ident.1 = "CD8 cytotoxic T cell_verteporfin", ident.2 = "CD8 cytotoxic T cell_dmso", verbose = FALSE)
+
+SAMPLE_FILE <- c("gsk","casin","halo","ncp","gak","verteporfin")
+for(x in SAMPLE_FILE){
+
+  
+  
+  
+  res <- get(gsub("SAMPLE_FILE",x , "response.SAMPLE_FILE"))
+  file = paste0("results/", x, "_CD8_t.csv", sep="")
+  write.csv(res, file=file)
+
+}
+
+```
+
+# Identify differential expression between conditions - Memory CD4 T
+
+```{r}
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+
+response.gsk <- FindMarkers(sce, ident.1 = "Memory CD4 T_gsk", ident.2 = "Memory CD4 T_dmso", verbose = FALSE)
+response.casin <- FindMarkers(sce, ident.1 = "Memory CD4 T_casin", ident.2 = "Memory CD4 T_dmso", verbose = FALSE)
+response.halo <- FindMarkers(sce, ident.1 = "Memory CD4 T_halofuginone", ident.2 = "Memory CD4 T_dmso", verbose = FALSE)
+response.ncp <- FindMarkers(sce, ident.1 = "Memory CD4 T_ncp26", ident.2 = "Memory CD4 T_dmso", verbose = FALSE)
+response.gak <- FindMarkers(sce, ident.1 = "Memory CD4 T_gak", ident.2 = "Memory CD4 T_dmso", verbose = FALSE)
+response.verteporfin <- FindMarkers(sce, ident.1 = "Memory CD4 T_verteporfin", ident.2 = "Memory CD4 T_dmso", verbose = FALSE)
+
+SAMPLE_FILE <- c("gsk","casin","halo","ncp","gak","verteporfin")
+for(x in SAMPLE_FILE){
+
+  
+  
+  
+  res <- get(gsub("SAMPLE_FILE",x , "response.SAMPLE_FILE"))
+  file = paste0("results/", x, "memory_CD4_t.csv", sep="")
+  write.csv(res, file=file)
+
+}
+
+```
+
+
+# Identify differential expression between conditions - B cell
+
+```{r}
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+
+response.gsk <- FindMarkers(sce, ident.1 = "B cell_gsk", ident.2 = "B cell_dmso", verbose = FALSE)
+response.casin <- FindMarkers(sce, ident.1 = "B cell_casin", ident.2 = "B cell_dmso", verbose = FALSE)
+response.halo <- FindMarkers(sce, ident.1 = "B cell_halofuginone", ident.2 = "B cell_dmso", verbose = FALSE)
+response.ncp <- FindMarkers(sce, ident.1 = "B cell_ncp26", ident.2 = "B cell_dmso", verbose = FALSE)
+response.gak <- FindMarkers(sce, ident.1 = "B cell_gak", ident.2 = "B cell_dmso", verbose = FALSE)
+response.verteporfin <- FindMarkers(sce, ident.1 = "B cell_verteporfin", ident.2 = "B cell_dmso", verbose = FALSE)
+
+SAMPLE_FILE <- c("gsk","casin","halo","ncp","gak","verteporfin")
+for(x in SAMPLE_FILE){
+
+  
+  
+  
+  res <- get(gsub("SAMPLE_FILE",x , "response.SAMPLE_FILE"))
+  file = paste0("results/", x, "B-cell.csv", sep="")
+  write.csv(res, file=file)
+
+}
+
+```
+
+
+# Identify differential expression between conditions - CD14 monocyte
+
+```{r}
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+
+response.gsk <- FindMarkers(sce, ident.1 = "CD14 monocyte_gsk", ident.2 = "CD14 monocyte_dmso", verbose = FALSE)
+response.casin <- FindMarkers(sce, ident.1 = "CD14 monocyte_casin", ident.2 = "CD14 monocyte_dmso", verbose = FALSE)
+response.halo <- FindMarkers(sce, ident.1 = "CD14 monocyte_halofuginone", ident.2 = "CD14 monocyte_dmso", verbose = FALSE)
+response.ncp <- FindMarkers(sce, ident.1 = "CD14 monocyte_ncp26", ident.2 = "CD14 monocyte_dmso", verbose = FALSE)
+response.gak <- FindMarkers(sce, ident.1 = "CD14 monocyte_gak", ident.2 = "CD14 monocyte_dmso", verbose = FALSE)
+response.verteporfin <- FindMarkers(sce, ident.1 = "CD14 monocyte_verteporfin", ident.2 = "CD14 monocyte_dmso", verbose = FALSE)
+
+SAMPLE_FILE <- c("gsk","casin","halo","ncp","gak","verteporfin")
+for(x in SAMPLE_FILE){
+
+  
+  
+  
+  res <- get(gsub("SAMPLE_FILE",x , "response.SAMPLE_FILE"))
+  file = paste0("results/", x, "CD14_monocyte.csv", sep="")
+  write.csv(res, file=file)
+
+}
+
+```
+
+
+# Identify differential expression between conditions - Megakaryocyte
+
+```{r}
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+
+response.gsk <- FindMarkers(sce, ident.1 = "Megakaryocyte_gsk", ident.2 = "Megakaryocyte_dmso", verbose = FALSE)
+response.casin <- FindMarkers(sce, ident.1 = "Megakaryocyte_casin", ident.2 = "Megakaryocyte_dmso", verbose = FALSE)
+response.halo <- FindMarkers(sce, ident.1 = "Megakaryocyte_halofuginone", ident.2 = "Megakaryocyte_dmso", verbose = FALSE)
+response.ncp <- FindMarkers(sce, ident.1 = "Megakaryocyte_ncp26", ident.2 = "Megakaryocyte_dmso", verbose = FALSE)
+response.gak <- FindMarkers(sce, ident.1 = "Megakaryocyte_gak", ident.2 = "Megakaryocyte_dmso", verbose = FALSE)
+response.verteporfin <- FindMarkers(sce, ident.1 = "Megakaryocyte_verteporfin", ident.2 = "Megakaryocyte_dmso", verbose = FALSE)
+
+SAMPLE_FILE <- c("gsk","casin","halo","ncp","gak","verteporfin")
+for(x in SAMPLE_FILE){
+
+  
+  
+  
+  res <- get(gsub("SAMPLE_FILE",x , "response.SAMPLE_FILE"))
+  file = paste0("results/", x, "megakaryocyte.csv", sep="")
+  write.csv(res, file=file)
+
+}
+
+```
+
+
+# Map the classifier over the data
+
+```{r}
+
+meta_data <- readRDS("meta_data.rds")
+
+data.integrated@meta.data <- meta_data
+data.integrated@meta.data %>% 
+  select()
+
+Idents(data.integrated) <- data.integrated@meta.data$celltypes
+png("celltype_UMAP.png", width = 2000, height = 500)
+DimPlot(data.integrated, reduction = "umap", split.by = "celltypes")
+dev.off()
+DimPlot(data.integrated, reduction = "umap", split.by = "celltypes")
+
+```
+
+# Rename
+
+```{r}
+data.integrated <- readRDS("integrated.rds")
+new.cluster.ids <- c("Naive CD4 T", "Myeloma cells", "Memory CD4 T", "CD8 cytotoxic T cell",  "CD14 monocyte", "B cell", "Megakaryocyte", "CD14 monocyte", "unknown", "CD8 cytotoxic T cell", "B cell", "B cell", "unknown")
+                     
+names(new.cluster.ids) <- levels(data.integrated)
+data.integrated <- RenameIdents(data.integrated, new.cluster.ids)
+DimPlot(data.integrated, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+
+```
+
+
+```{r}
+FeaturePlot(data.integrated, features = c("CCR7", "S100A4"))
+```
+
+# Identify differential expression between conditions - Naive CD4T
+```{r}
+library(ggplot2)
+library(cowplot)
+theme_set(theme_cowplot())
+subset.cells <- subset(data.integrated, idents = "Naive CD4 T")
+
+data.integrated$treatment <- paste(Idents(data.integrated), data.integrated$condition, sep = "_")
+data.integrated$celltype <- Idents(data.integrated)
+Idents(data.integrated) <- "treatment"
+response.gsk <- FindMarkers(data.integrated, ident.1 = "Myeloma cells_gsk", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.casin <- FindMarkers(data.integrated, ident.1 = "Myeloma cells_casin", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.halo <- FindMarkers(data.integrated, ident.1 = "Myeloma cells_halofuginone", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.ncp <- FindMarkers(data.integrated, ident.1 = "Myeloma cells_ncp26", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.gak <- FindMarkers(data.integrated, ident.1 = "Myeloma cells_gak", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+response.verteporfin <- FindMarkers(data.integrated, ident.1 = "Myeloma cells_verteporfin", ident.2 = "Myeloma cells_dmso", verbose = FALSE)
+
+
+```
+
+
+```{r}
+saveRDS(data.integrated, file = "integrated.rds")
+
+```
