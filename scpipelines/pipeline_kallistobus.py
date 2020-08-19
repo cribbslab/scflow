@@ -179,21 +179,11 @@ def run_fastqc(infile, outfile):
 ############################################
 # Pseudoalignment
 ############################################
+SEQUENCEFILES_REGEX = regex(
+        r"%s/(\S+).(fastq.gz|fastq.1.gz)" % (
+            DATADIR))
 
-if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
-    SEQUENCEFILES_REGEX = regex(
-        r"%s/%s.(fastq.gz|fastq.1.gz)" % (
-            DATADIR, PARAMS["merge_pattern_input"].strip()))
-
-    SEQUENCEFILES_KALLISTO_OUTPUT = (
-        r"kallisto.dir/%s/bus/output.bus" % (
-            PARAMS["merge_pattern_output"].strip()))
-
-else:
-    SEQUENCEFILES_REGEX = regex(
-        "(\S+).(fastq.gz|fastq.1.gz)")
-
-    SEQUENCEFILES_KALLISTO_OUTPUT = (
+SEQUENCEFILES_KALLISTO_OUTPUT = (
         r"kallisto.dir/\1/bus/output.bus")
 
 
@@ -223,78 +213,50 @@ def run_kallisto_bus(infiles, outfile):
     read2 = fastqfile.replace(".fastq.1.gz",".fastq.2.gz")
     fastqfiles = " ".join([fastqfile, read2])
 
-    outfolder = outfile.rsplit('/',1)[0]
 
     statement = '''
-    kallisto bus -i %(index_files)s -t %(threads)s -x %(kallisto_sctechnology)s
-    -o %(outfolder)s   %(fastqfiles)s
-    2> %(outfolder)s_kblog.log
+    kallisto bus -i %(index_files)s -t %(kallisto_threads)s -x %(kallisto_sctechnology)s
+    -o %(outfile)s   %(fastqfiles)s
+    2> %(outfile)s_kblog.log
     '''
 
     job_memory = '20G'
 
     P.run(statement)
 
-#########################
-# Scanpy analysis
-#########################
 
 @transform(run_kallisto_bus,
-           regex("kallisto.dir/(\S+)/bus/output.bus"),
-           r"kallisto.dir/\1/Scanpy_analysis.md")
-def run_scanpy(infile, outfile):
-    '''
-    This function will run the scanpy workflow jupyter notebook
-    then will render the document into a .md file
+           regex("(\S+)/output.bus"),
+           r"\1/tr2gene.tsv")
+def build_tr2g(infile, outfile):
+    """Build a transcript to gene relationship """
 
-    '''
+    R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 
-    jupyter = JUPYTER_ROOT + "/Scanpy_analysis.ipynb"
-    jupyter_nb = outfile.replace(".md", ".ipynb")
-    nb_file = outfile.replace("Scanpy_analysis.md", "")
+    out_dir = infile.replace("output.bus", "")
 
-    statement = '''
-    cp %(jupyter)s %(jupyter_nb)s &&
-    cd %(nb_file)s &&
-    jupyter nbconvert --to=markdown --execute Scanpy_analysis.ipynb'''
-
-    P.run(statement)
-
-
-@follows(mkdir("Report.dir"))
-@follows(run_scanpy)
-@originate("Report.dir/Final_report/QC_report.html")
-def run_rmarkdown(outfile):
-
-    infiles = glob.glob("kallisto.dir/*/Scanpy_analysis.md")
-
-    n = 1
-    for infile in infiles:
-        path, name = os.path.split(infile)
-        prefix = "A" + str(n)
-        path = os.path.split(path)[1]
-        name = prefix + "_" + path + "_scanpy.md"
-        dest = "Report.dir/" + name
-        copyfile(infile, dest)
-        n = n +1
-
-    RMD_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          "pipeline_kallistobus","Rmarkdown"))
-
-    cwd = os.getcwd()
-    job_memory = "5G"
-    # Needs to be re-written so that the whole report is now rendered
-    statement = '''cp %(RMD_SRC_PATH)s/* Report.dir/ &&
-                   cd Report.dir &&
-                   R -e "rmarkdown::render_site()"''' % locals()
+    if PARAMS['mixed_species']:
+        input1, input2 = PARAMS['geneset'].split(" ")
+        
+        statement = """Rscript %(R_PATH)s/make_tr2gene.R -i %(input1)s -j %(input2)s -o %(out_dir)s
+                       -f %(outfile)s"""
+    else:
+        statement = """Rscript  %(R_PATH)s/make_tr2gene.R -i %(geneset)s -o %(out_dir)s -f %(outfile)s"""
 
     P.run(statement)
 
-    statement = """
-    ln -s Report.dir/Final_report/index.html ./FinalReport.html
+
+@transform(run_kallisto_bus,
+           regex(""),
+           add_inputs(build_tr2g),
+           r"")
+def bustools_sort(infile, outfile):
+    """
+    Generate a sorted bus file
     """
 
-    P.run(statement)
+    
+
 
 
 @follows(run_kallisto_bus)
