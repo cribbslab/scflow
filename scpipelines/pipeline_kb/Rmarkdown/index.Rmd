@@ -1,0 +1,15 @@
+---
+title: "Introduction"
+output: html_document
+---
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+
+```{r, include=FALSE}
+library(siteymlgen)
+init(authors = "Adam", left="yes", dir="~/Documents/scflow-testing/kallistobus/Report.dir/")
+```
+
+The aim of this Report is to perform summary statistics and some of the top level analysis for droplect based single-cell RNA-seq. The report is ran after kallistobus pipeline, part of the scflow workflow.
+
+For information on hown to run this report please refer to the main documentation of the pipeline [here](https://single-cell.readthedocs.io/en/latest/pipelines/Singlenuclei.html)

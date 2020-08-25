@@ -179,11 +179,21 @@ def run_fastqc(infile, outfile):
 ############################################
 # Pseudoalignment
 ############################################
-SEQUENCEFILES_REGEX = regex(
-        r"%s/(\S+).(fastq.gz|fastq.1.gz)" % (
-            DATADIR))
 
-SEQUENCEFILES_KALLISTO_OUTPUT = (
+if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
+    SEQUENCEFILES_REGEX = regex(
+        r"%s/%s.(fastq.gz|fastq.1.gz)" % (
+            DATADIR, PARAMS["merge_pattern_input"].strip()))
+
+    SEQUENCEFILES_KALLISTO_OUTPUT = (
+        r"kallisto.dir/%s/bus/output.bus" % (
+            PARAMS["merge_pattern_output"].strip()))
+
+else:
+    SEQUENCEFILES_REGEX = regex(
+        "(\S+).(fastq.gz|fastq.1.gz)")
+
+    SEQUENCEFILES_KALLISTO_OUTPUT = (
         r"kallisto.dir/\1/bus/output.bus")
 
 
@@ -213,81 +223,76 @@ def run_kallisto_bus(infiles, outfile):
     read2 = fastqfile.replace(".fastq.1.gz",".fastq.2.gz")
     fastqfiles = " ".join([fastqfile, read2])
 
+    outfolder = outfile.rsplit('/',1)[0]
 
     statement = '''
-    kallisto bus -i %(index_files)s -t %(kallisto_threads)s -x %(kallisto_sctechnology)s
-    -o %(outfile)s   %(fastqfiles)s
-    2> %(outfile)s_kblog.log
+    kallisto bus -i %(index_files)s -t %(threads)s -x %(kallisto_sctechnology)s
+    -o %(outfolder)s   %(fastqfiles)s
+    2> %(outfolder)s_kblog.log
     '''
 
     job_memory = '20G'
 
     P.run(statement)
 
-
-@jobs_limit(1)
-@transform(run_kallisto_bus,
-           regex("(\S+)/output.bus"),
-           r"\1/tr2gene.tsv")
-def build_tr2g(infile, outfile):
-    """Build a transcript to gene relationship """
-
-    R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
-
-    if PARAMS['mixed_species']:
-        input1, input2 = PARAMS['geneset'].split(" ")
-        
-        statement = """Rscript %(R_PATH)s/make_tr2gene.R -i %(input1)s -j %(input2)s -o %(infile)s/
-                       -f %(outfile)s 2> %(outfile)s.log"""
-    else:
-        statement = """Rscript  %(R_PATH)s/make_tr2gene.R -i %(geneset)s -o %(out_dir)s -f %(outfile)s"""
-
-    P.run(statement)
-
+#########################
+# Scanpy analysis
+#########################
 
 @transform(run_kallisto_bus,
-           suffix(".bus"),
-           "_sorted.bus")
-def bustools_sort(infile, outfile):
-    """
-    Generate a sorted bus file
-    """
+           regex("kallisto.dir/(\S+)/bus/output.bus"),
+           r"kallisto.dir/\1/Scanpy_analysis.md")
+def run_scanpy(infile, outfile):
+    '''
+    This function will run the scanpy workflow jupyter notebook
+    then will render the document into a .md file
 
-    tmp = P.get_temp_filename(".")
+    '''
 
-    statement = """bustools sort -T %(tmp)s -t %(kallisto_threads)s -o %(outfile)s %(infile)s/output.bus"""
+    jupyter = JUPYTER_ROOT + "/Scanpy_analysis.ipynb"
+    jupyter_nb = outfile.replace(".md", ".ipynb")
+    nb_file = outfile.replace("Scanpy_analysis.md", "")
+
+    statement = '''
+    cp %(jupyter)s %(jupyter_nb)s &&
+    cd %(nb_file)s &&
+    jupyter nbconvert --to=markdown --execute Scanpy_analysis.ipynb'''
 
     P.run(statement)
 
-@transform(bustools_sort,
-           regex("(\S+)/output_sorted.bus"),
-           r"\1/genecount/genes.barcodes.txt")
-def bustools_count(infile, outfile):
-    """Generate a counts file from bus record"""
 
-    out_dir = outfile.replace("genes.barcodes.txt", "genes")
-    tr2g = infile.replace("output_sorted.bus","tr2gene.tsv")
-    mat = infile.replace("output_sorted.bus","output.bus/matrix.ec")
-    trans = infile.replace("output_sorted.bus","output.bus/transcripts.txt")
-    
+@follows(mkdir("Report.dir"))
+@follows(run_scanpy)
+@originate("Report.dir/Final_report/QC_report.html")
+def run_rmarkdown(outfile):
 
+    infiles = glob.glob("kallisto.dir/*/Scanpy_analysis.md")
 
-    statement = """bustools count -o %(out_dir)s -g %(tr2g)s -e %(mat)s -t %(trans)s --genecounts 2> %(out_dir)s.count.log %(infile)s"""
+    n = 1
+    for infile in infiles:
+        path, name = os.path.split(infile)
+        prefix = "A" + str(n)
+        path = os.path.split(path)[1]
+        name = prefix + "_" + path + "_scanpy.md"
+        dest = "Report.dir/" + name
+        copyfile(infile, dest)
+        n = n +1
+
+    RMD_SRC_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                          "pipeline_kallistobus","Rmarkdown"))
+
+    cwd = os.getcwd()
+    job_memory = "5G"
+    # Needs to be re-written so that the whole report is now rendered
+    statement = '''cp %(RMD_SRC_PATH)s/* Report.dir/ &&
+                   cd Report.dir &&
+                   R -e "rmarkdown::render_site()"''' % locals()
+
     P.run(statement)
 
-
-@active_if(PARAMS['mixed_species'])
-@transform(bustools_count,
-           regex("(\S+)/genes.barcodes.txt"),
-           r"\1")
-def barnyard_plot(infile, outfile):
-    """Construct a barnyard plot from bus file """
-
-    infile = infile.replace("/genes.barcodes.txt", "")
-
-    R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
-
-    statement = """Rscript %(R_PATH)s/plot_barnyard.R -i %(infile)s -o %(outfile)s"""
+    statement = """
+    ln -s Report.dir/Final_report/index.html ./FinalReport.html
+    """
 
     P.run(statement)
 

@@ -8,8 +8,7 @@
 # fastq files need to have the suffix read1: .fastq.1.gz read2: .fastq.2.gz
 data: data.dir
 
-# Specify if you are running a mixed species experiment
-mixed_species: 1
+
 
 # Provide a reference geneset (suffix= ".fa.gz")
 # Genesets can be downloaded from ensembl ftp server
