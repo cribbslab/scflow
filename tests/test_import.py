@@ -31,8 +31,8 @@ from nose.tools import ok_
 
 # DIRECTORIES to examine
 EXPRESSIONS = (
-    ('FirstLevel', 'trnanalysis/*.py'),
-    ('SecondLevel', 'trnanalysis/python/*.py'))
+    ('FirstLevel', 'scpipelines/*.py'),
+    ('SecondLevel', 'scpipelines/pipeline_velocyto/python/*.py'))
 
 # Code to exclude
 EXCLUDE = ()
