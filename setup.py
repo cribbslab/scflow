@@ -68,7 +68,7 @@ setup(
     package_dir=cribbslab_package_dirs,
     include_package_data=True,
     entry_points={
-        "console_scripts": ["scflow = scpipelines.cgatsc:main"]
+        "console_scripts": ["scflow = scpipelines.entry:main"]
     },
     # other options
     zip_safe=False,
