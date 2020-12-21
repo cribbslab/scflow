@@ -1,10 +1,7 @@
-'''test_style - test coding style of CGAT code
-==============================================
+'''test_style.py
+================
 
-:Author: Andreas Heger
-:Release: $Id$
-:Date: |today|
-:Tags: Python
+:Author: Adam Cribbs
 
 Purpose
 -------
@@ -23,8 +20,9 @@ from nose.tools import ok_
 
 # DIRECTORIES to examine
 EXPRESSIONS = (
-    ('FirstLevel', 'trnanalysis/*.py'),
-    ('SecondLevel', 'trnanalysis/python/*.py'))
+    ('FirstLevel', 'scpipelines/__init__.py'),
+    ('SecondLevel', 'scpipelines/entry.py'),
+    ('ThirdLevel', 'scpipelines/version.py'))
 
 # Codes to ignore in the pep8 BaseReport
 IGNORE = set(('E101',  # indentation contains mixed spaces and tabs

@@ -1,10 +1,8 @@
-'''test_import - test importing all modules
-===========================================
+'''test_import
+==============
 
-:Author: Andreas Heger
-:Release: $Id$
-:Date: |today|
-:Tags: Python
+:Author: Adam Cribbs
+
 
 Purpose
 -------
