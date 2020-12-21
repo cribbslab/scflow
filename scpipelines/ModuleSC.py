@@ -20,7 +20,7 @@ def check_paired_end(fastqfiles, aligner = 'salmon_alevin'):
                 infile2 = "%s.fastq.2.gz" % bn
                 if not os.path.exists(infile2):
                     raise ValueError("cant find paired end file "
-	                     "'%s' for '%s'" % (infile, infile2))
+	                     "'%s' for '%s'" % (infile1, infile2))
                 fastqfile1.append(infile1)
                 fastqfile2.append(infile2)
             else:
@@ -37,10 +37,10 @@ def check_paired_end(fastqfiles, aligner = 'salmon_alevin'):
                 infile2 = "%s.fastq.2.gz" % bn
                 if not os.path.exists(infile2):
                     raise ValueError("cant find paired end file "
-	                     "'%s' for '%s'" % (infile, infile2))
+	                     "'%s' for '%s'" % (infile1, infile2))
                 fastqfilelist.append(infile1)
                 fastqfilelist.append(infile2)
-   
+
             else:
                 raise ValueError("Only implemented for paired end reads (UMI/CB file and reads file)")
         return(fastqfilelist)
@@ -52,10 +52,10 @@ def check_multiple_read_files(infiles):
         fastqs = [x[0] for x in infiles]
         #fastqs = " ".join(fastqs)
 
-    else: 
+    else:
         fastqs = [infiles[0]]
         index = infiles[1]
         t2gmap = infiles[2]
-    
+
     output = [fastqs, index, t2gmap]
     return(output)

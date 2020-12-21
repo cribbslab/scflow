@@ -34,7 +34,7 @@ def check_multiple_read_files(infiles):
 
         fastqs = [x[0] for x in infiles]
 
-    else: 
+    else:
         fastqs = [infiles[0]]
         index = infiles[1]
 
@@ -45,8 +45,8 @@ def check_multiple_read_files_no_index(infiles):
     if isinstance(infiles, tuple):
         fastqs = [x for x in infiles]
 
-    else: 
-        fastqs = [infile]
+    else:
+        fastqs = [infiles]
 
 
     output = fastqs
