@@ -1,30 +1,7 @@
-##############################################################################
-#
-#   Botnar Resaerch Centre
-#
-#   $Id$
-#
-#   Copyright (C) 2020 Adam Cribbs
-#
-#   This program is free software; you can redistribute it and/or
-#   modify it under the terms of the GNU General Public License
-#   as published by the Free Software Foundation; either version 2
-#   of the License, or (at your option) any later version.
-#
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-###############################################################################
-
 """
-====================
-Pipeline single cell
-====================
+===========
+Pipeline kb
+===========
 
 
 Overview
@@ -236,7 +213,7 @@ def build_tr2g(infile, outfile):
 
     if PARAMS['mixed_species']:
         input1, input2 = PARAMS['geneset'].split(" ")
-        
+
         statement = """Rscript %(R_PATH)s/make_tr2gene.R -i %(input1)s -j %(input2)s -o %(infile)s/
                        -f %(outfile)s 2> %(outfile)s.log"""
     else:
@@ -269,7 +246,7 @@ def bustools_count(infile, outfile):
     tr2g = infile.replace("output_sorted.bus","tr2gene.tsv")
     mat = infile.replace("output_sorted.bus","output.bus/matrix.ec")
     trans = infile.replace("output_sorted.bus","output.bus/transcripts.txt")
-    
+
 
 
     statement = """bustools count -o %(out_dir)s -g %(tr2g)s -e %(mat)s -t %(trans)s --genecounts 2> %(out_dir)s.count.log %(infile)s"""
