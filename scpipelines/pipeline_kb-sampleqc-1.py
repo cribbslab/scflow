@@ -28,7 +28,7 @@ PARAMS = P.get_parameters(
      "pipeline.yml"])
 
 
-RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-sampleqc-1","Rmarkdown")
+
 # Determine the location of the input fastq files
 
 try:
@@ -51,11 +51,25 @@ def rmarkdown_stats(outfile):
     experiments ran using pipeline_kb.py
     '''
 
-    job_memory = "10G"
+    RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-sampleqc-1","Rmarkdown")
+
+    job_memory = "50G"
 
     statement = '''
-    cp RMD_ROOT/QC.Rmd . &&
+    cp %(RMD_ROOT)s/QC.Rmd . &&
     R -e "rmarkdown::render('QC.Rmd', output_file='QC.html')"
     '''
 
     P.run(statement)
+
+@follows(rmarkdown_stats)
+def full():
+    pass
+
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+    P.main(argv)
+
+if __name__ == "__main__":
+    sys.exit(P.main(sys.argv))

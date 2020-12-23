@@ -24,7 +24,7 @@ library(BUSpaRse)
 library(Seurat)
 
 # Specify the sample directory that you would like analysed:
-sample_files <- str_replace(Sys.glob("../kallisto.dir/*"), "../kallisto.dir/", "")
+sample_files <- str_replace(Sys.glob("kallisto.dir/*"), "kallisto.dir/", "")
 
 
 ```
@@ -35,7 +35,7 @@ Next we will load the counts data into memory using the tximport package. In add
 ```{r}
 
 for (i in sample_files){
-  name <- paste("../kallisto.dir/", i, "/bus/genecount/", sep="")
+  name <- paste("kallisto.dir/", i, "/bus/genecount/", sep="")
   res_mat <- read_count_output(name,
                              name = "genes", tcc = FALSE)
   
