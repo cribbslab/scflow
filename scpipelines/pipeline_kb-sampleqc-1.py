@@ -44,7 +44,7 @@ else:
         DATADIR = PARAMS['data']
 
 
-@originate("output.html")
+@originate("QC.html")
 def rmarkdown_stats(outfile):
     '''
     Runs a quality report in Rmarkdown to assess the statistics of single-cell
