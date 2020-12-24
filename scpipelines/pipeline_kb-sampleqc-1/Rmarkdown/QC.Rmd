@@ -1,7 +1,7 @@
 ---
 title: "Quality Control of sc samples"
 output: 
-  html_document:
+  html_document
 ---
 
 The first notebook will introduce you the quality control concepts that will be critical for detecting the "good" cells from the "bad" cells. QC is the most critical step in any single-cell workflow and you should ideally spend at least 70% of your time on quality checking the data.
