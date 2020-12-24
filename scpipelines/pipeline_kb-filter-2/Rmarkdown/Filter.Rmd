@@ -2,7 +2,6 @@
 title: "Quality Control of sc samples"
 output: 
   html_document:
-    code_folding: hide
 ---
 
 The first notebook will introduce you the quality control concepts that will be critical for detecting the "good" cells from the "bad" cells. QC is the most critical step in any single-cell workflow and you should ideally spend at least 70% of your time on quality checking the data.
@@ -19,7 +18,6 @@ library(Matrix)
 library(ggplot2)
 library(scales)
 library(tximport)
-library(annotables)
 library(BUSpaRse)
 library(Seurat)
 
@@ -30,36 +28,14 @@ sample_files <- str_replace(Sys.glob("kallisto.dir/*"), "kallisto.dir/", "")
 ```
 
 
-Next we will load the counts data into memory using the tximport package. In addition to this we will load the barcodes generated from salmon and will import a list of genes.
+# Read in seurat objects
 
 ```{r}
-
 for (i in sample_files){
-  name <- paste("kallisto.dir/", i, "/bus/genecount/", sep="")
-  res_mat <- read_count_output(name,
-                             name = "genes", tcc = FALSE)
-  
-  
-  so <- CreateSeuratObject(res_mat, min.cells=100, min.features=200) %>% 
-    NormalizeData(verbose=FALSE) %>% 
-    ScaleData(verbose=FALSE) %>% 
-    FindVariableFeatures(verbose=FALSE)
-  
-  counts <- Matrix::colSums(so@assays$RNA@counts)
-  genes <- Matrix::colSums(so@assays$RNA@counts>0)
-  
-  metadata <- as.data.frame(so@meta.data)
+  name <- paste0("RDS_objects.dir/", i, "_unfiltered_SeuratObject.rds")
+  so <- readRDS(name)
   assign(paste("so", i, sep = "."), so)
-  assign(paste("counts", i, sep = "."), counts)
-  assign(paste("genes", i, sep = "."), genes)
-  assign(paste("res_mat", i, sep = "."), res_mat)
-  assign(paste("metadata", i, sep = "."), metadata)
-  rm(so)
-  rm(counts)
-  rm(genes)
-  rm(metadata)
 }
-
 ```
 
 ```{r setup}
@@ -112,66 +88,6 @@ scale_colour_Publication <- function(...){
 }
 ```
 
-# Creating metadata object with some QC metrics
-
-Now that we have a counts matrix with the genes as row names and cells as columns, we can create our metadata with information about the different metrics to evaluate during quality control assessment.
-
-We will create the metadata with only the cell IDs:
-
-```{r}
-for (i in sample_files){
-  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
-  genes <- get(gsub("SAMPLE_FILE",i , "genes.SAMPLE_FILE"))
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-  # Add number of UMIs for each gene per cell to metadata
-  metadata$nUMI <- counts
-  # Add number of genes detected per cell to metadata
-  metadata$nGene <- genes
-  # Add number of UMIs per gene for each cell to metadata
-  metadata$log10GenesPerUMI <- log10(metadata$nGene) / log10(metadata$nUMI)
-  # Add sample name associated with each cell to metadata 
-  metadata$sample <- gsub("SAMPLE_FILE",i ,"SAMPLE_FILE")
-  
-  assign(paste("metadata", i, sep = "."), metadata)
-  rm(counts)
-  rm(metadata)
-}
-```
-
-
-
-# Generate additional QC metrics
-
-
-
-```{r}
-library("biomaRt")
-
-ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
-mapping <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version","ensembl_gene_id", "hgnc_symbol"), mart = ensembl)
-mito <- grep("^MT-", mapping$hgnc_symbol, value=TRUE)
-mito <- mapping %>% filter(hgnc_symbol %in% mito)
-mito <- mito$ensembl_gene_id_version
-```
-
-
-```{r}
-
-
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
-  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-  metadata$mtUMI <- Matrix::colSums(so@assays$RNA@counts[which(rownames(so@assays$RNA@counts) %in% mito),], na.rm = T)
-  
-  # Calculate of mitoRatio per cell
-  metadata$mitoRatio <- metadata$mtUMI/metadata$nUMI
-  assign(paste("metadata", i, sep = "."), metadata)
-}
-
-
-```
-
 # Filtering!!!
 
 This is very important to get correct as any "bad cells" will ultimately end up ruining your downstream analysis.
@@ -182,17 +98,14 @@ Prior to assessing our metrics, we are going to perform a very minimal filtering
 
 ```{r}
 for (i in sample_files){
-  counts <- get(gsub("SAMPLE_FILE",i , "res_mat.SAMPLE_FILE"))
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
+  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  metadata <- so@meta.data
 # Keep cells with nUMI greater than 100
-idx <- which(metadata$nUMI > 5)
+  so <- subset(so, subset = nFeature_RNA > 50 & nFeature_RNA < 6000 & mitoRatio < 0.10 &
+               metadata$nUMI > 100)
 
-# Extract the counts for those cells
-counts_c <- counts[, idx]
 
-# Extract the metadata for those cells
-metadata_c <- metadata[idx,]
-assign(paste("metadata_c", i, sep = "."), metadata)
+  assign(paste("so", i, sep = "."),so)
 }
 ```
 
@@ -204,14 +117,14 @@ Before we assess our metrics we are going to save all of the work we have done t
 for (i in sample_files){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
   counts <- so@assays$RNA@counts
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
+  metadata <- so@meta.data
 # Save data to single cell experiment variable
 se <- SingleCellExperiment(assays=list(counts=counts), 
                            colData = metadata)
 dir.create("RDS_objects.dir", showWarnings = FALSE)
 # Create .RData object to load at any time
-saveRDS(so, gsub("SAMPLE_FILE",i ,"RDS_objects.dir/SAMPLE_FILE_unfiltered_SeuratObject.rds"))
-saveRDS(se, gsub("SAMPLE_FILE",i ,"RDS_objects.dir/SAMPLE_FILE_raw_unfiltered_SingleCellExp.rds"))
+saveRDS(so, gsub("SAMPLE_FILE",i ,"RDS_objects.dir/SAMPLE_FILE_filtered_SeuratObject.rds"))
+saveRDS(se, gsub("SAMPLE_FILE",i ,"RDS_objects.dir/SAMPLE_FILE_raw_filtered_SingleCellExp.rds"))
 assign(paste("se", i, sep = "."), se)
 }
 ```
@@ -242,7 +155,7 @@ We will explore the following metrics through visualizations to decide on which 
 # Visualize the number of cell counts per cell {.tabset .tabset-fade}
 
 ```{r, results='asis', echo = FALSE}
-dir.create("QC_Figures.dir", showWarnings = FALSE)
+dir.create("Filtered_Figures.dir", showWarnings = FALSE)
 for (i in sample_files){
   metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
 # Visualize the number of cell counts per cell
@@ -255,7 +168,7 @@ plt <- metrics %>%
 print(plt)
 cat('\n\n')
 
-name<- paste0("QC_Figures.dir/NumberOfCells_", i, ".eps")
+name<- paste0("Filtered_Figures.dir/NumberOfCells_", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()
@@ -280,7 +193,7 @@ plt <- metrics %>%
         geom_vline(xintercept = 50) + theme_Publication()
 plot(plt)
 cat('\n\n')
-name<- paste0("QC_Figures.dir/Log10CellDensity_", i, ".eps")
+name<- paste0("Filtered_Figures.dir/Log10CellDensity_", i, ".eps")
 postscript(name)
 plot(plt)
 dev.off()
@@ -305,7 +218,7 @@ plt <- metrics %>%
 print(plt)
 cat('\n\n')
 
-name<- paste0("QC_Figures.dir/GenesDetectedDensity_", i, ".eps")
+name<- paste0("Filtered_Figures.dir/GenesDetectedDensity_", i, ".eps")
 postscript(name)
 plot(plt)
 dev.off()
@@ -329,7 +242,7 @@ print(plt)
 
 cat('\n\n')
 
-name<- paste0("QC_Figures.dir/NcellsvsNgenes_", i, ".eps")
+name<- paste0("Filtered_Figures.dir/NcellsvsNgenes_", i, ".eps")
 postscript(name)
 plot(plt)
 dev.off()
@@ -359,7 +272,7 @@ plt <- metrics %>%
 print(plt)
 cat('\n\n')
 
-name<- paste0("QC_Figures.dir/nUMIvsnGene_", i, ".eps")
+name<- paste0("Filtered_Figures.dir/nUMIvsnGene_", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()
@@ -387,7 +300,7 @@ print(plt)
 cat('\n\n')
 
 
-name<- paste0("QC_Figures.dir/MitoRatio_nGenevsnUMI", i, ".eps")
+name<- paste0("Filtered_Figures.dir/MitoRatio_nGenevsnUMI", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()
@@ -410,7 +323,7 @@ plt <- metrics %>%
         geom_density() + theme_Publication()
 print(plt)
 cat('\n\n')
-name<- paste0("QC_Figures.dir/Novelty_", i, ".eps")
+name<- paste0("Filtered_Figures.dir/Novelty_", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()

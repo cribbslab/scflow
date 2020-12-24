@@ -2,7 +2,6 @@
 title: "Quality Control of sc samples"
 output: 
   html_document:
-    code_folding: hide
 ---
 
 The first notebook will introduce you the quality control concepts that will be critical for detecting the "good" cells from the "bad" cells. QC is the most critical step in any single-cell workflow and you should ideally spend at least 70% of your time on quality checking the data.
@@ -19,7 +18,6 @@ library(Matrix)
 library(ggplot2)
 library(scales)
 library(tximport)
-library(annotables)
 library(BUSpaRse)
 library(Seurat)
 
@@ -120,6 +118,7 @@ We will create the metadata with only the cell IDs:
 
 ```{r}
 for (i in sample_files){
+  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
   counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
   genes <- get(gsub("SAMPLE_FILE",i , "genes.SAMPLE_FILE"))
   metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
@@ -131,8 +130,9 @@ for (i in sample_files){
   metadata$log10GenesPerUMI <- log10(metadata$nGene) / log10(metadata$nUMI)
   # Add sample name associated with each cell to metadata 
   metadata$sample <- gsub("SAMPLE_FILE",i ,"SAMPLE_FILE")
-  
+  so@meta.data <- metadata
   assign(paste("metadata", i, sep = "."), metadata)
+  assign(paste("so", i, sep = "."), so)
   rm(counts)
   rm(metadata)
 }
@@ -167,6 +167,8 @@ for (i in sample_files){
   # Calculate of mitoRatio per cell
   metadata$mitoRatio <- metadata$mtUMI/metadata$nUMI
   assign(paste("metadata", i, sep = "."), metadata)
+  so@meta.data <- metadata
+  assign(paste("so", i, sep = "."), so)
 }
 
 
