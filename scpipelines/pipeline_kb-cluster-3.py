@@ -33,4 +33,30 @@ PARAMS = P.get_parameters(
      "../pipeline.yml",
      "pipeline.yml"])
 
+# Root of Rmarkdown folder in pipeline folder
+RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-cluster-3","Rmarkdown")
+# R folder in main directory
+R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
+
+# filtered files in format:
+# RDS_objects.dir/<SAMPLE>_filtered_SeuratObject.rds"
+rds_suffixes = "*_filtered_SeuratObject.rds"
+SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
+
+@transform(SEURAT_OBJECTS,
+	regex("RDS_objects.dir/(\S+)_filtered_SeuratObject.rds"),
+	r"")
+def cluster(infile, outfile)
+	'''
+	Rscript task to run seurat clustering
+	'''
+	
+	file_name = os.path.basename(infile)
+	sample = re.match(r'(\S+)_filtered_SeuratObject.rds', file_name).group(1)
+
+	job_memory = "50G"
+
+	statement = Rscript %(R_PATH)s/seurat_cluster.R -i %(infile)s -s %(sample)s
+
+	P.run(statement)
 
