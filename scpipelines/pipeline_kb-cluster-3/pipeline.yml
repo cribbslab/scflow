@@ -1,0 +1,29 @@
+##########################
+#
+# configuration file for pipeline_kb-cluster-3
+#
+##########################
+
+#######################
+# Cluster
+#######################
+
+num_variable_features: 2000
+
+reduction_technique: pca
+
+# Number of dimensions, look at elbow plot and jack straw to inform. 0 to use embeddings to calculate
+num_dimensions: 10
+
+resolution: 0.5
+
+#######################
+# Find markers
+#######################
+
+logfc_thresh: 0.25
+
+test_use: wilcox
+
+min_percent: 0.1
+
