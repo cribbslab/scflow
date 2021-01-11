@@ -106,5 +106,5 @@ postscript(name)
 print(DimPlot(filtered_seurat_object, reduction="tsne", pt.size = 0.5))
 dev.off()
 
-saveRDS(filtered_seurat_object, gsub("SAMPLE_FILE",sample_name ,"RDS_objects.dir/SAMPLE_FILE_clustered_filtered_SeuratObject.rds"))
+saveRDS(filtered_seurat_object, gsub("SAMPLE_FILE",sample_name ,"RDS_objects.dir/SAMPLE_FILE_filtered_clustered_SeuratObject.rds"))
 
