@@ -50,6 +50,7 @@ def cluster(infile, outfile):
 	R script task to run seurat clustering
 	'''
 
+	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 	file_name = os.path.basename(infile)
 	sample = re.match(r'(\S+)_filtered_SeuratObject.rds', file_name).group(1)
 
@@ -60,7 +61,7 @@ def cluster(infile, outfile):
 	num_dimensions = PARAMS["num_dimensions"]
 	if num_dimensions:
 		# User defined number of dimensions to reduce to (look at elbow and jackstraw plot post hoc)
-		num_dimensions_option = "-d " + num_dimensions
+		num_dimensions_option = "-d " + str(num_dimensions)
 	else:
 		# Calculated with embeddings
 		num_dimensions_option = " "
@@ -81,7 +82,7 @@ def find_markers(infile, outfile):
 	'''
 	R script to find markers for each cluster
 	'''
-
+	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 	file_name = os.path.basename(infile)
 	sample = re.match(r'(\S+)_clustered_filtered_SeuratObject.rds', file_name).group(1)
 
@@ -106,7 +107,7 @@ def cluster_rmarkdown(infile, outfile):
 	R markdown to visualise clustering and dimensional reduction
 	'''
 
-
+	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-cluster-3","Rmarkdown")
 	job_memory = "50G"
 
 	statement = ''' 

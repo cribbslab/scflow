@@ -18,14 +18,14 @@ option_list <- list(
 # Read in options
 opt <- parse_args(OptionParser(option_list=option_list))
 
-sample_name <- read.table(opt$sample,header = TRUE, fill = T)
+sample_name <- opt$sample
 min_pct <- opt$minPct
 logfc_threshold <- opt$logfc
 test_use <- opt$testuse
-seurat_object_path <- read.table(opt$input,header = TRUE, fill = T)
+seurat_object_path <- opt$input
 
 # Read in RDS files (may take some time)
-seurat_object <- readRDS(seurat_object_path
+seurat_object <- readRDS(seurat_object_path)
 
 # Might need to add more stat stuff
 
