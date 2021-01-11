@@ -217,7 +217,7 @@ def build_tr2g(infile, outfile):
         statement = """Rscript %(R_PATH)s/make_tr2gene.R -i %(input1)s -j %(input2)s -o %(infile)s/
                        -f %(outfile)s 2> %(outfile)s.log"""
     else:
-        statement = """Rscript  %(R_PATH)s/make_tr2gene.R -i %(geneset)s -o %(out_dir)s -f %(outfile)s"""
+        statement = """Rscript  %(R_PATH)s/make_tr2gene.R -i %(geneset)s -o %(infile)s -f %(outfile)s"""
 
     P.run(statement)
 
@@ -236,6 +236,7 @@ def bustools_sort(infile, outfile):
 
     P.run(statement)
 
+@follows(build_tr2g)
 @transform(bustools_sort,
            regex("(\S+)/output_sorted.bus"),
            r"\1/genecount/genes.barcodes.txt")
@@ -269,7 +270,7 @@ def barnyard_plot(infile, outfile):
     P.run(statement)
 
 
-@follows(run_kallisto_bus)
+@follows(bustools_count, barnyard_plot)
 def full():
     pass
 
