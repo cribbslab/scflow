@@ -44,7 +44,7 @@ SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
 @follows(mkdir("Clustering_Figures.dir"))
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_filtered_SeuratObject.rds"),
-	r"RDS_objects.dir/\1_clustered_filtered_SeuratObject.rds")
+	r"RDS_objects.dir/\1_filtered_clustered_SeuratObject.rds")
 def cluster(infile, outfile):
 	'''
 	R script task to run seurat clustering
@@ -76,7 +76,7 @@ def cluster(infile, outfile):
 
 @follows(mkdir("clustering_markers.dir"))
 @transform(cluster,
-		   regex("RDS_objects.dir/(\S+)_clustered_filtered_SeuratObject.rds"),
+		   regex("RDS_objects.dir/(\S+)_filtered_clustered_SeuratObject.rds"),
 		   r"clustering_markers.dir/\1_markers.tsv")
 def find_markers(infile, outfile):
 	'''
