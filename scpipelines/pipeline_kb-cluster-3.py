@@ -4,7 +4,7 @@ Pipeline clustering
 ===================
 
 The pipeline follows pipeline_kb, pipeline_kb-sampleqc-1 and pipeline_kb-filter-2
-It performs PCA, tSNE and UMAP dimensional reduction.
+It performs PCA, tSNE and UMAP dimensional reduction. Markers for each cluster are found
 Clustering is visualised in an Rmarkdown notebook.
 
 Authors
@@ -53,15 +53,51 @@ def cluster(infile, outfile):
 	file_name = os.path.basename(infile)
 	sample = re.match(r'(\S+)_filtered_SeuratObject.rds', file_name).group(1)
 
+	res = PARAMS['resolution']
+	nvf = PARAMS['num_variable_features']
+	red = PARAMS['reduction_technique']
+
+	num_dimensions = PARAMS["num_dimensions"]
+	if num_dimensions:
+		# User defined number of dimensions to reduce to (look at elbow and jackstraw plot post hoc)
+		num_dimensions_option = "-d " + num_dimensions
+	else:
+		# Calculated with embeddings
+		num_dimensions_option = " "
+
 	job_memory = "50G"
 
 	statement = '''
-				Rscript %(R_PATH)s/seurat_cluster.R -i %(infile)s -s %(sample)s -v 2000
-				'''
+	Rscript %(R_PATH)s/seurat_cluster.R -i %(infile)s -s %(sample)s -v %(nvf)s --reddim %(red)s
+	--resolution %(res)s %(num_dimensions_option)s'''
 
 	P.run(statement)
 
+@follows(mkdir("clustering_markers.dir"))
+@transform(cluster,
+		   regex("RDS_objects.dir/(\S+)_clustered_filtered_SeuratObject.rds"),
+		   r"clustering_markers.dir/\1_markers.tsv")
+def find_markers(infile, outfile):
+	'''
+	R script to find markers for each cluster
+	'''
 
+	file_name = os.path.basename(infile)
+	sample = re.match(r'(\S+)_clustered_filtered_SeuratObject.rds', file_name).group(1)
+
+	min_percent = PARAMS['min_percent']
+	logfc_thresh = PARAMS['logfc_thresh']
+	test_use = PARAMS['test_use']
+
+	job_memory = "50G"
+
+	statement = '''
+	Rscript %(R_PATH)s/find_markers.R -i %(infile)s -s %(sample)s  -l %(logfc_thresh)s -t %(test_use)s 
+	--minPct %(min_percent)s '''
+
+	P.run(statement)
+
+@follows(find_markers)
 @follows(mkdir("Clustering_Figures.dir"))
 @merge(cluster,
 	"Cluster.html")
@@ -73,9 +109,9 @@ def cluster_rmarkdown(infile, outfile):
 
 	job_memory = "50G"
 
-	statement = ''' cp %(RMD_ROOT)s/Cluster.Rmd . &&
-				R -e "rmarkdown::render('Cluster.Rmd', output_file='Cluster.html')"
-				'''
+	statement = ''' 
+	cp %(RMD_ROOT)s/Cluster.Rmd . &&
+	R -e "rmarkdown::render('Cluster.Rmd', output_file='Cluster.html')" '''
 
 	P.run(statement)
 
