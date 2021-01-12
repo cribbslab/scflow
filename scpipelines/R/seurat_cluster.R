@@ -25,14 +25,15 @@ option_list <- list(
 opt <- parse_args(OptionParser(option_list=option_list))
 
 
-sample_name <- read.table(opt$sample,header = TRUE, fill = T)
-num_variable_features <- read.table(opt$variableFeatures,header = TRUE, fill = T)
+sample_name <- opt$sample
+num_variable_features <- opt$variableFeatures
 num_dimensions <- opt$numdim
 reduction_technique <- opt$reddim
 resolution <- opt$resolution
 
-seurat_filtered_rds <- read.table(opt$input,header = TRUE, fill = T)
-seurat_unfiltered_rds <- gsub("_filtered_SeuratObject.rds", seurat_filtered, "unfiltered_SeuratObject.rds")
+
+seurat_filtered_rds <- opt$input
+seurat_unfiltered_rds <- stringr::str_replace(opt$input, "filtered_SeuratObject.rds$", "unfiltered_SeuratObject.rds")
 
 # Read in RDS files (may take some time)
 filtered_seurat_object <- readRDS(seurat_filtered_rds)
@@ -62,18 +63,18 @@ filtered_seurat_object <- RunPCA(filtered_seurat_object, features = VariableFeat
 
 # How much to reduce
 filtered_seurat_object <- JackStraw(filtered_seurat_object, num.replicate = 100)
-filtered_seurat_object <- ScoreJackStraw(filtered_seurat_object, dims = 1:20
+filtered_seurat_object <- ScoreJackStraw(filtered_seurat_object, dims = 1:20)
 
-jack_plot <- JackStrawPlot(filtered_seurat_object, dims = 1:15)
+
 name<- paste0("Clustering_Figures.dir/JackStrawPlot_", sample_name, ".eps")
 postscript(name)
-print(jack_plot)
+print(JackStrawPlot(filtered_seurat_object, dims = 1:15))
 dev.off()
 
-elb_plt <- ElbowPlot(filtered_seurat_object)
+
 name<- paste0("Clustering_Figures.dir/ElbowPlot_", sample_name, ".eps")
 postscript(name)
-print(elb_plt)
+print(ElbowPlot(filtered_seurat_object))
 dev.off()
 
 # Number of dimensions to reduce to. Look at Jackdraw / elbow plots, if not user-defined runs Embeddings
@@ -88,9 +89,23 @@ if(is.null(num_dimensions)){
 filtered_seurat_object <- FindNeighbors(filtered_seurat_object, dims = dims.use, reduction = reduction_technique)
 filtered_seurat_object <- FindClusters(filtered_seurat_object, resolution = resolution)
 
-saveRDS(filtered_seurat_object, gsub("SAMPLE_FILE",sample_name ,"RDS_objects.dir/SAMPLE_FILE_clustered_filtered_SeuratObject.rds"))
-
 # Non-linear cluster techniques, e.g. UMAP and tSNE.
 # Uses PCA to reduce dimensions.
+
 filtered_seurat_object <- RunUMAP(filtered_seurat_object, dims = dims.use)
 filtered_seurat_object <- RunTSNE(filtered_seurat_object, dims = dims.use)
+
+name<- paste0("Clustering_Figures.dir/UMAP_", sample_name, ".eps")
+postscript(name)
+print(DimPlot(filtered_seurat_object, reduction="umap", pt.size = 0.5))
+dev.off()
+
+filtered_seurat_object <- RunTSNE(filtered_seurat_object, dims = dims.use)
+
+name<- paste0("Clustering_Figures.dir/tSNE_", sample_name, ".eps")
+postscript(name)
+print(DimPlot(filtered_seurat_object, reduction="tsne", pt.size = 0.5))
+dev.off()
+
+saveRDS(filtered_seurat_object, gsub("SAMPLE_FILE",sample_name ,"RDS_objects.dir/SAMPLE_FILE_filtered_clustered_SeuratObject.rds"))
+
