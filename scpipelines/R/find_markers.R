@@ -27,16 +27,46 @@ seurat_object_path <- opt$input
 # Read in RDS files (may take some time)
 seurat_object <- readRDS(seurat_object_path)
 
+# Get total number of clusters
+num_clusters <- nlevels(seurat_object$seurat_clusters)
+final_cluster <- num_clusters - 1
+
+# Start clustering from 1 not 0
+#if(!(as.numeric(levels(seurat_object$seurat_clusters)[1]))){
+#	 seurat_object$seurat_clusters <- as.factor(as.numeric(as.character(seurat_object$seurat_clusters)) + 1)
+#
+#}
+
 # Might need to add more stat stuff
 
-# Something like this... need to look at object to see meta data.
-for(i in 1:length(clusters)){
-    so_markers <- cluster1.markers <- FindMarkers(seurat_object, ident.1 = i, min.pct = min_pct,
+# Empty vector to combine results into
+combined <- c()
+
+for(i in 0:final_cluster){
+    so_markers <-  FindMarkers(seurat_object, ident.1 = i, min.pct = min_pct,
                                                   logfc.threshold = logfc_threshold, test.use = test_use)
     assign(paste("so_markers", i, sep = "."), so_markers)
 
-	# cbind all data ? rownames to column for genes. Add column for cluster number
-	# Then save as tsv file
+	# Get back, probably don't need
+	so <- get(gsub("CLUSTER",i , "so_markers.CLUSTER"))
+	so$ensembl <- rownames(so)
+	# Get rid of .1 .12 etc. at end of ensembl name
+	so$ensembl_short <-   gsub("\\.\\d+", "", so$ensembl)
+	so$cluster <- i
+
+	so <- as_tibble(so)
+	combined <- rbind(combined, so)
+
+
 }
 
+combined <- combined %>% dplyr::select(ensembl, ensembl_short, cluster, everything())
+
+combined_logfc_order <- combined %>% dplyr::arrange(cluster, desc(abs(avg_logFC)), p_val_adj)
+tsv_filename <- paste0("clustering_markers.dir/", sample_name, "_markers.tsv")
+tsv_filename_log <- paste0("clustering_markers.dir/", sample_name, "logfc_ordered_markers.tsv")
+
+
+write_csv(combined, tsv_filename)
+write_csv(combined_logfc_order, tsv_filename_log)
 

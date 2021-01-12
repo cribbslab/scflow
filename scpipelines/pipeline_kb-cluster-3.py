@@ -77,7 +77,7 @@ def cluster(infile, outfile):
 @follows(mkdir("clustering_markers.dir"))
 @transform(cluster,
 		   regex("RDS_objects.dir/(\S+)_filtered_clustered_SeuratObject.rds"),
-		   r"clustering_markers.dir/\1_markers.tsv")
+		   r"clustering_markers.dir/\1_markers.csv")
 def find_markers(infile, outfile):
 	'''
 	R script to find markers for each cluster
