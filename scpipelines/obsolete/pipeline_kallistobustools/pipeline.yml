@@ -1,0 +1,183 @@
+##########################
+#
+# configuration file for pipeline_singlecell
+#
+##########################
+
+# primary assembly downloaded according to documentation instructions
+genome_file: Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+
+# Provide a reference geneset (suffix= ".gtf.gz")
+# Geneset should be located in working directory
+geneset: Homo_sapiens.GRCh38.99.gtf.gz
+
+# This is the location of the intron.bed.gz
+intron_bed: introns.bed.gz
+
+# This is the location of the cDNA fasta
+cdna_fasta: cDNA.fa.gz
+
+# Specify if there is a mixed species input (i.e. mouse and human)
+mixed_species: 0
+
+# If there is a mixed specied input specify the extra genome (in addition to the
+# one already specified)
+genome2:
+genome_dir2: /ifs/mirror/genomes/index/
+
+# If there is a mixed specied input specify a reference geneset (suffix= ".gtf.gz")
+# Geneset should be located in working directory
+geneset2:
+
+# Location of the single cell directory
+sc_dir: '/ifs/projects/adam/single-cell-test/'
+
+# Project name
+projectname: test
+
+# Copyright statement
+copyright: Cribbs Group, Botnar Research Centre (2019)
+
+# Location of the data. 0 for the current directory
+data: 0
+
+
+################################################################
+## merge options
+################################################################
+merge:
+  # input pattern
+  # For example, if your files are called:
+  #    CLLP80-S1-1-L001.fastq.1.gz
+  #    CLLP80-S1-1-L001.fastq.2.gz
+  #    CLLP80-S1-1-L002.fastq.1.gz
+  #    CLLP80-S1-1-L002.fastq.2.gz
+  # and you want to create files/ folder starting with:
+  #    CLLP80-S1-1
+  #
+  # choose the following input and output patterns:
+  #
+  # pattern_input= (.*)-(S\d)-(\d)-(L\d+)
+  # pattern_output= \1-\2-\3
+  # Note that the file extension will be added by the pipeline. The
+  # pattern must not include this.
+
+  # hgmm_100_S1_L001_001.fastq.1.gz
+  # hgmm_100_S1_L001_001.fastq.2.gz
+  # hgmm_100_S1_L002_001.fastq.1.gz
+  # hgmm_100_S1_L002_001.fastq.2.gz
+
+  # pattern_input: (\S\d+)-(.*)_(L\d+)
+  # pattern_output: \1_\2_\3_
+  # to create:
+  # N70x-cell_lane.fastq.1.gz
+
+  pattern_input: ''
+  pattern_output: ''
+
+#######################
+# Kallisto
+#######################
+
+kallisto:
+  # kmer size for kallisto. Default is 31 and max is 31
+  # Used to generate the kallisto index
+  # Kallisto will ignore transcripts shorter than this
+  kmer: 31
+
+  # Number of threads for kallisto
+  threads: 5
+
+  # Whether to generate a BUStools file
+  bustools: 0
+  # Must specify a single cell tchnology to generate bustools file
+  # allowable technology:
+  # 10Xv1
+  # 10Xv2
+  # DropSeq
+  # inDrop
+  # CELSeq
+  # CELSeq2
+  # SCRBSeq
+  # Not that 10Xv3 is not supported in version 0.44 of kallisto
+  sctechnology: DropSeq
+
+  # whether to output as loom or h5
+  # Must specify:
+  # loom
+  # h5ad
+  output_format: loom
+
+  # Which workflow to use:
+  # options include: standard,lamanno,nucleus,kite,kite:10xFB
+  # Type of workflow. Use `lamanno` for RNA velocity based
+  #                      on La Manno et al. 2018 logic. Use `nucleus` for RNA
+  #                      velocity on single-nucleus RNA-seq reads. Use `kite`
+  #                      for feature barcoding. Use `kite:10xFB` for 10x
+  #                      Genomics Feature Barcoding technology. (default:
+  #                      standard)
+  workflow: nucleus
+
+
+sce:
+
+  # Species information for annotation
+  # human
+  # mouse
+  species: human
+
+  # Whether to use gene symbols for SCE or ensembl IDs.
+  genesymbol: 0
+
+qc:
+
+  # Set mitochondrial percent maximum threshold (usually 10-20%)
+  max_mito: 5
+
+  # Or instead use median + 2 median absolute deviations as mitochondrial threshold (0 or 1)
+  mito_median_absolute_deviation: 1
+
+  # Threshold for minimum number of transcripts per cell (usually 500-1000)
+  min_transcripts: 100
+
+  # Whether spike ins are used, e.g. smart seq data
+  spike_ins: 0
+
+DE:
+  # 1 or 0, to run or not
+  wilcoxon: 1
+
+  # Sample name of the control
+  sample1: 'N701_WT'
+
+  # Sample to compare to the control
+  sample2: 'N704_CFZ'
+
+  pseudo_bulk: 1
+
+seurat:
+  mingenes: 50
+
+  maxmitopercent: 0.1
+
+  npcs: 5
+
+  # resultion for finding seurat clusters
+  resolution: 0.8
+
+  algorithm: 3
+
+# Specifying this value will downsample the number of cells
+downsample_active: 0
+downsample_to: 0
+
+monocle:
+  # Gene of interest to be plotted. Ensembl or symbols depending on genesymbol
+  gene_marker: "ENSG00000164867"
+
+  max_components: 2
+
+  num_dim: 6
+
+  # +1 to number of clusters you want
+  num_clusters: 7
