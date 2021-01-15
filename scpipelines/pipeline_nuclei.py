@@ -520,38 +520,6 @@ def bustools_count_cdna(infile, outfile):
 
 
 #########################
-# SCE object
-#########################
-
-## Kallisto SCE object using BUSpaRse R package and emptydrops (DropletUtils function)
-@follows(mkdir("SCE.dir"))
-@follows(busText)
-@active_if(PARAMS['kallisto_bustools'])
-@transform(busText,
-           regex("kallisto.dir/(\S+)/bus/output.bus.sorted.txt"),
-           add_inputs(PARAMS['geneset'], getTranscript2GeneMap),
-           r"SCE.dir/\1/bus/sce.rds")
-def BUSpaRse(infiles, outfile):
-    '''
-    Create kallisto SCE object. Use BUSpaRse package to read in bus file and convert to TCC and gene counts matrix.
-    Create knee plot and use point of inflection to estimate number of empty droplets and cells.
-    Or use emptyDrops function from DropletUtils package to compare to the ambient profile.
-    '''
-
-    bus_text, gtf, t2gmap = infiles
-    R_ROOT = os.path.join(os.path.dirname(__file__),"pipeline_singlecell","R")
-    est_cells = PARAMS['kallisto_expectedcells']
-
-    job_memory = '50G'
-
-    statement = '''
-    Rscript %(R_ROOT)s/BUSPaRse.R -i %(bus_text)s -o %(outfile)s --estcells %(est_cells)s --t2g %(t2gmap)s -g %(gtf)s
-    '''
-
-    P.run(statement)
-
-
-#########################
 # Multiqc
 #########################
 
