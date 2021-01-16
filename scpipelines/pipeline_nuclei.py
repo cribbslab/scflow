@@ -315,7 +315,7 @@ def buildKallistoIndex(infiles, outfile):
     statement = '''
     cat %(cDNA_correct_header)s %(introns_correct_header)s > kallisto.dir/cDNA_introns.fa &&
     cat %(map_tr2gene)s %(map_trans2gene)s > kallisto.dir/cDNA_introns_t2g.txt &&
-    kallisto index -i %(outfile)s -k %(kallisto_kmer)s kallisto.dir/cDNA_introns.fa
+    kallisto index -i %(outfile)s -k %(kallisto_kmer)s kallisto.dir/cDNA_introns.fa 2> kallisto_index.log
     '''
 
     P.run(statement)
