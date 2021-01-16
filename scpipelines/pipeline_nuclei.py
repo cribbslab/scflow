@@ -519,6 +519,27 @@ def bustools_count_cdna(infile, outfile):
     P.run(statement)
 
 
+@merge([bustools_count_intron, bustools_count_cdna],
+    "geneset.dir/introns_t2g.txt")
+def merge_matrices(infiles, outfile):
+    '''use python script to merge the spliced and unspliced matrix'''
+
+    unspliced, spliced = infiles
+    unspliced_barcode = unspliced.replace(".mtx",".barcodes.txt")
+    unspliced_genes = unspliced.replace(".mtx",".genes.txt")
+
+    spliced_barcode = spliced.replace(".mtx",".barcodes.txt")
+    spliced_genes = spliced.replace(".mtx",".genes.txt")
+
+    bus_dir = spliced.replace("spliced/spliced.mtx","")
+
+    PYTHON_ROOT = os.path.join(os.path.dirname(__file__), "python")
+
+    statement = '''python %(PYTHON_ROOT)s/MergeSplicedMatrix.py -o %(outfile)s -d %(bus_dir)s -s %(spliced)s
+                   -c %(spliced_barcode)s -t %(spliced_genes)s -u %(unspliced)s -b %(spliced_barcode)s -g %(spliced_genes)s'''
+
+    P.run(statement)
+
 
 #########################
 # Multiqc
