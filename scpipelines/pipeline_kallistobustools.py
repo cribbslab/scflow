@@ -238,25 +238,6 @@ def run_kallisto_bus(infiles, outfile):
     P.run(statement)
 
 
-#########################
-# Multiqc
-#########################
-
-#@follows(mkdir("MultiQC_report.dir"))
-#@follows(run_kallisto_bus)
-#@originate("MultiQC_report.dir/multiqc_report.html")
-#def build_multiqc(infile):
-#    '''build mulitqc report'''#
-#
-#    statement = (
-#        "export LANG=en_GB.UTF-8 && "
-#        "export LC_ALL=en_GB.UTF-8 && "
-#        "multiqc . -f && "
-#        "mv multiqc_report.html MultiQC_report.dir/")
-
-#    P.run(statement)
-
-
 @follows(run_kallisto_bus)
 def full():
     pass
