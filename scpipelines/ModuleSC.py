@@ -48,7 +48,6 @@ def check_paired_end(fastqfiles, aligner = 'salmon_alevin'):
 def check_multiple_read_files(infiles):
     if isinstance(infiles[0], tuple):
         index = infiles[0][1]
-        t2gmap = infiles[0][2]
         fastqs = [x[0] for x in infiles]
         #fastqs = " ".join(fastqs)
 
@@ -57,5 +56,5 @@ def check_multiple_read_files(infiles):
         index = infiles[1]
         t2gmap = infiles[2]
     
-    output = [fastqs, index, t2gmap]
+    output = [fastqs, index]
     return(output)

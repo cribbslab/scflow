@@ -407,12 +407,13 @@ def runKallistoBus(infiles, outfile):
 def whitelist(infile, outfile):
     '''use umitools to generate whitelist of barcodes'''
 
+    infile = " ".join(list(infile))
     statement = '''
                 umi_tools whitelist --stdin=%(infile)s
                 --bc-pattern=%(umitools_barcode_pattern)s
-                --extract-method=regex
+                --set-cell-number=%(kallisto_expectedcells)s
                 --log2stderr
-                > %(outfile)s
+                > %(outfile)s 2> whitelist.log
     '''
 
     P.run(statement)
@@ -430,59 +431,63 @@ def bustools_correct(infiles, outfile):
     # znd selects the correct whitelist for the correct fastq
     bus_file, whitelist = infiles
 
-    statement = '''
+    if PARAMS['use_whitelist']:
+        statement = '''bustools correct -w %(use_whitelist)s -o %(outfile)s  %(bus_file)s 2> bustools_correct.txt '''
+
+    else:
+        statement = '''
 
     bustools correct -w %(whitelist)s -o %(outfile)s  %(bus_file)s
     '''
 
     P.run(statement)
 
+#@transform(bustools_correct,
+#           regex("kallisto.dir/(\S+)/bus/output.correct.bus"),
+#           r"kallisto.dir/\1/bus/output.sort.bus")
+#def bustools_sort(infile, outfile):
+#    '''use bustools sort to sort the corrected bus record '''#
+#
+#    statement = '''
+#    bustools sort -o %(outfile)s  -t 4 %(infile)s
+#    '''#
+#
+#    P.run(statement)
+
+
 @transform(bustools_correct,
            regex("kallisto.dir/(\S+)/bus/output.correct.bus"),
-           r"kallisto.dir/\1/bus/output.sort.bus")
-def bustools_sort(infile, outfile):
-    '''use bustools sort to sort the corrected bus record '''
-
-    statement = '''
-    bustools sort -o %(outfile)s  -t 4 %(infile)s
-    '''
-
-    P.run(statement)
-
-
-@transform(bustools_correct,
-           regex("kallisto.dir/(\S+)/bus/output.sort.bus"),
-           add_inputs(introns_transcripts_no_version),
+           add_inputs(add_identifier),
            r"kallisto.dir/\1/bus/introns_capture.bus")
 def bustools_capture_intron(infiles, outfile):
     '''use bustools capture for cDNA '''
 
     infile, capture_list = infiles
 
-    matrix = infile.replace("introns_capture.bus","matrix.ec")
-    trans = infile.replace("introns_capture.bus","transcripts.txt")
+    matrix = outfile.replace("introns_capture.bus","matrix.ec")
+    trans = outfile.replace("introns_capture.bus","transcripts.txt")
 
     statement = '''
-    bustools capture -s -o %(outfile)s -c %(capture_list)s  -e %(matrix)s -t %(trans)s  %(infile)s
+    bustools capture -s -o %(outfile)s -c %(capture_list)s  -e %(matrix)s -t %(trans)s  %(infile)s 2> introns_capture.txt
     '''
 
     P.run(statement)
 
 # Bustools capture cDNA and then introns
 @transform(bustools_correct,
-           regex("kallisto.dir/(\S+)/bus/output.sort.bus"),
-           add_inputs(capture_list),
+           regex("kallisto.dir/(\S+)/bus/output.correct.bus"),
+           add_inputs(map_tran_gene),
            r"kallisto.dir/\1/bus/cDNA_capture.bus")
 def bustools_capture_cdna(infiles, outfile):
     '''use bustools capture for cDNA '''
 
     infile, capture_list = infiles
 
-    matrix = infile.replace("cDNA_capture.bus","matrix.ec")
-    trans = infile.replace("cDNA_capture.bus","transcripts.txt")
+    matrix = outfile.replace("cDNA_capture.bus","matrix.ec")
+    trans = outfile.replace("cDNA_capture.bus","transcripts.txt")
 
     statement = '''
-    bustools capture -s -o %(outfile)s -c %(capture_list)s  -e %(matrix)s -t %(trans)s  %(infile)s
+    bustools capture -s -o %(outfile)s -c %(capture_list)s  -e %(matrix)s -t %(trans)s  %(infile)s 2> cdna_capture.txt
     '''
 
     P.run(statement)
@@ -497,7 +502,7 @@ def bustools_count_intron(infile, outfile):
     trans = infile.replace("introns_capture.bus","transcripts.txt")
 
     statement = '''
-    bustools count -o %(outfile)s -g kallisto.dir/cDNA_introns_t2g.txt -e %(matrix)s -t %(trans)s --genecounts %(infile)s
+    bustools count -o %(outfile)s -g kallisto.dir/cDNA_introns_t2g.txt -e %(matrix)s -t %(trans)s --genecounts %(infile)s 2> intron_count.txt
     '''
 
     P.run(statement)
@@ -514,7 +519,7 @@ def bustools_count_cdna(infile, outfile):
 
     statement = '''
     bustools count -o %(outfile)s -g kallisto.dir/cDNA_introns_t2g.txt -e %(matrix)s -t %(trans)s --genecounts %(infile)s
-    '''
+    2> cdna_count.txt'''
 
     P.run(statement)
 
