@@ -98,7 +98,7 @@ def find_markers(infile, outfile):
 
 	P.run(statement)
 
-@follows(find_markers)
+#@follows(find_markers)
 @follows(mkdir("Clustering_Figures.dir"))
 @merge(cluster,
 	"Cluster.html")
@@ -116,7 +116,7 @@ def cluster_rmarkdown(infile, outfile):
 
 	P.run(statement)
 
-@follows(cluster, cluster_rmarkdown)
+@follows(cluster, find_markers, cluster_rmarkdown)
 def full():
 	pass
 
