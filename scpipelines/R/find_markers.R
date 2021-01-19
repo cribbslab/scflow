@@ -4,7 +4,7 @@ library(optparse)
 
 option_list <- list(
 		make_option(c("-i", "--input"), default=NULL,
-			help="The input rds file and path, filtered Seurat object"),
+			help="The input rds path, filtered clusterd Seurat object"),
 		make_option(c("-s", "--sample"), default=NULL,
 			help="Sample name"),
 		make_option(c("-m", "--minPct"), default=0.1, type="double",
@@ -12,6 +12,8 @@ option_list <- list(
 		make_option(c("-l", "--logfc"), default=0.25, type ="double",
 			help="Limit testing to genes which have (on average) a log fold change greater than this threshold [default %default]"),
         make_option(c("-t", "--testuse"), default="wilcox", type="character",
+			help="Test to use. Options: wilcox, bimod, roc, t, negbinom, poisson, LR, MAST, DESeq2. [default %default]"),
+		make_option(c("-t", "--testuse"), default="wilcox", type="character",
 			help="Test to use. Options: wilcox, bimod, roc, t, negbinom, poisson, LR, MAST, DESeq2. [default %default]")
 )
 
@@ -43,7 +45,7 @@ final_cluster <- num_clusters - 1
 genes <- rownames(seurat_object@assays$RNA@data)[Matrix::rowSums(seurat_object@assays$RNA@data)>0]
 
 # Function
-expmeanDCG<-function(mat,iter) {
+expmeanDCG <- function(mat,iter) {
 	df<-NULL
 	for(n in seq(0,nrow(mat),iter)){
 		init <- n+1

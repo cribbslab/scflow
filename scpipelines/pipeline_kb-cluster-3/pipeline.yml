@@ -23,6 +23,16 @@ resolution: 0.5
 
 logfc_thresh: 0.25
 
+# Test to use to find differentially expressed markers between clusters. Default = wilcox. Options:
+# wilcox
+# bimod
+# roc
+# t,
+# negbinom
+# poisson
+# LR
+# MAST
+# DESeq2
 test_use: wilcox
 
 min_percent: 0.1
