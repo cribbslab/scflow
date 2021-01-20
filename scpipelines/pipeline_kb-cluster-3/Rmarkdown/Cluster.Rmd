@@ -14,16 +14,16 @@ library(ggplot2)
 library(Seurat)
 
 # Specify the rds files
-sample_files <- str_replace(Sys.glob("RDS_objects.dir/*_clustered_filtered_SeuratObject.rds"), "RDS_objects.dir/", "")
+sample_files <- str_replace(Sys.glob("RDS_objects.dir/*_filtered_clustered_SeuratObject.rds"), "RDS_objects.dir/", "")
 # Sample names
-sample_names <- gsub("_clustered_filtered_SeuratObject.rds", "", sample_files)
+sample_names <- gsub("_filtered_clustered_SeuratObject.rds", "", sample_files)
 ```
 
 # Read in seurat objects
 
 ```{r read_seurat_objects}
 for (i in sample_names){
-  name <- paste0("RDS_objects.dir/", i, "_clustered_filtered_SeuratObject.rds")
+  name <- paste0("RDS_objects.dir/", i, "_filtered_clustered_SeuratObject.rds")
   so <- readRDS(name)
   assign(paste("so", i, sep = "."), so)
 }
@@ -125,7 +125,7 @@ for (i in sample_names){
 # PCA Dimension Heatmaps
 Heatmap for 500 cells vs top genes for first 9 principle components
 
-```{r pca_loading, echo = FALSE}
+```{r pca_loading2, echo = FALSE}
 
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
