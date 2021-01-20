@@ -123,7 +123,7 @@ combined <- combined %>% dplyr::select(ensembl, ensembl_short, cluster, p.adj, p
 
 # Rearrange and select columns
 combined_padj_order <- combined %>% dplyr::arrange(cluster, p.adj, desc(abs(avg_logFC)))
-combined_logfc_order <- combined %>% dplyr::arrange(cluster, desc(abs(avg_logFC)), p_val_adj)
+combined_logfc_order <- combined %>% dplyr::arrange(cluster, desc(abs(avg_logFC)), p.adj)
 
 # All together, test and see which output is best. Need to look out for bugs in this
 markers_filter_stats_combined$p.adj <- p.adjust(markers_filter_stats_combined$p_val, method="BH")
