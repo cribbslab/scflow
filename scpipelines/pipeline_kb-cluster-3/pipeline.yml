@@ -37,3 +37,5 @@ test_use: wilcox
 
 min_percent: 0.1
 
+# Max number of clusters to find DE markers for. 0 does it for all clusters.
+max_clusters_marker: 0

@@ -94,7 +94,7 @@ def find_markers(infile, outfile):
 
 	statement = '''
 	Rscript %(R_PATH)s/find_markers.R -i %(infile)s -s %(sample)s  -l %(logfc_thresh)s -t %(test_use)s 
-	--minPct %(min_percent)s '''
+	--minPct %(min_percent)s -c %(max_clusters_markers)s'''
 
 	P.run(statement)
 
