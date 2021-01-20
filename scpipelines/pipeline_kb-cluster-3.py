@@ -89,6 +89,7 @@ def find_markers(infile, outfile):
 	min_percent = PARAMS['min_percent']
 	logfc_thresh = PARAMS['logfc_thresh']
 	test_use = PARAMS['test_use']
+	max_clusters_markers = PARAMS['max_clusters_markers']
 
 	job_memory = "50G"
 
