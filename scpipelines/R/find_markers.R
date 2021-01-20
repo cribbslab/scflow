@@ -13,7 +13,7 @@ option_list <- list(
 			help="Limit testing to genes which have (on average) a log fold change greater than this threshold [default %default]"),
 		make_option(c("-t", "--testuse"), default="wilcox", type="character",
 			help="Test to use. Options: wilcox, bimod, roc, t, negbinom, poisson, LR, MAST, DESeq2. [default %default]"),
-		make_option(c("-c", "--maxClusters"), default=0, type="integer"
+		make_option(c("-c", "--maxClusters"), default=0, type="integer",
                         help="If you want to set a maximum number of clusters to find markers for. 0 = Do it for all clusters [default %default]")
 )
 
@@ -25,7 +25,7 @@ min_pct <- opt$minPct
 logfc_threshold <- opt$logfc
 test_use <- opt$testuse
 seurat_object_path <- opt$input
-max_clusters <- opt$max_clusters
+max_clusters <- opt$maxClusters
 
 # Read in RDS files (may take some time)
 seurat_object <- readRDS(seurat_object_path)
@@ -110,7 +110,7 @@ for(i in 0:final_cluster){
 	so <- as_tibble(so_markers)
 	combined <- rbind(combined, so)
 
-	full_marker_stats <- as_tibble(cbind(so_markers,so_filter_stats[rownames(so_markers),]))
+	full_marker_stats <- as_tibble(cbind(so_markers,so_filter_stats[rownames(so_markers),c(1,4:7)]))
 	markers_filter_stats_combined <- rbind(markers_filter_stats_combined, full_marker_stats )
 
 
