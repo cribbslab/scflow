@@ -132,7 +132,7 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 
 
 @mkdir('geneset.dir')
-@originate("geneset.dir/index.idx_cdna")
+@originate("geneset.dir/index.idx")
 def build_kallisto_index(outfile):
     '''
     Builds a kallisto index for the reference transcriptome

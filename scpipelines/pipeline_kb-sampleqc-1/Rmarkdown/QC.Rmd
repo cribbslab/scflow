@@ -38,7 +38,7 @@ for (i in sample_files){
                              name = "genes", tcc = FALSE)
   
   
-  so <- CreateSeuratObject(res_mat, min.cells=100, min.features=200) %>% 
+  so <- CreateSeuratObject(res_mat, min.cells=10, min.features=50) %>% 
     NormalizeData(verbose=FALSE) %>% 
     ScaleData(verbose=FALSE) %>% 
     FindVariableFeatures(verbose=FALSE)
