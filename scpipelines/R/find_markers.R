@@ -11,10 +11,10 @@ option_list <- list(
 			help="Genes only tested if found in minimum percentage of cells in either population [default %default]"),
 		make_option(c("-l", "--logfc"), default=0.25, type ="double",
 			help="Limit testing to genes which have (on average) a log fold change greater than this threshold [default %default]"),
-        make_option(c("-t", "--testuse"), default="wilcox", type="character",
-			help="Test to use. Options: wilcox, bimod, roc, t, negbinom, poisson, LR, MAST, DESeq2. [default %default]"),
 		make_option(c("-t", "--testuse"), default="wilcox", type="character",
-			help="Test to use. Options: wilcox, bimod, roc, t, negbinom, poisson, LR, MAST, DESeq2. [default %default]")
+			help="Test to use. Options: wilcox, bimod, roc, t, negbinom, poisson, LR, MAST, DESeq2. [default %default]"),
+		make_option(c("-c", "--maxClusters"), default=0, type="integer"
+                        help="If you want to set a maximum number of clusters to find markers for. 0 = Do it for all clusters [default %default]")
 )
 
 # Read in options
@@ -25,13 +25,21 @@ min_pct <- opt$minPct
 logfc_threshold <- opt$logfc
 test_use <- opt$testuse
 seurat_object_path <- opt$input
+max_clusters <- opt$max_clusters
 
 # Read in RDS files (may take some time)
 seurat_object <- readRDS(seurat_object_path)
 
 # Get total number of clusters
 num_clusters <- nlevels(seurat_object$seurat_clusters)
-final_cluster <- num_clusters - 1
+
+# Get minimum between number of clusters selected and total number of clusters
+if(max_clusters){
+	num_clusters_to_use <- min(c(max_clusters, final_cluster))
+	final_cluster <- num_clusters_to_use - 1
+} else{
+	final_cluster <- num_clusters - 1
+}
 
 # Start clustering from 1 not 0
 #if(!(as.numeric(levels(seurat_object$seurat_clusters)[1]))){
