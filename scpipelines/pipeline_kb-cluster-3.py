@@ -84,7 +84,7 @@ def find_markers(infile, outfile):
 	'''
 	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 	file_name = os.path.basename(infile)
-	sample = re.match(r'(\S+)_clustered_filtered_SeuratObject.rds', file_name).group(1)
+	sample = re.match(r'(\S+)_filtered_clustered_SeuratObject.rds', file_name).group(1)
 
 	min_percent = PARAMS['min_percent']
 	logfc_thresh = PARAMS['logfc_thresh']
