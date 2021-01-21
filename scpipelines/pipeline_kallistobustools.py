@@ -238,6 +238,19 @@ def run_kallisto_bus(infiles, outfile):
     P.run(statement)
 
 
+@transform(run_kallisto_bus,
+           regex(""),
+           r"")
+def merge_mtx():
+    '''
+    merge the 
+    '''
+
+    statement = """ """
+
+    P.run(statement)
+
+
 @follows(run_kallisto_bus)
 def full():
     pass
