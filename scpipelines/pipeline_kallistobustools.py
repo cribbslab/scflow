@@ -239,19 +239,23 @@ def run_kallisto_bus(infiles, outfile):
 
 
 @transform(run_kallisto_bus,
-           regex(""),
-           r"")
-def merge_mtx():
+           regex("kallisto.dir/(\S+)/bus/output.bus"),
+           r"kallisto.dir/\1/bus/counts_unfiltered/")
+def merge_mtx(infile, outfile):
     '''
-    merge the 
+    merge the spliced and unspliced matrix
     '''
 
-    statement = """ """
+    PYTHON_PATH =  os.path.join(os.path.dirname(__file__), "python/")
+
+    statement = """PYTHON_PATH/MergeSplicedMatrix.py -o %(outpath)s -s %(outpath)sspliced.mtx 
+                   -c %(outpath)sspliced.barcodes.txt -a %(outpath)sspliced.genes.txt -u %(outpath)sunspliced.mtx
+                   -b %(outpath)sunspliced.barcodes.txt -g %(outpath)sunspliced.genes.txt"""
 
     P.run(statement)
 
 
-@follows(run_kallisto_bus)
+@follows(merge_mtx)
 def full():
     pass
 
