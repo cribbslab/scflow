@@ -1,0 +1,256 @@
+---
+title: "Integration of datasets"
+output: html_document
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r load_modules, cache=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(SingleCellExperiment)
+library(ggplot2)
+library(Seurat)
+library(sctransform)
+library(patchwork)
+library(harmony)
+library(cowplot)
+# Specify the sample directory that you would like analysed: rds files
+sample_files <- str_replace(Sys.glob("RDS_objects.dir/*_filtered_SeuratObject.rds"), "RDS_objects.dir/", "")
+# Sample names
+sample_names <- gsub("_filtered_SeuratObject.rds", "", sample_files)
+```
+
+# Read in seurat objects
+
+```{r read_filtered_seurat_objects}
+
+for (i in sample_names){
+  name <- paste0("RDS_objects.dir/", i , "_filtered_SeuratObject.rds")
+  so <- readRDS(name)
+  assign(paste("so", i, sep = "."), so)
+}
+```
+
+# Normalization by SCTransform: 
+The sctransform normalization revels sharper biological distinctions compared tp the standard Seurat workflow
+
+```{r SCTransform, echo = FALSE}
+
+for (i in sample_names){
+  so <- get(gsub("SAMPLE_FILE", i , "so.SAMPLE_FILE"))
+  so <- PercentageFeatureSet(so, pattern = "^MT-", col.name = "percent.mt")
+  so <- SCTransform(so, vars.to.regress = "percent.mt", verbose = FALSE)
+  saveRDS(so, gsub("SAMPLE_FILE",i ,"RDS_objects.dir/SAMPLE_FILE_filtered_SCT_SeuratObject.rds"))
+  
+}
+
+```
+
+### Integration by Seurat
+# Make a list of the SCT-seuratObjects which are planned to be integrated
+# Anchor and Integrate
+
+```{r integration by Seurat, echo = FALSE}
+
+sample_files <- str_replace(Sys.glob("RDS_objects.dir/*_filtered_SCT_SeuratObject.rds"), "RDS_objects.dir/", "")
+
+for (i in sample_files){
+  name <- paste0("RDS_objects.dir/", i)
+  so <- readRDS(name)
+  assign(paste("so", i, sep = "."), so)
+}
+
+data.list <- mget(ls(pattern = "SCT"))
+data.features <- SelectIntegrationFeatures(object.list = data.list, nfeatures = 3000)
+data.list <- PrepSCTIntegration(object.list = data.list, anchor.features = data.features)
+
+data.anchors <- FindIntegrationAnchors(object.list = data.list, normalization.method = "SCT", 
+    anchor.features = data.features, verbose = FALSE)
+data.integrated <- IntegrateData(anchorset = data.anchors, normalization.method = "SCT", verbose = FALSE)
+  
+```
+
+# Run PCA, UMAP and tSNE after integration - Seurat
+
+```{r echo = TRUE}
+
+data.integrated <- RunPCA(object = data.integrated, npcs = 30, verbose = FALSE)
+data.integrated <- RunUMAP(object = data.integrated, reduction = "pca", dims = 1:30)
+data.integrated <- RunTSNE(object = data.integrated, reduction = "pca", dims = 1:30)
+
+```
+
+# Clustering and data visualization in UMAP and tSNE - Seurat
+
+```{r data visualization after integration and clustering, eval= TRUE}
+
+data.integrated <- FindNeighbors(data.integrated, reduction = "pca", dims = 1:30)
+data.integrated <- FindClusters(data.integrated, resolution = 0.35)
+
+## Data visualization after integration -all samples
+
+# UMAP
+
+plt <- DimPlot(data.integrated, reduction = "umap", label = TRUE)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_Seurat_UMAP_allsamples.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+# tSNE
+
+plt <- DimPlot(data.integrated, reduction = "tsne", label = TRUE)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_Seurat_tSNE_allsamples.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+## Data visualization after integration -each sample
+
+# UMAP
+
+plt <- DimPlot(data.integrated, reduction = "umap", split.by = "sample", ncol = 2, label = TRUE)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_Seurat_UMAP_per_sample.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+# tSNE
+
+plt <- DimPlot(data.integrated, reduction = "tsne", split.by = "sample", ncol = 2, label = TRUE)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_Seurat_tsne_per_sample.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+
+## Data visualization after integration -all samples
+
+# UMAP
+
+plt <- DimPlot(data.integrated, reduction = "umap", label = TRUE)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_Seurat_UMAP_allsamples.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+# tSNE
+
+plt <- DimPlot(data.integrated, reduction = "tsne", label = TRUE)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_Seurat_tSNE_allsamples.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+
+```
+
+# Save normal data integration- Seurat
+
+```{r save integrated_SeuratObject, echo = FALSE}
+
+saveRDS(data.integrated, file="RDS_objects.dir/SCT_integrated_SeuratObject.rds")
+
+```
+
+### Data processing and integration by Harmony
+
+```{r data integration by Harmony, eval= TRUE}
+
+data.integrated <- RunHarmony(data.integrated, group.by.vars = "orig.ident", plot_convergence = TRUE, assay.use = "SCT")
+
+data_harmony <- data.integrated %>% 
+    RunUMAP(reduction = "harmony", dims = 1:30) %>% 
+    RunTSNE(reduction = "harmony", dims = 1:30) %>% 
+    FindNeighbors(reduction = "harmony", dims = 1:30) %>% 
+    FindClusters(resolution = 0.5) %>% 
+    identity()
+
+```
+
+# Data visualization of harmony reduction (DimPlot) and VlnPlot - Harmony
+
+```{r DimPlot and VlnPlot of Harmony, eval= TRUE}
+
+options(repr.plot.height = 5, repr.plot.width = 12)
+p1 <- DimPlot(object = data_harmony, reduction = "harmony", pt.size = .1, group.by = "sample")
+p2 <- VlnPlot(object = data_harmony, features = "harmony_1", group.by = "sample", pt.size = .1)
+plt <- plot_grid(p1,p2)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_Harmony_Dim_vs_Vlnplots.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+```
+
+
+# lustering and data visualiztion by Harmony- UMAP and tSNE
+
+```{r data visualization after integration, eval= TRUE}
+
+## Data visualization after integration- all samples
+
+options(repr.plot.height = 4, repr.plot.width = 6)
+plt <- DimPlot(data_harmony, reduction = "umap", label = TRUE, pt.size = .1)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_harmony_UMAP_all_samples.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+
+options(repr.plot.height = 4, repr.plot.width = 6)
+plt <- DimPlot(data_harmony, reduction = "tsne", label = TRUE, pt.size = .1)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_harmony_tSNE_all_samples.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+## Data visualization after integration -each sample
+
+# UMAP
+
+plt <- DimPlot(data_harmony, reduction = "umap", split.by = "sample", ncol = 2, label = TRUE)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_harmony_UMAP_per_sample.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+# tSNE
+
+plt <- DimPlot(data_harmony, reduction = "tsne", split.by = "sample", ncol = 2, label = TRUE)
+print(plt)
+name<- paste0("Clustering_Figures.dir/DimPlot_Integration_harmony_tsne_per_sample.eps")
+postscript(name)
+print(plt)
+dev.off()
+
+
+```
+
+# Save integrated data of Harmony
+
+```{r}
+
+saveRDS(data_harmony, file="RDS_objects.dir/Harmony_integrated_SeuratObject.rds")
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
