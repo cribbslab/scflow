@@ -240,17 +240,24 @@ def run_kallisto_bus(infiles, outfile):
 
 @transform(run_kallisto_bus,
            regex("kallisto.dir/(\S+)/bus/output.bus"),
-           r"kallisto.dir/\1/bus/counts_unfiltered/")
+           r"kallisto.dir/\1/bus/genecount/genes.mtx")
 def merge_mtx(infile, outfile):
     '''
     merge the spliced and unspliced matrix
     '''
 
+    outpath = outfile.replace("genes.mtx", "")
+    inpath = outfile.replace("/genecount/genes.mtx", "/counts_unfiltered/")
+
+    if not os.path.exists(outpath):
+        os.mkdir(outpath)
+
+
     PYTHON_PATH =  os.path.join(os.path.dirname(__file__), "python/")
 
-    statement = """PYTHON_PATH/MergeSplicedMatrix.py -o %(outpath)s -s %(outpath)sspliced.mtx 
-                   -c %(outpath)sspliced.barcodes.txt -a %(outpath)sspliced.genes.txt -u %(outpath)sunspliced.mtx
-                   -b %(outpath)sunspliced.barcodes.txt -g %(outpath)sunspliced.genes.txt"""
+    statement = """python %(PYTHON_PATH)sMergeSplicedMatrix.py -o %(outpath)s -s %(outpath)sspliced.mtx 
+                   -c %(inpath)sspliced.barcodes.txt -a %(inpath)sspliced.genes.txt -u %(inpath)sunspliced.mtx
+                   -b %(inpath)sunspliced.barcodes.txt -g %(inpath)sunspliced.genes.txt"""
 
     P.run(statement)
 
