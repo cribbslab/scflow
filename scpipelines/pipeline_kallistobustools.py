@@ -255,7 +255,7 @@ def merge_mtx(infile, outfile):
 
     PYTHON_PATH =  os.path.join(os.path.dirname(__file__), "python/")
 
-    statement = """python %(PYTHON_PATH)sMergeSplicedMatrix.py -o %(outpath)s -s %(outpath)sspliced.mtx 
+    statement = """python %(PYTHON_PATH)sMergeSplicedMatrix.py -o %(outpath)s -s %(inpath)sspliced.mtx 
                    -c %(inpath)sspliced.barcodes.txt -a %(inpath)sspliced.genes.txt -u %(inpath)sunspliced.mtx
                    -b %(inpath)sunspliced.barcodes.txt -g %(inpath)sunspliced.genes.txt"""
 
