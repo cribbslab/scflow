@@ -17,3 +17,4 @@ doc/_static
 *.Rhistory
 *.pyc
 *__pycache__*
+.idea/
