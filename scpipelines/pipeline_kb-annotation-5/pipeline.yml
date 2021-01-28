@@ -1,0 +1,36 @@
+##########################
+#
+# configuration file for pipeline_kb-annotation-5
+#
+##########################
+
+#######################
+# SingleR
+#######################
+
+singler:
+  # Type of reference to use:
+  # celldex
+  # scRNAseq
+  reference: celldex
+
+  celldex_reference_name: HumanPrimaryCellAtlasData
+
+  # scRNAseq package references:
+  # https://bioconductor.org/packages/devel/data/experiment/vignettes/scRNAseq/inst/doc/scRNAseq.html#available-data-sets
+  # Name of reference without the brackets
+  scRNAseq_reference_name: KotliarovPBMCData
+
+  # Options for scRNAseq reference, e.g. 'human', 'mouse' etc.
+  # Leave blank for no option
+  scRNAseq_option:
+
+  # Option to perform wilcoxin test to identify top markers for each pairwise comparison between labels
+  # Slower but more appropriate for sc data compared to just default algorithm
+  # 0 or 1, 0 not to run, 1 to run
+  DEmethod: 0
+
+  # SingleR method, annotate by cell (single) or by cluster. Default = single. Options:
+  # single
+  # cluster
+  method: single
