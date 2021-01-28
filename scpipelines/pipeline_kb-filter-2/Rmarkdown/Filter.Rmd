@@ -103,7 +103,7 @@ for (i in sample_files){
   metadata <- so@meta.data
 # Keep cells with nUMI greater than 100
   so <- subset(so, subset = nFeature_RNA > ini$features_greater & nFeature_RNA < ini$features_less & mitoRatio < ini$mito  &
-               metadata$nUMI > ini$umis, nCount_RNA > ini$genes)
+               metadata$nUMI > ini$umis)
 
 
   assign(paste("so", i, sep = "."),so)
