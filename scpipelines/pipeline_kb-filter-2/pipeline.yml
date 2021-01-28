@@ -17,5 +17,3 @@ mito: 0.1
 # number of UMIs to filter outless than
 umis: 500
 
-# Number of genes less than to filter out
-genes: 300
