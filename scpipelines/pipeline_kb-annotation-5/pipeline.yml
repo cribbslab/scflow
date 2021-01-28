@@ -34,3 +34,18 @@ singler:
   # single
   # cluster
   method: single
+
+
+#######################
+# clustifyr
+#######################
+
+clustifyr:
+
+
+
+#######################
+# scClassify
+#######################
+
+scclassify:

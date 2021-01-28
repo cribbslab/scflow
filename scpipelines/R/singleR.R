@@ -40,6 +40,7 @@ method <- opt$method
 
 # Read in seurat object
 seurat_object <- readRDS(input_file)
+# Might need to convert to sce object instead
 # Check if there are logcounts already
 
 # Cell-dex reference call
@@ -63,8 +64,34 @@ if((reference_package == "scRNAseq") & (!is.null(scRNAseq_reference_name))){
   labels <- ref_sce$label
 }
 
-if(de_wilcoxin){
-  pred <- SingleR(test=seurat_object, assay.type.test=1, ref=ref_sce, labels=labels, de.method="wilcox", method = method)
+if(method == "cluster"){
+  # Character vector of each cluster for each cell in object
+  clusters <-  as.vector(seurat_object$seurat_clusters)
 }else{
-  pred <- SingleR(test=seurat_object, assay.type.test=1, ref=ref_sce, labels=labels, method = method)
+  clusters <- NULL
 }
+
+if(de_wilcoxin){
+  pred <- SingleR(test=seurat_object, assay.type.test=1, ref=ref_sce, labels=labels, de.method="wilcox", clusters=clusters)
+}else{
+  pred <- SingleR(test=seurat_object, assay.type.test=1, ref=ref_sce, labels=labels, clusters=clusters)
+}
+
+# Plots
+name<- paste0("Annotation_Figures.dir/singleR_scoreHeatmap_", sample_name, ".eps")
+postscript(name)
+print(plotScoreHeatmap(pred))
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/singleR_scoreDistribution_", sample_name, ".eps")
+postscript(name)
+print(plotScoreDistribution(pred))
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/singleR_deltaDistribution_", sample_name, ".eps")
+postscript(name)
+print(plotDeltaDistribution(pred, ncol = 3))
+dev.off()
+
+# To combine annotations with tSNE and UMAP.
+# ...
