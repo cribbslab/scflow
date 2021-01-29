@@ -17,7 +17,9 @@ option_list <- list(
 		  make_option(c("--resolution"), default=0.5,
               help="Resolution for finding clusters. Sets the 'granularity' of the downstream clustering,
               with increased values leading to a greater number of clusters. Between 0.4-1.2 good for ~3K cells.
-              [default %default]")
+              [default %default]"),
+		make_option(c("-m", "--metadata"), default="none",
+			help="The input metadata file from doublet pipeline")
 )
 
 
@@ -30,13 +32,24 @@ num_dimensions <- opt$numdim
 reduction_technique <- opt$reddim
 resolution <- opt$resolution
 
-
+if(opt$metadata != "none"){
+   metadata <- read.csv(opt$metadata, row.names=1)
+}
 seurat_filtered_rds <- opt$input
 seurat_unfiltered_rds <- stringr::str_replace(opt$input, "filtered_SeuratObject.rds$", "unfiltered_SeuratObject.rds")
 
 # Read in RDS files (may take some time)
 filtered_seurat_object <- readRDS(seurat_filtered_rds)
 unfiltered_seurat_object <- readRDS(seurat_unfiltered_rds)
+
+if(opt$metadata != "none"){
+# add new metadata to so
+print(head(opt$metadata))
+filtered_seurat_object@meta.data <- metadata
+
+# Filter according to metadata doublet class
+filtered_seurat_object <- subset(filtered_seurat_object, subset = scDblFinder.class == "singlet")
+}
 
 # Normalise the data
 filtered_seurat_object <- NormalizeData(filtered_seurat_object)
