@@ -1,0 +1,94 @@
+---
+title: "Evaluating doublets"
+output: 
+  html_document
+---
+
+This notebook shows the numbers of droplets within each fo the 
+samples.
+
+
+```{r, cache=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(SingleCellExperiment)
+library(Matrix)
+library(ggplot2)
+library(Seurat)
+
+# Specify the sample directory that you would like analysed:
+sample_files <- str_replace(Sys.glob("kallisto.dir/*"), "kallisto.dir/", "")
+```
+
+
+# Read in seurat objects
+
+```{r}
+for (i in sample_files){
+  name <- paste0("RDS_objects.dir/", i, "_filtered_SeuratObject.rds")
+  so <- readRDS(name)
+  assign(paste("so", i, sep = "."), so)
+}
+```
+
+
+# add doublet metadata to so meta.data
+
+```{r}
+for (i in sample_files){
+  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+  metadata <- read.csv(paste0("Doublet_Figures.dir/", i, "_metadata.csv"), row.names = 1)
+  
+  so@meta.data <- metadata
+  so@meta.data
+  assign(paste("so", i, sep = "."), so)
+}
+```
+
+
+# Variable features
+Top variable features, number specified by user (default = 2000). Genes with highest cell-to-cell variation per sample (i.e. highly expressed in some cells, lowly expressed in others). The top 10 genes are labelled.
+
+```{r variable_features, echo = FALSE}
+
+for (i in sample_files){
+  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+
+  
+# Normalise the data
+filtered_seurat_object <- NormalizeData(so)
+
+# Variable features (default = top 2000 genes)
+filtered_seurat_object <- FindVariableFeatures(filtered_seurat_object, selection.method = "vst", nfeatures = 2000)
+
+
+# Scale the data- linear transformation prior to dimension reduction
+# (Might take some time)
+all.genes <- rownames(filtered_seurat_object)
+filtered_seurat_object <- ScaleData(filtered_seurat_object, features = all.genes)
+
+# Principal component analysis (PCA)
+filtered_seurat_object <- RunPCA(filtered_seurat_object, features = VariableFeatures(object = filtered_seurat_object))
+
+filtered_seurat_object <- FindNeighbors(filtered_seurat_object, dims = 1:20)
+filtered_seurat_object <- FindClusters(filtered_seurat_object, resolution = 0.5)
+
+# Non-linear cluster techniques, e.g. UMAP and tSNE.
+# Uses PCA to reduce dimensions.
+
+filtered_seurat_object <- RunUMAP(filtered_seurat_object, dims = 1:20)
+
+Idents(filtered_seurat_object) <- filtered_seurat_object@meta.data$scDblFinder.class
+print(DimPlot(filtered_seurat_object, reduction="umap", pt.size = 0.5))
+
+  name<- paste0("Doublet_Figures.dir/UMAP_", i, ".eps")
+  postscript(name)
+  print(DimPlot(filtered_seurat_object, reduction="umap", pt.size = 0.5))
+  dev.off()
+
+  assign(paste("so", i, sep = "."), filtered_seurat_object)
+}
+```
+
+# need to import metadata with the doublet and overwrte that with the so
+# then plot the doublet numbers in plot and umap

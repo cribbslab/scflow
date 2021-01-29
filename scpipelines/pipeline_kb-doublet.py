@@ -35,7 +35,7 @@ SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
 @follows(mkdir("Doublet_Figures.dir"))
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_filtered_SeuratObject.rds"),
-	r"RDS_objects.dir/\1_filtered_SeuratObject.rds")
+	r"Doublet_Figures.dir/\1_metadata.csv")
 def doublet_finder(infile, outfile):
     '''Runs doublet analysis and outputs a seurat object'''
 
@@ -54,7 +54,7 @@ def doublet_finder(infile, outfile):
 @originate("Doublets.html")
 def rmarkdown_doublet(outfile):
     '''
-
+    Run rmarkdown to plot doublet presence
     '''
 
     RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-filter-2","Rmarkdown")
