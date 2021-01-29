@@ -6,7 +6,7 @@
 
 
 # If the doublet pipleine has been ran then you can specify if you would like to remove the cells marked as doublets
-remove_doublets: 1
+remove_doublets: 0
 
 #######################
 # Cluster
