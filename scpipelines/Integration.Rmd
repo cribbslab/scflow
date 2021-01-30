@@ -1,0 +1,96 @@
+---
+title: "Integration of datasets"
+output: html_document
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r load_modules, cache=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(SingleCellExperiment)
+library(ggplot2)
+library(Seurat)
+library(sctransform)
+library(patchwork)
+library(harmony)
+library(cowplot)
+library(yaml)
+
+data.integrated <- readRDS("RDS_objects.dir/SCT_integrated_SeuratObject.rds")
+data_harmony <- readRDS("RDS_objects.dir/Harmony_integrated_SeuratObject.rds")
+
+```
+
+# Integration by Seurat 
+
+# Data visualization in UMAP and tSNE - Seurat
+# UMAP
+
+```{r umap_dimplot after integration and clustering, echo=FALSE}
+
+name<- paste0("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples.eps")
+postscript(name)
+print(DimPlot(data.integrated, reduction="umap", pt.size = 0.5, label = TRUE))
+dev.off()
+
+name<- paste0("Integration_Figures.dir/UMAP_Seurat_Integration_persample.eps")
+postscript(name)
+print(DimPlot(data.integrated, reduction="umap", split.by = "sample", ncol = 2, label = TRUE, pt.size = 0.5))
+dev.off()
+```
+
+# tSNE
+
+```{r tsne_dimplot after integration and clustering, echo=FALSE}
+
+name<- paste0("Integration_Figures.dir/tSNE_Seurat_Integration_allsamples.eps")
+postscript(name)
+print(DimPlot(data.integrated, reduction="tsne", pt.size = 0.5, label = TRUE))
+dev.off()
+
+name<- paste0("Integration_Figures.dir/tSNE_Seurat_Integration_persample.eps")
+postscript(name)
+print(DimPlot(data.integrated, reduction="tsne", split.by = "sample", ncol = 2, label = TRUE, pt.size = 0.5))
+dev.off()
+
+```
+
+# Integration- Harmony
+
+# Data visualization
+# UMAP
+
+```{r umap_dimplot after integration, echo=FALSE}
+
+options(repr.plot.height = 4, repr.plot.width = 6)
+
+name<- paste0("Integration_Figures.dir/UMAP_Integration_harmony_all_samples.eps")
+postscript(name)
+print(DimPlot(data_harmony, reduction = "umap", label = TRUE, pt.size = .1))
+dev.off()
+
+name<- paste0("Integration_Figures.dir/UMAP_Integration_harmony_per_samples.eps")
+postscript(name)
+print(DimPlot(data_harmony, reduction = "umap", split.by = "sample", ncol = 2, label = TRUE))
+dev.off()
+```
+
+# tSNE
+
+```{r tsne_dimplot after integration, echo=FALSE}
+
+name<- paste0("Integration_Figures.dir/tSNE_Integration_harmony_all_samples.eps")
+postscript(name)
+print(DimPlot(data_harmony, reduction = "tsne", label = TRUE, pt.size = .1))
+dev.off()
+
+name<- paste0("Integration_Figures.dir/tSNE_Integration_harmony_per_samples.eps")
+postscript(name)
+print(DimPlot(data_harmony, reduction = "tsne", split.by = "sample", ncol = 2, label = TRUE))
+dev.off()
+```
+
+
