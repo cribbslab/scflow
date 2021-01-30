@@ -40,9 +40,6 @@ RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-integration-4","
 
 R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 
-#filtered_suffixes = "*_filtered_SeuratObject.rds"
-#SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
-
 @follows(mkdir("Integration_Figures.dir"))
 @originate("RDS_objects.dir/SCT_integrated_SeuratObject.rds")
 def integrate(outfile):
@@ -80,7 +77,7 @@ def harmony(infile, outfile):
 	"Integration.html")
 def integrate_rmarkdown(infile, outfile):
 	'''
-	R markdown to visualise clustering and dimensional reduction
+	R markdown to visualise clustering and dimensional reduction after integration
 	'''
 
 	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-integration-4","Rmarkdown")
