@@ -28,22 +28,6 @@ PARAMS = P.get_parameters(
      "pipeline.yml"])
 
 
-
-# Determine the location of the input fastq files
-
-try:
-    PARAMS['data']
-except NameError:
-    DATADIR = "."
-else:
-    if PARAMS['data'] == 0:
-        DATADIR = "."
-    elif PARAMS['data'] == 1:
-        DATADIR = "data.dir"
-    else:
-        DATADIR = PARAMS['data']
-
-
 @originate("Filter.html")
 def rmarkdown_stats(outfile):
     '''

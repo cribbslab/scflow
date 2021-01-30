@@ -1,0 +1,45 @@
+##########################
+#
+# configuration file for pipeline_kb-cluster-3
+#
+##########################
+
+
+# If the doublet pipleine has been ran then you can specify if you would like to remove the cells marked as doublets
+remove_doublets: 0
+
+#######################
+# Cluster
+#######################
+
+num_variable_features: 2000
+
+reduction_technique: pca
+
+# Number of dimensions, look at elbow plot and jack straw to inform. 0 to use embeddings to calculate
+num_dimensions: 10
+
+resolution: 0.5
+
+#######################
+# Find markers
+#######################
+
+logfc_thresh: 0.25
+
+# Test to use to find differentially expressed markers between clusters. Default = wilcox. Options:
+# wilcox
+# bimod
+# roc
+# t,
+# negbinom
+# poisson
+# LR
+# MAST
+# DESeq2
+test_use: wilcox
+
+min_percent: 0.1
+
+# Max number of clusters to find DE markers for. 0 does it for all clusters.
+max_clusters_markers: 0

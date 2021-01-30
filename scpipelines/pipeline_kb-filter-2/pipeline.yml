@@ -4,7 +4,16 @@
 #
 ##########################
 
-# Specify where the fastq files are located.
-# fastq files need to have the suffix read1: .fastq.1.gz read2: .fastq.2.gz
-data: data.dir
+
+# Number of features to keep as a minimum - we suggest a minimum of 300
+features_greater: 300
+
+# Maximum number of features to filter- we suggest 6000 to begin with
+features_less: 6000
+
+# mitochondrial ratio less than value to keep
+mito: 0.1
+
+# number of UMIs to filter outless than
+umis: 500
 

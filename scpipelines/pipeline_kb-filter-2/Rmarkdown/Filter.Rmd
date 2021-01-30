@@ -20,11 +20,12 @@ library(scales)
 library(tximport)
 library(BUSpaRse)
 library(Seurat)
+library(yaml)
 
 # Specify the sample directory that you would like analysed:
 sample_files <- str_replace(Sys.glob("kallisto.dir/*"), "kallisto.dir/", "")
 
-
+ini <- read_yaml("pipeline.yml")
 ```
 
 
@@ -101,8 +102,8 @@ for (i in sample_files){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
   metadata <- so@meta.data
 # Keep cells with nUMI greater than 100
-  so <- subset(so, subset = nFeature_RNA > 50 & nFeature_RNA < 6000 & mitoRatio < 0.10 &
-               metadata$nUMI > 100)
+  so <- subset(so, subset = nFeature_RNA > ini$features_greater & nFeature_RNA < ini$features_less & mitoRatio < ini$mito  &
+               metadata$nUMI > ini$umis)
 
 
   assign(paste("so", i, sep = "."),so)

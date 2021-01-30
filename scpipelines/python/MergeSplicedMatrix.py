@@ -68,15 +68,15 @@ spliced_plus_unspliced.X = spliced_intersection.X + unspliced_intersection.X
 # Use scipy to write the matrix to .mtx file
 
 #spliced_plus_unspliced = spliced_plus_unspliced.to_df
-io.mmwrite(args.output + "/merged.mtx", spliced_plus_unspliced.X)
+io.mmwrite(args.output + "/genes.mtx", spliced_plus_unspliced.X)
 barcodes_merged = spliced_plus_unspliced.obs_names
 genes_merged = spliced_plus_unspliced.var_names
 
-out_barcode = open(args.output + "/merged.barcodes.txt", "w")
+out_barcode = open(args.output + "/genes.barcodes.txt", "w")
 for i in barcodes_merged:
     out_barcode.write("%s\n"% (i))
 
-out_gene = open(args.output + "/merged.genes.txt", "w")
+out_gene = open(args.output + "/genes.genes.txt", "w")
 
 for i in genes_merged:
     out_gene.write("%s\n"% (i))
