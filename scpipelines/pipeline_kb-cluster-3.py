@@ -58,7 +58,7 @@ def cluster(infile, outfile):
 	nvf = PARAMS['num_variable_features']
 	red = PARAMS['reduction_technique']
 
-	if PARAMS['doublet_finder']:
+	if PARAMS['remove_doublets']:
 		metadata = "--metadata Doublet_figures.dir/" + sample + "metadata.csv"
 	else:
 		metadata = ""
