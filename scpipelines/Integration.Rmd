@@ -31,14 +31,16 @@ data_harmony <- readRDS("RDS_objects.dir/Harmony_integrated_SeuratObject.rds")
 
 ```{r umap_dimplot after integration and clustering, echo=FALSE}
 
-name<- paste0("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples.eps")
-postscript(name)
-print(DimPlot(data.integrated, reduction="umap", pt.size = 0.5, label = TRUE))
+p1 <-DimPlot(data.integrated, reduction="umap", pt.size = 0.5, label = TRUE)
+p1
+pdf("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples.eps")
+print(p1)
 dev.off()
 
-name<- paste0("Integration_Figures.dir/UMAP_Seurat_Integration_persample.eps")
-postscript(name)
-print(DimPlot(data.integrated, reduction="umap", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5))
+p2 <- DimPlot(data.integrated, reduction="umap", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5)
+p2
+pdf("Integration_Figures.dir/UMAP_Seurat_Integration_persample.eps", width=15, height=15)
+print(p2)
 dev.off()
 ```
 
@@ -46,14 +48,16 @@ dev.off()
 
 ```{r tsne_dimplot after integration and clustering, echo=FALSE}
 
-name<- paste0("Integration_Figures.dir/tSNE_Seurat_Integration_allsamples.eps")
-postscript(name)
-print(DimPlot(data.integrated, reduction="tsne", pt.size = 0.5, label = TRUE))
+p3 <- DimPlot(data.integrated, reduction="tsne", pt.size = 0.5, label = TRUE)
+p3
+pdf("Integration_Figures.dir/tSNE_Seurat_Integration_allsamples.eps")
+print(p3)
 dev.off()
 
-name<- paste0("Integration_Figures.dir/tSNE_Seurat_Integration_persample.eps")
-postscript(name)
-print(DimPlot(data.integrated, reduction="tsne", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5))
+p4 <- DimPlot(data.integrated, reduction="tsne", split.by = "sample", ncol=4, label = TRUE, pt.size = 0.5)
+p4
+pdf("Integration_Figures.dir/tSNE_Seurat_Integration_persample.eps", width=15, height=15)
+print(p4)
 dev.off()
 
 ```
@@ -65,16 +69,16 @@ dev.off()
 
 ```{r umap_dimplot after integration, echo=FALSE}
 
-options(repr.plot.height = 4, repr.plot.width = 6)
-
-name<- paste0("Integration_Figures.dir/UMAP_harmony_Integration_all_samples.eps")
-postscript(name)
-print(DimPlot(data_harmony, reduction = "umap", label = TRUE, pt.size = .1))
+p5 <- DimPlot(data_harmony, reduction = "umap", label = TRUE, pt.size = .1)
+p5
+pdf("Integration_Figures.dir/UMAP_Integration_harmony_all_samples.eps")
+print(p5)
 dev.off()
 
-name<- paste0("Integration_Figures.dir/UMAP_harmony_Integration_per_samples.eps")
-postscript(name)
-print(DimPlot(data_harmony, reduction = "umap", split.by = "sample", ncol = 4, label = TRUE))
+p6 <- DimPlot(data_harmony, reduction = "umap", split.by = "sample", ncol = 4, label = TRUE)
+p6
+pdf("Integration_Figures.dir/UMAP_Integration_harmony_per_samples.eps", width=15, height=15)
+print(p6)
 dev.off()
 ```
 
@@ -82,14 +86,16 @@ dev.off()
 
 ```{r tsne_dimplot after integration, echo=FALSE}
 
-name<- paste0("Integration_Figures.dir/tSNE_harmony_Integration_all_samples.eps")
-postscript(name)
-print(DimPlot(data_harmony, reduction = "tsne", label = TRUE, pt.size = .1))
+p7 <- DimPlot(data_harmony, reduction = "tsne", label = TRUE, pt.size = .1)
+p7
+pdf("Integration_Figures.dir/tSNE_Integration_harmony_all_samples.eps")
+print(p7)
 dev.off()
 
-name<- paste0("Integration_Figures.dir/tSNE_harmony_Integration_per_samples.eps")
-postscript(name)
-print(DimPlot(data_harmony, reduction = "tsne", split.by = "sample", ncol = 4, label = TRUE))
+p8 <- DimPlot(data_harmony, reduction = "tsne", split.by = "sample", ncol = 4, label = TRUE)
+p8
+pdf("Integration_Figures.dir/tSNE_Integration_harmony_per_samples.eps", width=15, height=15)
+print(p8)
 dev.off()
 ```
 
