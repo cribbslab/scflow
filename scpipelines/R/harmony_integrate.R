@@ -41,13 +41,12 @@ data_harmony <- data.integrated %>%
 
 # Data visualization of harmony reduction (DimPlot) and VlnPlot - Harmony
 
-options(repr.plot.height = 5, repr.plot.width = 12)
+options(repr.plot.height = 5, repr.plot.width = 20)
 p1 <- DimPlot(object = data_harmony, reduction = "harmony", pt.size = .1, group.by = "sample")
 p2 <- VlnPlot(object = data_harmony, features = "harmony_1", group.by = "sample", pt.size = .1)
 plt <- plot_grid(p1,p2)
 print(plt)
-name<- paste0("Integration_Figures.dir/DimPlot_Harmony_Integration_Dim_vs_Vlnplots.eps")
-postscript(name)
+pdf("Integration_Figures.dir/DimPlot_Harmony_Integration_Dim_vs_Vlnplots.eps")
 print(plt)
 dev.off()
 
@@ -57,27 +56,23 @@ options(repr.plot.height = 4, repr.plot.width = 6)
 
 # UMAP
 
-name<- paste0("Integration_Figures.dir/UMAP_harmony_Integration_all_samples.eps")
-postscript(name)
+pdf("Integration_Figures.dir/UMAP_harmony_Integration_all_samples.eps")
 print(DimPlot(data_harmony, reduction = "umap", label = TRUE, pt.size = .1))
 dev.off()
 
-name<- paste0("Integration_Figures.dir/UMAP_harmony_Integration_per_samples.eps")
-postscript(name)
-print(DimPlot(data_harmony, reduction = "umap", split.by = "sample", ncol = 2, label = TRUE))
+pdf("Integration_Figures.dir/UMAP_harmony_Integration_per_samples.eps")
+print(DimPlot(data_harmony, reduction = "umap", split.by = "sample", ncol = 4, label = TRUE), width=15, height=15)
 dev.off()
 
 
 # tSNE
 
-name<- paste0("Integration_Figures.dir/tSNE_harmony_Integration_all_samples.eps")
-postscript(name)
+pdf("Integration_Figures.dir/tSNE_harmony_Integration_all_samples.eps")
 print(DimPlot(data_harmony, reduction = "tsne", label = TRUE, pt.size = .1))
 dev.off()
 
-name<- paste0("Integration_Figures.dir/tSNE_harmony_Integration_per_samples.eps")
-postscript(name)
-print(DimPlot(data_harmony, reduction = "tsne", split.by = "sample", ncol = 2, label = TRUE))
+pdf("Integration_Figures.dir/tSNE_harmony_Integration_per_samples.eps")
+print(DimPlot(data_harmony, reduction = "tsne", split.by = "sample", ncol = 4, label = TRUE), width=15, height=15)
 dev.off()
 
 saveRDS(data_harmony, file="RDS_objects.dir/Harmony_integrated_SeuratObject.rds")

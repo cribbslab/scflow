@@ -64,28 +64,24 @@ data.integrated <- FindClusters(data.integrated, resolution = resolution)
 
 data.integrated <- RunUMAP(object = data.integrated, reduction = "pca", dims = dims.use)
 
-name<- paste0("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples.eps")
-postscript(name)
+pdf("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples.eps")
 print(DimPlot(data.integrated, reduction="umap", pt.size = 0.5, label = TRUE))
 dev.off()
 
-name<- paste0("Integration_Figures.dir/UMAP_Seurat_Integration_persample.eps")
-postscript(name)
-print(DimPlot(data.integrated, reduction="umap", split.by = "sample", ncol = 2, label = TRUE, pt.size = 0.5))
+pdf("Integration_Figures.dir/UMAP_Seurat_Integration_persample.eps")
+print(DimPlot(data.integrated, reduction="umap", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5), width=15, height=15)
 dev.off()
 
 # tSNE
 
 data.integrated <- RunTSNE(object = data.integrated, reduction = "pca", dims = dims.use)
 
-name<- paste0("Integration_Figures.dir/tSNE_Seurat_Integration_allsamples.eps")
-postscript(name)
+pdf("Integration_Figures.dir/tSNE_Seurat_Integration_allsamples.eps")
 print(DimPlot(data.integrated, reduction="tsne", pt.size = 0.5, label = TRUE))
 dev.off()
 
-name<- paste0("Integration_Figures.dir/tSNE_Seurat_Integration_persample.eps")
-postscript(name)
-print(DimPlot(data.integrated, reduction="tsne", split.by = "sample", ncol = 2, label = TRUE, pt.size = 0.5))
+pdf("Integration_Figures.dir/tSNE_Seurat_Integration_persample.eps")
+print(DimPlot(data.integrated, reduction="tsne", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5), width=15, height=15)
 dev.off()
 
 saveRDS(data.integrated, file= "RDS_objects.dir/SCT_integrated_SeuratObject.rds")
