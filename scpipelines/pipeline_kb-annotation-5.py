@@ -40,8 +40,11 @@ RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-annotation-5","R
 R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 
 
-##### Guessing what Chen-yi's output will be #####
-filtered_suffixes = "*_filtered_clustered_integrated_SeuratObject.rds"
+# Integrated output:
+# Harmony_integrated_SeuratObject.rds
+# SCT_integrated_SeuratObject.rds
+
+filtered_suffixes = "*_integrated_SeuratObject.rds"
 SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
 
 ######################
@@ -58,11 +61,16 @@ def reference_generate(outfile):
 	ref = PARAMS['reference_package']
 	celldex_ref = PARAMS['reference_celldex_reference_name']
 	scRNAseq_ref = PARAMS['reference_scRNAseq_reference_name']
+
 	scRNAseq_option = PARAMS['reference_scRNAseq_option']
+	if scRNAseq_option:
+		scRNAseq_options = "-o " + scRNAseq_option
+	else:
+		scRNAseq_options = ""
 
 	statement = '''
 	Rscript %(R_PATH)s/reference_sce.R -r %(ref)s  -c %(celldex_reference_name)s 
-	-s %(scRNAseq_ref)s -o %(scRNAseq_option)s --outfile %(outfile)s'''
+	-s %(scRNAseq_ref)s %(scRNAseq_options)s --outfile %(outfile)s'''
 
 	P.run(statement)
 
@@ -89,7 +97,7 @@ def reference_copy(outfile):
 @follows(reference_generate, reference_copy)
 @active_if(PARAMS['singler_run'])
 @transform(SEURAT_OBJECTS,
-	regex("RDS_objects.dir/(\S+)_filtered_clustered_integrated_SeuratObject.rds"),
+	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
 	r"RDS_objects.dir/\1_filtered_clustered_integrated_annotated_SeuratObject.rds")
 def singleR(infile, outfile):
 	'''
@@ -117,7 +125,7 @@ def singleR(infile, outfile):
 
 @active_if(PARAMS['clustifyr_run'])
 @transform(SEURAT_OBJECTS,
-	regex("RDS_objects.dir/(\S+)_filtered_clustered_integrated_SeuratObject.rds"),
+	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
 	r"RDS_objects.dir/\1_filtered_clustered_integrated_annotated_SeuratObject.rds")
 def clustifyr(infile, outfile):
 	'''
