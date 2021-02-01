@@ -137,14 +137,12 @@ def clustifyr(infile, outfile):
 	sample = re.match(r'(\S+)_filtered_clustered_integrated_SeuratObject.rds', file_name).group(1)
 
 	ref = "reference_sce.rds"
-
-	DE = PARAMS['singler_DEmethod']
-	method = PARAMS['singler_method']
+	dim_red = PARAMS['clustifyr_dimRed']
 
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/clustifyr.R -i %(infile)s -s %(sample)s -r %(ref)s   '''
+	Rscript %(R_PATH)s/clustifyr.R -i %(infile)s -s %(sample)s -r %(ref)s   -d %(dim_red)s'''
 
 	P.run(statement)
 
