@@ -6,7 +6,7 @@ Pipeline annotation
 The pipeline follows:
 pipeline_kb, pipeline_kb-sampleqc-1 and pipeline_kb-filter-2, pipeline_kb-cluster-3, pipeline_kb-integration-4
 Annotation of the clusters are performed using either SingleR, clustifyR or scClassify.
-Output figures are visualised on a Rmarkdown notebook and html file.
+Output figures are visualised on a Rmarkdown notebook / html file.
 
 Authors
 =======
@@ -106,7 +106,7 @@ def singleR(infile, outfile):
 
 
 	file_name = os.path.basename(infile)
-	sample = re.match(r'(\S+)_filtered_clustered_integrated_SeuratObject.rds', file_name).group(1)
+	sample = re.match(r'(\S+)_integrated_SeuratObject.rds', file_name).group(1)
 
 	ref = "reference_sce.rds"
 	DE = PARAMS['singler_DEmethod']
@@ -134,7 +134,7 @@ def clustifyr(infile, outfile):
 
 
 	file_name = os.path.basename(infile)
-	sample = re.match(r'(\S+)_filtered_clustered_integrated_SeuratObject.rds', file_name).group(1)
+	sample = re.match(r'(\S+)_integrated_SeuratObject.rds', file_name).group(1)
 
 	ref = "reference_sce.rds"
 	dim_red = PARAMS['clustifyr_dimRed']
@@ -146,7 +146,56 @@ def clustifyr(infile, outfile):
 
 	P.run(statement)
 
-@follows(singleR, clustifyr, scclassify, )
+#############
+# scClassify
+#############
+
+@active_if(PARAMS['scclassify_run'])
+@transform(SEURAT_OBJECTS,
+	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
+	r"RDS_objects.dir/")
+def scclassify(infile, outfile):
+	'''
+    R script task to run scClassify package for annotation
+	'''
+
+
+	file_name = os.path.basename(infile)
+	sample = re.match(r'(\S+)_integrated_SeuratObject.rds', file_name).group(1)
+
+	ref = "reference_sce.rds"
+	pretrained = PARAMS['scclassify_pretrained']
+	method = PARAMS['scclassify_method']
+
+	job_memory = "50G"
+
+	statement = '''
+	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  -p %(pretrained)s -m %(method)s '''
+
+	P.run(statement)
+
+#############
+# Rmarkdown
+#############
+
+@follows(singleR, clustifyr, scclassify)
+@originate('Annotation.html')
+def rmarkdown_annotate(outfile):
+	'''
+	Rmarkdown html generation and visualisation of figures
+	'''
+
+	job_memory ="50G"
+
+	statement='''
+	cp %(RMD_ROOT)s/Annotation.Rmd . &&
+	R -e "rmarkdown::render('Annotation.Rmd', output_file='Annotation.html')" '''
+
+	P.run(statement)
+
+############################################################################################
+
+@follows(singleR, clustifyr, scclassify, rmarkdown_annotate)
 def full():
 	pass
 

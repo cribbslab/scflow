@@ -68,6 +68,7 @@ singler:
 #######################
 
 clustifyr:
+
   # Whether to run clustifyr annotation or not.
   # 0 or 1
   run: 1
@@ -84,3 +85,20 @@ clustifyr:
 #######################
 
 scclassify:
+
+  # Whether to run scClassify or not.
+  # 0 or 1
+  run: 1
+
+  # Whether to use pretrained model
+  # 0 for no
+  # or path to rds file of pretrained scClassifyTrainModel
+  # Download links from package github: https://github.com/SydneyBioX/scClassify
+  pretrained: 0
+
+  # Which scClassify method to use.
+  # Options:
+  # predict
+  # ensemble
+  # nonensemble
+  method: predict
