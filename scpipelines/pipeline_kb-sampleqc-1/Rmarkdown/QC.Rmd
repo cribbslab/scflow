@@ -36,6 +36,8 @@ for (i in sample_files){
   name <- paste("kallisto.dir/", i, "/bus/genecount/", sep="")
   res_mat <- read_count_output(name,
                              name = "genes", tcc = FALSE)
+  # Get rid of version number on ensembl gene 
+  rownames(res_mat) <- gsub("\\.\\d+$","", rownames(res_mat))
   
   
   so <- CreateSeuratObject(res_mat, min.cells=10, min.features=50) %>% 
