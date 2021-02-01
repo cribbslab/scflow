@@ -72,6 +72,12 @@ clustifyr:
   # 0 or 1
   run: 1
 
+  # Dimension reduction to annotate, options:
+  # umap
+  # tsne
+  # pca
+  dimRed: umap
+
 
 #######################
 # scClassify
