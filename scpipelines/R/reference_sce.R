@@ -1,5 +1,4 @@
 library(Seurat)
-library(tidyverse)
 library(optparse)
 library(scRNAseq)
 library(celldex)
@@ -31,8 +30,8 @@ outfile <- opt$outfile
 # Cell-dex reference
 if((reference_package == "celldex") & (!is.null(celldex_reference_name))){
   ref_sce <- do.call(celldex_reference_name, list(ensembl=TRUE))
-  labels <- ref$label.main
-  ref_sce$label <- ref$label.main
+  labels <- ref_sce$label.main
+  ref_sce$label <- ref_sce$label.main
 }
 
 # scRNAseq package reference call
