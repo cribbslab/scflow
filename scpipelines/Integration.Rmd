@@ -71,13 +71,13 @@ dev.off()
 
 p5 <- DimPlot(data_harmony, reduction = "umap", label = TRUE, pt.size = .1)
 p5
-pdf("Integration_Figures.dir/UMAP_Integration_harmony_all_samples.eps")
+pdf("Integration_Figures.dir/UMAP_harmony_Integration_all_samples.eps")
 print(p5)
 dev.off()
 
 p6 <- DimPlot(data_harmony, reduction = "umap", split.by = "sample", ncol = 4, label = TRUE)
 p6
-pdf("Integration_Figures.dir/UMAP_Integration_harmony_per_samples.eps", width=15, height=15)
+pdf("Integration_Figures.dir/UMAP_harmony_Integration_per_samples.eps", width=15, height=15)
 print(p6)
 dev.off()
 ```
@@ -88,13 +88,13 @@ dev.off()
 
 p7 <- DimPlot(data_harmony, reduction = "tsne", label = TRUE, pt.size = .1)
 p7
-pdf("Integration_Figures.dir/tSNE_Integration_harmony_all_samples.eps")
+pdf("Integration_Figures.dir/tSNE_harmony_Integration_all_samples.eps")
 print(p7)
 dev.off()
 
 p8 <- DimPlot(data_harmony, reduction = "tsne", split.by = "sample", ncol = 4, label = TRUE)
 p8
-pdf("Integration_Figures.dir/tSNE_Integration_harmony_per_samples.eps", width=15, height=15)
+pdf("Integration_Figures.dir/tSNE_harmony_Integration_per_samples.eps", width=15, height=15)
 print(p8)
 dev.off()
 ```

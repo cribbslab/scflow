@@ -59,7 +59,7 @@ def cluster(infile, outfile):
 	red = PARAMS['reduction_technique']
 
 	if PARAMS['remove_doublets']:
-		metadata = "--metadata Doublet_figures.dir/" + sample + "metadata.csv"
+		metadata = "--metadata Doublet_Figures.dir/" + sample + "_metadata.csv"
 	else:
 		metadata = ""
 
