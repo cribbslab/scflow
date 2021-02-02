@@ -102,8 +102,6 @@ for(i in 0:final_cluster){
 
 	if(nrow(so_markers) > 0){
 		so_markers$ensembl <- rownames(so_markers)
-		# Get rid of .1 .12 etc. at end of ensembl name
-		so_markers$ensembl_short <-   gsub("\\.\\d+", "", so_markers$ensembl)
 		so_markers$cluster <- i
 	}
 
@@ -119,7 +117,7 @@ for(i in 0:final_cluster){
 # BH corrected p-value, change their p_val_adj to bonferroni
 combined$p.adj <- p.adjust(combined$p_val, method="BH")
 combined$p.adj.bonferroni <- combined$p_val_adj
-combined <- combined %>% dplyr::select(ensembl, ensembl_short, cluster, p.adj, p_val, p.adj.bonferroni, avg_logFC, pct.1, pct.2)
+combined <- combined %>% dplyr::select(ensembl, cluster, p.adj, p_val, p.adj.bonferroni, avg_logFC, pct.1, pct.2)
 
 # Rearrange and select columns
 combined_padj_order <- combined %>% dplyr::arrange(cluster, p.adj, desc(abs(avg_logFC)))
@@ -128,7 +126,7 @@ combined_logfc_order <- combined %>% dplyr::arrange(cluster, desc(abs(avg_logFC)
 # All together, test and see which output is best. Need to look out for bugs in this
 markers_filter_stats_combined$p.adj <- p.adjust(markers_filter_stats_combined$p_val, method="BH")
 markers_filter_stats_combined$p.adj.bonferroni <- markers_filter_stats_combined$p_val_adj
-markers_filter_stats_combined <- markers_filter_stats_combined %>% dplyr::select(ensembl, ensembl_short, cluster, p.adj, p_val, p.adj.bonferroni, avg_logFC, pct.1, pct.2,
+markers_filter_stats_combined <- markers_filter_stats_combined %>% dplyr::select(ensembl, cluster, p.adj, p_val, p.adj.bonferroni, avg_logFC, pct.1, pct.2,
 	cluster_mean, other_mean, cluster_pct ,other_pct)
 markers_filter_stats_combined <- markers_filter_stats_combined %>% dplyr::arrange(cluster, p.adj, desc(abs(avg_logFC)))
 
