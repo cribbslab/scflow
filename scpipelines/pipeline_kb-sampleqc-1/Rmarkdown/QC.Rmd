@@ -257,12 +257,12 @@ plt <- metrics %>%
   geom_bar() + 
   ggtitle("Number of Cells") + theme_Publication()
 print(plt)
-cat('\n\n')
 
 name<- paste0("QC_Figures.dir/NumberOfCells_", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()
+cat('\n\n')
 }
 ```
 
@@ -283,11 +283,12 @@ plt <- metrics %>%
         ylab("log10 cell density") +
         geom_vline(xintercept = 50) + theme_Publication()
 plot(plt)
-cat('\n\n')
+
 name<- paste0("QC_Figures.dir/Log10CellDensity_", i, ".eps")
 postscript(name)
 plot(plt)
 dev.off()
+cat('\n\n')
 }
 ```
 
@@ -307,12 +308,12 @@ plt <- metrics %>%
         scale_x_log10() + 
         geom_vline(xintercept = 20) + theme_Publication()
 print(plt)
-cat('\n\n')
 
 name<- paste0("QC_Figures.dir/GenesDetectedDensity_", i, ".eps")
 postscript(name)
 plot(plt)
 dev.off()
+cat('\n\n')
 }
 ```
 
@@ -331,12 +332,12 @@ plt <- metrics %>%
         ggtitle("NCells vs NGenes") + theme_Publication()
 print(plt)
 
-cat('\n\n')
 
 name<- paste0("QC_Figures.dir/NcellsvsNgenes_", i, ".eps")
 postscript(name)
 plot(plt)
 dev.off()
+cat('\n\n')
 }
 ```
 
@@ -361,12 +362,12 @@ plt <- metrics %>%
   geom_vline(xintercept = 800) +
   facet_wrap(~sample) + theme_Publication()
 print(plt)
-cat('\n\n')
 
 name<- paste0("QC_Figures.dir/nUMIvsnGene_", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()
+cat('\n\n')
 }
 ```
 
@@ -388,13 +389,13 @@ plt<- metrics %>%
         scale_x_log10() + 
         geom_vline(xintercept = 0.3) + theme_Publication()
 print(plt)
-cat('\n\n')
 
 
 name<- paste0("QC_Figures.dir/MitoRatio_nGenevsnUMI", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()
+cat('\n\n')
 }
 ```
 
@@ -413,11 +414,12 @@ plt <- metrics %>%
         ggplot(aes(x=log10GenesPerUMI, color = sample, fill=sample)) +
         geom_density() + theme_Publication()
 print(plt)
-cat('\n\n')
+
 name<- paste0("QC_Figures.dir/Novelty_", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()
+cat('\n\n')
 }
 ```
 

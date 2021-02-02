@@ -105,7 +105,6 @@ Plot of top 30 genes contributing the most to PC1 and PC2.
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
   # Visualize PCA plot (PC1 and PC2)
-  cat("\n")
 
   cat("## ",i,"\n")
   plt <- VizDimLoadings(so, dims = 1:2, reduction = "pca")
