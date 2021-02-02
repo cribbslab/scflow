@@ -55,11 +55,10 @@ def integrate(outfile):
 
 	P.run(statement)
 
+
 @follows(integrate)
-@transform(integrate, 
-	regex("RDS_objects.dir/SCT_integrated_SeuratObject.rds"), 
-	"RDS_objects.dir/Harmony_integrated_SeuratObject.rds")
-def harmony(infile, outfile):
+@originate("RDS_objects.dir/Harmony_integrated_SeuratObject.rds")
+def harmony(outfile):
 	'''
 	R script task to run harmony integration
 	'''
@@ -68,7 +67,7 @@ def harmony(infile, outfile):
 	job_memory = "70G"
 
 	statement = '''
-	Rscript %(R_PATH)s/harmony_integrate.R -i %(infile)s'''
+	Rscript %(R_PATH)s/harmony_integrate.R'''
 
 	P.run(statement)
 
