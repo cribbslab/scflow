@@ -73,7 +73,7 @@ def harmony(infile, outfile):
 	P.run(statement)
 
 @follows(harmony)
-@merge([integrate, harmony], 
+@merge([integrate, harmony],
 	"Integration.html")
 def integrate_rmarkdown(infile, outfile):
 	'''
