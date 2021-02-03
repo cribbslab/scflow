@@ -1,7 +1,8 @@
 ---
 title: "Clustering of samples individually"
 output:
-  html_document
+  html_document:
+    toc: true
 ---
 
 Notebook to visualise clustering of samples. Linear (PCA) and non-linear dimensional reduction techniques (UMAP/tSNE).
