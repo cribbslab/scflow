@@ -20,6 +20,7 @@ library(scales)
 library(tximport)
 library(BUSpaRse)
 library(Seurat)
+library("biomaRt")
 
 # Specify the sample directory that you would like analysed:
 sample_files <- str_replace(Sys.glob("kallisto.dir/*"), "kallisto.dir/", "")
@@ -147,9 +148,13 @@ for (i in sample_files){
 
 
 ```{r}
-library("biomaRt")
 
-ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+# useMart keeps not working every so often (issue https://github.com/grimbough/biomaRt/issues/31)
+ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+if(class(ensembl) == "try-error"){
+  httr::set_config(httr::config(ssl_verifypeer = FALSE))  ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+}
+
 mapping <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version","ensembl_gene_id", "hgnc_symbol"), mart = ensembl)
 mito <- grep("^MT-", mapping$hgnc_symbol, value=TRUE)
 mito <- mapping %>% filter(hgnc_symbol %in% mito)
