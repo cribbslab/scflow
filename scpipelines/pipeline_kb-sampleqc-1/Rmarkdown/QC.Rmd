@@ -151,22 +151,20 @@ for (i in sample_files){
 ```{r}
 
 # useMart keeps not working every so often (issue https://github.com/grimbough/biomaRt/issues/31)
-ensembl <- ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
 if(class(ensembl) == "try-error"){
   httr::set_config(httr::config(ssl_verifypeer = FALSE))
   ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
-
 }
 
 mapping <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version","ensembl_gene_id", "hgnc_symbol"), mart = ensembl)
 mito <- grep("^MT-", mapping$hgnc_symbol, value=TRUE)
 mito <- mapping %>% filter(hgnc_symbol %in% mito)
-mito <- mito$ensembl_gene_id_version
+mito <- mito$ensembl_gene_id
 ```
 
 
 ```{r}
-
 
 for (i in sample_files){
   metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
@@ -181,6 +179,32 @@ for (i in sample_files){
   assign(paste("so", i, sep = "."), so)
 }
 
+
+```
+
+
+
+```{r hgnc}
+# Map ensembl symbols to hgnc symbols using biomart
+
+mapping2 <- distinct(mapping[,2:4]) # remove transcripts IDs
+
+for (i in sample_files){
+  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
+  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
+  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
+
+  ensembl_genes_so <- data.frame(ensembl_gene_id = rownames(so))
+  joined_ensembl_hgnc <- plyr::join(ensembl_genes_so, mapping2, by = "ensembl_gene_id", type = "left", match="first")
+  # Matches first HGNC, if multiple HGNC map to one ensembl id. Keep the same order unlike merge function
+  joined_ensembl_hgnc$hgnc_symbol <-  na_if(joined_ensembl_hgnc$hgnc_symbol, "")
+  # Changes "" to NAs
+
+  metadata$hgnc_symbols <- joined_ensembl_hgnc$hgnc_symbol
+  assign(paste("metadata", i, sep = "."), metadata)
+  so@meta.data <- metadata
+  assign(paste("so", i, sep = "."), so)
+}
 
 ```
 
