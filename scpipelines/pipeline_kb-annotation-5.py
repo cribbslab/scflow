@@ -178,6 +178,7 @@ def scclassify(infile, outfile):
 # Rmarkdown
 #############
 
+# Need to write
 @follows(singleR, clustifyr, scclassify)
 @originate('Annotation.html')
 def rmarkdown_annotate(outfile):
