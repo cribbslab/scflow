@@ -200,9 +200,10 @@ for (i in sample_files){
   joined_ensembl_hgnc$hgnc_symbol <-  na_if(joined_ensembl_hgnc$hgnc_symbol, "")
   # Changes "" to NAs
 
-  metadata$hgnc_symbols <- joined_ensembl_hgnc$hgnc_symbol
-  assign(paste("metadata", i, sep = "."), metadata)
-  so@meta.data <- metadata
+  so_assay <- AddMetaData(so[["RNA"]], joined_ensembl_hgnc$hgnc_symbol, col.name = "hgnc_symbols")
+  # Can't add as normal metdata, have to add to assay instead :@
+  so[["RNA"]] <- so_assay # Symbols stored in so@assays$RNA@meta.features$hgnc_symbols
+
   assign(paste("so", i, sep = "."), so)
 }
 
