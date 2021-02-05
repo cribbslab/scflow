@@ -49,9 +49,9 @@ if(method == "cluster"){
 }
 
 if(de_wilcoxin){
-  pred <- SingleR(test=seurat_object, assay.type.ref="logcounts", assay.type.test = "logcounts", ref=ref_sce, labels=ref_sce$label, de.method="wilcox", clusters=clusters)
+  pred <- SingleR(test=sce, assay.type.ref="logcounts", assay.type.test = "logcounts", ref=ref_sce, labels=ref_sce$label, de.method="wilcox", clusters=clusters)
 }else{
-  pred <- SingleR(test=seurat_object, assay.type.ref="logcounts", assay.type.test="logcounts", ref=ref_sce, labels=ref_sce$label, clusters=clusters)
+  pred <- SingleR(test=sce, assay.type.ref="logcounts", assay.type.test="logcounts", ref=ref_sce, labels=ref_sce$label, clusters=clusters)
 }
 
 seurat_object@meta.data[['singleR_labels']] <- pred$labels
