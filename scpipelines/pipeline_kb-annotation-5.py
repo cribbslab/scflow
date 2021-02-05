@@ -58,6 +58,8 @@ def reference_generate(outfile):
 	Generate a SCE rds file from scratch using either celldex or scRNAseq
 	'''
 
+	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "R"))
+
 	ref = PARAMS['reference_package']
 	celldex_ref = PARAMS['reference_celldex_reference_name']
 	scRNAseq_ref = PARAMS['reference_scRNAseq_reference_name']
@@ -104,6 +106,7 @@ def singleR(infile, outfile):
     R script task to run SingleR package for annotation
 	'''
 
+	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "R"))
 
 	file_name = os.path.basename(infile)
 	sample = re.match(r'(\S+)_integrated_SeuratObject.rds', file_name).group(1)
@@ -132,6 +135,7 @@ def clustifyr(infile, outfile):
     R script task to run clustifyr package for annotation
 	'''
 
+	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "R"))
 
 	file_name = os.path.basename(infile)
 	sample = re.match(r'(\S+)_integrated_SeuratObject.rds', file_name).group(1)
@@ -159,6 +163,7 @@ def scclassify(infile, outfile):
     R script task to run scClassify package for annotation
 	'''
 
+	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "R"))
 
 	file_name = os.path.basename(infile)
 	sample = re.match(r'(\S+)_integrated_SeuratObject.rds', file_name).group(1)
@@ -185,6 +190,8 @@ def rmarkdown_annotate(outfile):
 	'''
 	Rmarkdown html generation and visualisation of figures
 	'''
+
+	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-annotation-5", "Rmarkdown")
 
 	job_memory ="50G"
 
