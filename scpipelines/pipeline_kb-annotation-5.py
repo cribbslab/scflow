@@ -100,7 +100,7 @@ def reference_copy(outfile):
 @active_if(PARAMS['singler_run'])
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
-	r"RDS_objects.dir/\1_filtered_clustered_integrated_annotated_SeuratObject.rds")
+	r"RDS_objects.dir/\1_singleR_annotated_SeuratObject.rds")
 def singleR(infile, outfile):
 	'''
     R script task to run SingleR package for annotation
@@ -118,7 +118,7 @@ def singleR(infile, outfile):
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/singleR.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(DE)s -m %(method)s '''
+	Rscript %(R_PATH)s/singleR.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(DE)s -m %(method)s -o %(outfile)s '''
 
 	P.run(statement)
 

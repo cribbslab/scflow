@@ -4,11 +4,13 @@ library(optparse)
 library(scRNAseq)
 library(celldex)
 library(SingleR)
-library(scuttle)
+#library(scuttle)
 
 option_list <- list(
 		make_option(c("-i", "--input"), default=NULL,
 			help="The input rds path, filtered clusterd integrated Seurat object"),
+		make_option(c("-o", "--output"), default=NULL,
+			help="The output rds path."),
 		make_option(c("-s", "--sample"), default=NULL,
 			help="Sample name"),
         make_option(c("-r", "--reference"), default="reference_sce.rds", type = "character",
@@ -23,6 +25,7 @@ option_list <- list(
 opt <- parse_args(OptionParser(option_list=option_list))
 
 input_file <- opt$input
+output_file <- opt$output
 sample_name <- opt$sample
 reference_sce_loc <- opt$reference
 
@@ -31,8 +34,9 @@ method <- opt$method
 
 # Load seurat object
 seurat_object <- readRDS(input_file)
-# Might need to convert to sce object instead
-# Check if there are logcounts already
+# Convert to single cell object
+sce <- as.SingleCellExperiment(seurat_object)
+
 
 # Load in reference sce object
 ref_sce <- readRDS(reference_sce_loc)
@@ -45,10 +49,16 @@ if(method == "cluster"){
 }
 
 if(de_wilcoxin){
-  pred <- SingleR(test=seurat_object, assay.type.test=1, ref=ref_sce, labels=ref_sce$label, de.method="wilcox", clusters=clusters)
+  pred <- SingleR(test=seurat_object, assay.type.ref="logcounts", assay.type.test = "logcounts", ref=ref_sce, labels=ref_sce$label, de.method="wilcox", clusters=clusters)
 }else{
-  pred <- SingleR(test=seurat_object, assay.type.test=1, ref=ref_sce, labels=ref_sce$label, clusters=clusters)
+  pred <- SingleR(test=seurat_object, assay.type.ref="logcounts", assay.type.test="logcounts", ref=ref_sce, labels=ref_sce$label, clusters=clusters)
 }
+
+seurat_object@meta.data[['singleR_labels']] <- pred$labels
+seurat_object@meta.data[['singleR_pruned.labels']] <- pred$pruned.labels
+
+saveRDS(seurat_object, output_file) # Save seurat object with labels
+
 
 # Plots
 name<- paste0("Annotation_Figures.dir/singleR_scoreHeatmap_", sample_name, ".eps")
