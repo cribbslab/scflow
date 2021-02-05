@@ -71,7 +71,7 @@ def reference_generate(outfile):
 		scRNAseq_options = ""
 
 	statement = '''
-	Rscript %(R_PATH)s/reference_sce.R -r %(ref)s  -c %(celldex_reference_name)s 
+	Rscript %(R_PATH)s/reference_sce.R -r %(ref)s  -c %(celldex_ref)s 
 	-s %(scRNAseq_ref)s %(scRNAseq_options)s --outfile %(outfile)s'''
 
 	P.run(statement)
