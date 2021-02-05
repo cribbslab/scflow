@@ -4,7 +4,7 @@ library(scRNAseq)
 library(celldex)
 
 option_list <- list(
-        make_option(c("-r", "--reference"), default="celldex", type = "character"
+        make_option(c("-r", "--reference"), default="celldex", type = "character",
 			help="Which reference package to use, celldex or scRNAseq package"),
 		make_option(c("-c", "--referenceNameCellDex"), default=NULL, type="character",
 			help="Reference dataset from celldex. E.g. HumanPrimaryCellAtlasData [default %default]."),
