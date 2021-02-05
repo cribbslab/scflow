@@ -118,7 +118,7 @@ def singleR(infile, outfile):
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/singleR.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(DEmethod)s -m %(method)s '''
+	Rscript %(R_PATH)s/singleR.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(DE)s -m %(method)s '''
 
 	P.run(statement)
 
