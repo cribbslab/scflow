@@ -4,6 +4,7 @@ library(optparse)
 library(scRNAseq)
 library(celldex)
 library(SingleR)
+library(pheatmap)
 #library(scuttle)
 
 option_list <- list(
