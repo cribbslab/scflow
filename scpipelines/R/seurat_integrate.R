@@ -69,6 +69,10 @@ pdf("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples.eps")
 print(DimPlot(data.integrated, reduction="umap", pt.size = 0.5, label = TRUE))
 dev.off()
 
+pdf("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples_colour.eps")
+print(DimPlot(data.integrated, reduction="umap", group.by="sample", pt.size = 0.5, label = TRUE))
+dev.off()
+
 pdf("Integration_Figures.dir/UMAP_Seurat_Integration_persample.eps")
 print(DimPlot(data.integrated, reduction="umap", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5), width=15, height=15)
 dev.off()
@@ -79,6 +83,10 @@ data.integrated <- RunTSNE(object = data.integrated, reduction = "pca", dims = d
 
 pdf("Integration_Figures.dir/tSNE_Seurat_Integration_allsamples.eps")
 print(DimPlot(data.integrated, reduction="tsne", pt.size = 0.5, label = TRUE))
+dev.off()
+
+pdf("Integration_Figures.dir/tSNE_Seurat_Integration_persamples_colour.eps")
+print(DimPlot(data.integrated, reduction="tsne", group.by="sample", pt.size = 0.5, label = TRUE))
 dev.off()
 
 pdf("Integration_Figures.dir/tSNE_Seurat_Integration_persample.eps")

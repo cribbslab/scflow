@@ -87,6 +87,12 @@ pdf("Integration_Figures.dir/UMAP_harmony_Integration_all_samples.eps")
 print(DimPlot(data.integrated, reduction = "umap", label = TRUE, pt.size = .1))
 dev.off()
 
+
+pdf("Integration_Figures.dir/UMAP_harmony_Integration_all_samples_colour.eps")
+print(DimPlot(data.integrated, reduction = "umap", group.by="sample", label = TRUE, pt.size = .1))
+dev.off()
+
+
 pdf("Integration_Figures.dir/UMAP_harmony_Integration_per_samples.eps")
 print(DimPlot(data.integrated, reduction = "umap", split.by = "sample", ncol = 4, label = TRUE), width=15, height=15)
 dev.off()
@@ -96,6 +102,10 @@ dev.off()
 
 pdf("Integration_Figures.dir/tSNE_harmony_Integration_all_samples.eps")
 print(DimPlot(data.integrated, reduction = "tsne", label = TRUE, pt.size = .1))
+dev.off()
+
+pdf("Integration_Figures.dir/tSNE_harmony_Integration_allsamples_colour.eps")
+print(DimPlot(data.integrated, reduction = "tsne", group.by="sample" ,label = TRUE, pt.size = .1))
 dev.off()
 
 pdf("Integration_Figures.dir/tSNE_harmony_Integration_per_samples.eps")
