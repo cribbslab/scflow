@@ -196,7 +196,7 @@ def rmarkdown_annotate(outfile):
 
 ############################################################################################
 
-@follows(singleR, clustifyr, scclassify, rmarkdown_annotate)
+@follows(reference_generate, reference_copy, singleR, clustifyr, scclassify, rmarkdown_annotate)
 def full():
 	pass
 
