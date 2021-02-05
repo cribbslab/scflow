@@ -129,7 +129,7 @@ def singleR(infile, outfile):
 @active_if(PARAMS['clustifyr_run'])
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
-	r"RDS_objects.dir/\1_filtered_clustered_integrated_annotated_SeuratObject.rds")
+	r"RDS_objects.dir/\1_clustifyr_annotated_SeuratObject.rds")
 def clustifyr(infile, outfile):
 	'''
     R script task to run clustifyr package for annotation
@@ -146,7 +146,7 @@ def clustifyr(infile, outfile):
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/clustifyr.R -i %(infile)s -s %(sample)s -r %(ref)s   -d %(dim_red)s'''
+	Rscript %(R_PATH)s/clustifyr.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(dim_red)s -o %(outfile)s'''
 
 	P.run(statement)
 
