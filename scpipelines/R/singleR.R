@@ -17,7 +17,7 @@ option_list <- list(
 			help="Location of reference sce rds file"),
         make_option(c("-d", "--DEmethod"), default=0, type="integer",
             help="Whether to apply Wilcoxin pairwise comparison tests between labels. [default %default, i.e. no DE test]"),
-        make_option(c("-m", "--method"), default=0, type="single",
+        make_option(c("-m", "--method"), default="single", type="character",
             help="SingleR method, annotating by single cells or by cluster. [default %default]")
 )
 
