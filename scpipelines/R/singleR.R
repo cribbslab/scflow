@@ -35,7 +35,7 @@ seurat_object <- readRDS(input_file)
 # Check if there are logcounts already
 
 # Load in reference sce object
-ref_sce <- readRDS("reference_sce_loc")
+ref_sce <- readRDS(reference_sce_loc)
 
 if(method == "cluster"){
   # Character vector of each cluster for each cell in object

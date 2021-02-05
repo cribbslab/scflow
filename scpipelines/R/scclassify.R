@@ -36,7 +36,7 @@ dgc_mat <- as(object_data(seurat_object, "data"), "dgCMatrix")
 
 if(pretrain==FALSE){
   # Train new model - if statement needed and parameter
-  ref_sce <- readRDS("reference_sce_loc") # Load in reference sce object
+  ref_sce <- readRDS(reference_sce_loc) # Load in reference sce object
   ref_mat <- as(assay(ref_sce), "dgCMatrix")
   cellTypes_train <- ref_sce$label
 

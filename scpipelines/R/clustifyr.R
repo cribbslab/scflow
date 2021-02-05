@@ -32,7 +32,7 @@ seurat_object <- readRDS(input_file)
 #metadata <- seurat_meta(seurat_object, dr = dr)
 
 # Load in reference sce object
-ref_sce <- readRDS("reference_sce_loc")
+ref_sce <- readRDS(reference_sce_loc)
 ref_mat <- as.matrix(assay(ref_sce))
 colnames(ref_mat) <- ref_sce$label
 
