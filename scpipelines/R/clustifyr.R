@@ -40,13 +40,12 @@ ref_mat <- as.matrix(assay(ref_sce))
 colnames(ref_mat) <- ref_sce$label
 
 # With their function
-new_ref_matrix_sce <- object_ref(
-  input = ref_sce,               # SCE object
-  cluster_col = "label"       # name of column in colData containing cell identities
-)
+#new_ref_matrix_sce <- object_ref(
+#  input = ref_sce,               # SCE object
+#  cluster_col = "label"       # name of column in colData containing cell identities
+#) # Doesn't seem to work with my reference weird
 
-
-res <- clustify(input=seurat_object, ref_mat= new_ref_matrix_sce, cluster_col="seurat_clusters", dr = dim_red )
+res <- clustify(input=seurat_object, ref_mat= ref_mat, cluster_col="seurat_clusters", dr = dim_red )
 res1 <- res
 res1$cluster <- rownames(res)
 
