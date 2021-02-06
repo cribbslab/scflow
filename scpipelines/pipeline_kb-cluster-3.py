@@ -59,6 +59,11 @@ def cluster(infile, outfile):
 	nvf = PARAMS['num_variable_features']
 	red = PARAMS['reduction_technique']
 
+	if PARAMS['remove_doublets']:
+		metadata = "--metadata Doublet_Figures.dir/" + sample + "_metadata.csv"
+	else:
+		metadata = ""
+
 	num_dimensions = PARAMS["num_dimensions"]
 	if num_dimensions:
 		# User defined number of dimensions to reduce to (look at elbow and jackstraw plot post hoc)
@@ -71,7 +76,7 @@ def cluster(infile, outfile):
 
 	statement = '''
 	Rscript %(R_PATH)s/seurat_cluster.R -i %(infile)s -s %(sample)s -v %(nvf)s --reddim %(red)s
-	--resolution %(res)s %(num_dimensions_option)s'''
+	--resolution %(res)s %(num_dimensions_option)s  %(metadata)s'''
 
 	P.run(statement)
 
