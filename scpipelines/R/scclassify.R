@@ -32,7 +32,7 @@ method <- opt$method
 # Load seurat object
 seurat_object <- readRDS(input_file)
 # Sparse matrix
-dgc_mat <- as(object_data(seurat_object, "data"), "dgCMatrix")
+dgc_mat <- seurat_object[["RNA"]]@counts
 
 if(pretrain==FALSE){
   # Train new model - if statement needed and parameter
@@ -54,6 +54,28 @@ if(pretrain==FALSE){
 
 # Pre trained model
 if(method == "predict"){
+  if ("scClassifyTrainModelList" %in% is(trainClass)) { # If train class is a list of multiple models
+    pred_res <- predict_scClassifyJoint(exprsMat_test = dgc_mat,
+                                 trainRes = trainClass, # or pre-made reference using
+                                 cellTypes_test = NULL,
+                                 algorithm = "WKNN",
+                                 features = c("limma"),
+                                 similarity = c("pearson", "spearman"),
+                                 prob_threshold = 0.7,
+                                 verbose = FALSE)
+  }else{
+    pred_res <- predict_scClassify(exprsMat_test = dgc_mat,
+                                 trainRes = trainClass, # or pre-made reference using
+                                 cellTypes_test = NULL,
+                                 algorithm = "WKNN",
+                                 features = c("limma"),
+                                 similarity = c("pearson", "spearman"),
+                                 prob_threshold = 0.7,
+                                 verbose = FALSE)
+  }
+}
+
+
   pred_res <- predict_scClassify(exprsMat_test = dgc_mat,
                                  trainRes = trainClass, # or pre-made reference using
                                  cellTypes_test = NULL,
@@ -61,7 +83,7 @@ if(method == "predict"){
                                  features = c("limma"),
                                  similarity = c("pearson", "spearman"),
                                  prob_threshold = 0.7,
-                                 verbose = TRUE)
+                                 verbose = FALSE)
 }
 
 
