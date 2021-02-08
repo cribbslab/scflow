@@ -159,7 +159,7 @@ def clustifyr(infile, outfile):
 @active_if(PARAMS['scclassify_run'])
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
-	r"RDS_objects.dir/")
+	r"RDS_objects.dir/\1_scclassify_annotated_SeuratObject.rds")
 def scclassify(infile, outfile):
 	'''
     R script task to run scClassify package for annotation
