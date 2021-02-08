@@ -13,7 +13,7 @@ option_list <- list(
 			help="Sample name"),
         make_option(c("-r", "--reference"), default="reference_sce.rds", type = "character",
 			help="Location of reference sce rds file"),
-        make_option(c("-p", "--pretrained"), default=FALSE,
+        make_option(c("-p", "--pretrained"), default=0, type = "integer",
             help="Whether to use a pretrained model, default=0, or give path"),
         make_option(c("-m", "--method"), default="predict", type = "character",
             help="scClassify method to use. predict, ensemble, nonensemble. [default %default]")
