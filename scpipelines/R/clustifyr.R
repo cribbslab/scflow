@@ -16,7 +16,9 @@ option_list <- list(
         make_option(c("-r", "--reference"), default="reference_sce.rds", type = "character",
 			help="Location of reference sce rds file"),
 		make_option(c("-d", "--dimReduction"), default="umap", type = "character",
-			help="Dimension reduction technique, e.g. umap, pca, tsne.")
+			help="Dimension reduction technique, e.g. umap, pca, tsne."),
+		make_option(c("-v", "--varFeatures"), default=TRUE,
+			help="Whether to use previously generated list of variable features for clustify function.")
 )
 
 # Read in options
@@ -27,6 +29,7 @@ output_file <- opt$output
 sample_name <- opt$sample
 reference_sce_loc <- opt$reference
 dim_red <- opt$dimReduction
+var_features <- opt$varFeatures
 
 # Load seurat object
 seurat_object <- readRDS(input_file)
@@ -39,27 +42,30 @@ ref_sce <- readRDS(reference_sce_loc)
 ref_mat <- as.matrix(assay(ref_sce))
 colnames(ref_mat) <- ref_sce$label
 
-# With their function
-#new_ref_matrix_sce <- object_ref(
-#  input = ref_sce,               # SCE object
-#  cluster_col = "label"       # name of column in colData containing cell identities
-#) # Doesn't seem to work with my reference weird
+# Variable features
+if(var_features){
+	vargenes <- VariableFeatures(seurat_object)
+}else{
+	vargenes <- NULL
+}
 
-res <- clustify(input=seurat_object, ref_mat= ref_mat, cluster_col="seurat_clusters", dr = dim_red )
-res1 <- res
-res1$cluster <- rownames(res)
+res <- clustify(input=seurat_object, ref_mat= ref_mat, cluster_col="seurat_clusters", dr = dim_red, query_genes = vargenes, obj_out = FALSE)
+res_so <- clustify(input=seurat_object, ref_mat= ref_mat, cluster_col="seurat_clusters", dr = dim_red, query_genes = vargenes) # Outputs seurat object
 
 name_file <- paste0(c("clustifyr_correlation_matrix_", sample_name,".csv"), collapse="")
-write_csv(res1, name_file)
+write.csv(x = res, file = name_file, row.names = TRUE)
 
 name_file2 <- paste0(c("clustifyr_cluster_annotations_", sample_name,".csv"), collapse="")
-res2 <- cor_to_call(cor_mat = res, cluster_col = seurat_clusters)
+res2 <- cor_to_call(cor_mat = res, cluster_col = "seurat_clusters")
+res2$seurat_clusters <- as.integer(res2$seurat_clusters)
+res2 <- res2 %>% dplyr::arrange(seurat_clusters)
 write_csv(res2, name_file2)
 
-res3 <- dplyr::select(res2, seurat_clusters, clustifyr_labels = type)
-tib <- tibble(seurat_clusters = seurat_object@meta.data$seurat_clusters )
 
-joined <- plyr::join(tib,res3, by="seurat_clusters", type ="left")
-seurat_object@meta.data$clustifyr_labels <- joined$clustifyr_labels
+cell_types <- res_so@meta.data$type
+r <- res_so@meta.data$r
+
+seurat_object@meta.data$clustifyr_labels <- cell_types
+seurat_object@meta.data$clustifyr_rvalues <- r
 
 saveRDS(seurat_object, output_file) # Save seurat object with labels

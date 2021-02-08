@@ -142,11 +142,13 @@ def clustifyr(infile, outfile):
 
 	ref = "reference_sce.rds"
 	dim_red = PARAMS['clustifyr_dimRed']
+	var_features = PARAMS['clustifyr_var_features']
 
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/clustifyr.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(dim_red)s -o %(outfile)s'''
+	Rscript %(R_PATH)s/clustifyr.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(dim_red)s 
+	-v %(var_features)s -o %(outfile)s'''
 
 	P.run(statement)
 
