@@ -73,17 +73,8 @@ if(method == "predict"){
                                  prob_threshold = 0.7,
                                  verbose = FALSE)
   }
-}
-
-
-  pred_res <- predict_scClassify(exprsMat_test = dgc_mat,
-                                 trainRes = trainClass, # or pre-made reference using
-                                 cellTypes_test = NULL,
-                                 algorithm = "WKNN",
-                                 features = c("limma"),
-                                 similarity = c("pearson", "spearman"),
-                                 prob_threshold = 0.7,
-                                 verbose = FALSE)
+  name_file <- paste0("scclassify_predict_", sample_name, ".rds")
+  saveRDS(pred_res,name_file)
 }
 
 
@@ -99,10 +90,12 @@ if(method == "ensemble"){
                                         weighted_ensemble = TRUE, # TRUE or false parameterised ???
                                         returnList = FALSE,
                                         verbose = FALSE)
+  name_file <- paste0("scclassify_ensembl_", sample_name, ".rds")
+  saveRDS(scClassify_res_ensemble,name_file)
 }
 
 # Non-Ensemble classify
-if(method == "ensemble"){
+if(method == "nonensemble"){
   scClassify_res <- scClassify(exprsMat_train = ref_mat,
                                         cellTypes_train = cellTypes_train,
                                         exprsMat_test = dgc_mat,
@@ -112,4 +105,6 @@ if(method == "ensemble"){
                                         similarity = c("pearson"),
                                         returnList = FALSE,
                                         verbose = FALSE)
+  name_file <- paste0("scclassify_nonensembl_", sample_name, ".rds")
+  saveRDS(scClassify_res,name_file)
 }
