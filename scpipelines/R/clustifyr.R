@@ -17,7 +17,7 @@ option_list <- list(
 			help="Location of reference sce rds file"),
 		make_option(c("-d", "--dimReduction"), default="umap", type = "character",
 			help="Dimension reduction technique, e.g. umap, pca, tsne."),
-		make_option(c("-v", "--varFeatures"), default=TRUE,
+		make_option(c("-v", "--varFeatures"), default=1, type = "integer"
 			help="Whether to use previously generated list of variable features for clustify function.")
 )
 
