@@ -79,7 +79,7 @@ for i in barcodes_merged:
 out_gene = open(args.output + "/genes.genes.txt", "w")
 
 for i in genes_merged:
-    out_gene.write("%s\n"% (i))
+    out_gene.write("%s\n"% (i.split(".")[0]))
 
 out_gene.close()
 out_barcode.close()
