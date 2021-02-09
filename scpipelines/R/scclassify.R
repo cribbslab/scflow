@@ -97,6 +97,14 @@ if(method == "predict"){
 
 # Ensemble/non-ensembl classify. Train and test model in one
 if(method != "predict"){
+
+  if (any(table(cellTypes_train) == 1)) { # Sort out stop error thrown by scClassify which doesn't like cell types with 1 cell only
+    tab <- table(cellTypes_train)
+    good <- cellTypes_train %in% (tab[tab !=1] %>% rownames) # True and falses
+    ref_mat <- ref_mat[,good]
+    cellTypes_train <- cellTypes_train[good]
+  }
+
   scClassify_res_ensemble <- scClassify(exprsMat_train = ref_mat,
                                         cellTypes_train = cellTypes_train,
                                         exprsMat_test = dgc_mat,
