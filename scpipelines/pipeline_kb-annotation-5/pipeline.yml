@@ -100,7 +100,9 @@ scclassify:
   # Download links from package github: https://github.com/SydneyBioX/scClassify
   pretrained: 0
 
-  # Which scClassify method to use. Predict uses a model pre-built in programme or in dir. Train: train and test model in one step
+  # Which scClassify method to use.
+  # Predict uses a model pre-built in programme or in dir. Train: train and test model in one step
+  # If method is set to train, pretrained will be set to 0
   # Options:
   # predict
   # train
