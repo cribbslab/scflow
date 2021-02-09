@@ -11,6 +11,8 @@ option_list <- list(
 			help="The input rds path, filtered clusterd integrated Seurat object"),
 		make_option(c("-s", "--sample"), default=NULL,
 			help="Sample name"),
+ 		make_option(c("-o", "--output"), default=NULL,
+			help="Output file name"),
         make_option(c("-r", "--reference"), default="reference_sce.rds", type = "character",
 			help="Location of reference sce rds file"),
         make_option(c("-p", "--pretrained"), default=0,
@@ -25,6 +27,7 @@ option_list <- list(
 opt <- parse_args(OptionParser(option_list=option_list))
 
 input_file <- opt$input
+output <- opt$output
 sample_name <- opt$sample
 reference_sce_loc <- opt$reference
 method <- opt$method
@@ -89,8 +92,13 @@ if(method == "predict"){
   pred_results$spearman <- spearmen_cells_assigned
   pred_results$cell_barcode <- rownames(pred_results)
 
-  name_file <- paste0("scclassify_predict_", sample_name, ".rds")
-  saveRDS(pred_results, name_file)
+  #name_file <- paste0("scclassify_predict_", sample_name, ".rds")
+  #saveRDS(pred_results, name_file)
+
+  name_file <- paste0("scclassify_predict_", sample_name, ".csv.gz")
+  write_csv(pred_results,name_file)
+
+  seurat_object@meta.data[['scclassify_labels']] <- pred_results$cellTypes
 
 }
 
@@ -115,6 +123,22 @@ if(method != "predict"){
                                         weighted_ensemble = TRUE, # TRUE or false parameterised ???
                                         returnList = FALSE,
                                         verbose = FALSE)
-  name_file <- paste0("scclassify_ensembl_", sample_name, ".rds")
-  saveRDS(scClassify_res_ensemble,name_file)
+  #name_file <- paste0("scclassify_ensembl_", sample_name, ".rds")
+  #saveRDS(scClassify_res_ensemble,name_file)
+
+  results <- scClassify_res_ensemble$testRes$test$ensembleRes
+  for(metric in similarity){
+    column_name <- paste0(metric, "_WKNN_limma")
+    metric_cells_assigned <- as.vector(scClassify_res_ensemble$testRes$test[[column_name]]$predRes)
+    results[[metric]] <- metric_cells_assigned
+  }
+  results$cell_barcode <- rownames(results)
+  name_file <- paste0("scclassify_train_", sample_name, ".csv.gz")
+  write_csv(results,name_file)
+
+
+  seurat_object@meta.data[['scclassify_labels']] <- results$cellTypes
+
 }
+
+saveRDS(seurat_object, output) # Save seurat object with labels

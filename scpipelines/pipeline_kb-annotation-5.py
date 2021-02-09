@@ -180,7 +180,7 @@ def scclassify(infile, outfile):
 
 	statement = '''
 	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  
-	-p %(pretrained)s -m %(method)s --similarity %(sim)s '''
+	-p %(pretrained)s -m %(method)s --similarity %(sim)s -o %(outfile)s'''
 
 	P.run(statement)
 
