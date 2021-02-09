@@ -30,7 +30,7 @@ reference_sce_loc <- opt$reference
 method <- opt$method
 
 pretrain <- opt$pretrained
-if(pretrain == "0"){
+if(pretrain == "0" || method != "predict" ){
   pretrain <- 0
 }
 similarity_string <- opt$similarity
@@ -86,7 +86,7 @@ if(method == "predict"){
   spearmen_cells_assigned <- as.vector(pred_res$spearman_WKNN_limma$predRes)
   pred_results  <- pred_res$ensembleRes
   pred_results$pearson <- pearson_cells_assigned
-  pred_results$ensembleRes$spearman <- spearmen_cells_assigned
+  pred_results$spearman <- spearmen_cells_assigned
   pred_results$cell_barcode <- rownames(pred_results)
 
   name_file <- paste0("scclassify_predict_", sample_name, ".rds")
