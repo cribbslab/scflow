@@ -173,11 +173,13 @@ def scclassify(infile, outfile):
 	ref = "reference_sce.rds"
 	pretrained = PARAMS['scclassify_pretrained']
 	method = PARAMS['scclassify_method']
+	sim = PARAMS['scclassify_similarity']
 
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  -p %(pretrained)s -m %(method)s '''
+	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  
+	-p %(pretrained)s -m %(method)s --similarity %(sim)s '''
 
 	P.run(statement)
 

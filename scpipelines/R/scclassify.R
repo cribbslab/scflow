@@ -16,7 +16,9 @@ option_list <- list(
         make_option(c("-p", "--pretrained"), default=0,
             help="Whether to use a pretrained model, default=0, or give path"),
         make_option(c("-m", "--method"), default="predict", type = "character",
-            help="scClassify method to use. predict, ensemble, nonensemble. [default %default]")
+            help="scClassify method to use. predict, ensemble, nonensemble. [default %default]"),
+        make_option(c("--similarity"), default="pearson spearman", type = "character",
+            help="Similarity test to use. If multiple, separated by space. [default %default]")
 )
 
 # Read in options
@@ -31,6 +33,8 @@ pretrain <- opt$pretrained
 if(pretrain == "0"){
   pretrain <- 0
 }
+similarity_string <- opt$similarity
+similarity <- str_split(similarity_string, " ")[[1]]
 
 
 # Load seurat object
@@ -64,7 +68,7 @@ if(method == "predict"){
                                  cellTypes_test = NULL,
                                  algorithm = "WKNN",
                                  features = c("limma"),
-                                 similarity = c("pearson", "spearman"),
+                                 similarity = similarity,
                                  prob_threshold = 0.7,
                                  verbose = FALSE)
   }else{
@@ -73,42 +77,36 @@ if(method == "predict"){
                                  cellTypes_test = NULL,
                                  algorithm = "WKNN",
                                  features = c("limma"),
-                                 similarity = c("pearson", "spearman"),
+                                 similarity = similarity,
                                  prob_threshold = 0.7,
                                  verbose = FALSE)
   }
+
+  pearson_cells_assigned <- as.vector(pred_res$pearson_WKNN_limma$predRes)
+  spearmen_cells_assigned <- as.vector(pred_res$spearman_WKNN_limma$predRes)
+  pred_results  <- pred_res$ensembleRes
+  pred_results$pearson <- pearson_cells_assigned
+  pred_results$ensembleRes$spearman <- spearmen_cells_assigned
+  pred_results$cell_barcode <- rownames(pred_results)
+
   name_file <- paste0("scclassify_predict_", sample_name, ".rds")
-  saveRDS(pred_res,name_file)
+  saveRDS(pred_results, name_file)
+
 }
 
 
-# Ensemble classify
-if(method == "ensemble"){
+# Ensemble/non-ensembl classify. Train and test model in one
+if(method != "predict"){
   scClassify_res_ensemble <- scClassify(exprsMat_train = ref_mat,
                                         cellTypes_train = cellTypes_train,
                                         exprsMat_test = dgc_mat,
                                         tree = "HOPACH",
                                         algorithm = "WKNN",
                                         selectFeatures = c("limma"),
-                                        similarity = c("pearson", "spearman"), # Could do as list parameter with split??
+                                        similarity = similarity, # Could do as list parameter with split??
                                         weighted_ensemble = TRUE, # TRUE or false parameterised ???
                                         returnList = FALSE,
                                         verbose = FALSE)
   name_file <- paste0("scclassify_ensembl_", sample_name, ".rds")
   saveRDS(scClassify_res_ensemble,name_file)
-}
-
-# Non-Ensemble classify
-if(method == "nonensemble"){
-  scClassify_res <- scClassify(exprsMat_train = ref_mat,
-                                        cellTypes_train = cellTypes_train,
-                                        exprsMat_test = dgc_mat,
-                                        tree = "HOPACH",
-                                        algorithm = "WKNN",
-                                        selectFeatures = c("limma"),
-                                        similarity = c("pearson"),
-                                        returnList = FALSE,
-                                        verbose = FALSE)
-  name_file <- paste0("scclassify_nonensembl_", sample_name, ".rds")
-  saveRDS(scClassify_res,name_file)
 }
