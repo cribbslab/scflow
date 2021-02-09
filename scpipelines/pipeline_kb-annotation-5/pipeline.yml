@@ -108,7 +108,7 @@ scclassify:
   # train
   method: predict
 
-  # What similarity metrics to use. List separated by underscore. Options:
+  # What similarity metrics to use. List separated by single space. Options:
   # pearson
   # spearman
   # cosine
@@ -116,4 +116,4 @@ scclassify:
   # kendall
   # weighted rank
   # manhattan
-  similarity: pearson_spearman
+  similarity: pearson spearman

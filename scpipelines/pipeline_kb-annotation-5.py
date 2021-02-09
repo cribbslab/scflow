@@ -174,6 +174,7 @@ def scclassify(infile, outfile):
 	pretrained = PARAMS['scclassify_pretrained']
 	method = PARAMS['scclassify_method']
 	sim = PARAMS['scclassify_similarity']
+	sim = sim.replace(" ", "_")
 
 	job_memory = "50G"
 
