@@ -17,7 +17,7 @@ option_list <- list(
             help="Whether to use a pretrained model, default=0, or give path"),
         make_option(c("-m", "--method"), default="predict", type = "character",
             help="scClassify method to use. predict, ensemble, nonensemble. [default %default]"),
-        make_option(c("--similarity"), default="pearson spearman", type = "character",
+        make_option(c("--similarity"), default="pearson_spearman", type = "character",
             help="Similarity test to use. If multiple, separated by space. [default %default]")
 )
 
@@ -34,7 +34,7 @@ if(pretrain == "0"){
   pretrain <- 0
 }
 similarity_string <- opt$similarity
-similarity <- str_split(similarity_string, " ")[[1]]
+similarity <- str_split(similarity_string, "_")[[1]]
 
 
 # Load seurat object
