@@ -13,7 +13,7 @@ option_list <- list(
 			help="Sample name"),
         make_option(c("-r", "--reference"), default="reference_sce.rds", type = "character",
 			help="Location of reference sce rds file"),
-        make_option(c("-p", "--pretrained"), default=0, type = "integer",
+        make_option(c("-p", "--pretrained"), default=0,
             help="Whether to use a pretrained model, default=0, or give path"),
         make_option(c("-m", "--method"), default="predict", type = "character",
             help="scClassify method to use. predict, ensemble, nonensemble. [default %default]")
@@ -25,8 +25,12 @@ opt <- parse_args(OptionParser(option_list=option_list))
 input_file <- opt$input
 sample_name <- opt$sample
 reference_sce_loc <- opt$reference
-pretrain <- opt$pretrained
 method <- opt$method
+
+pretrain <- opt$pretrained
+if(pretrain == "0"){
+  pretrain <- 0
+}
 
 
 # Load seurat object
