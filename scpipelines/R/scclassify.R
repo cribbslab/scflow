@@ -85,18 +85,20 @@ if(method == "predict"){
                                  verbose = FALSE)
   }
 
-  pearson_cells_assigned <- as.vector(pred_res$pearson_WKNN_limma$predRes)
-  spearmen_cells_assigned <- as.vector(pred_res$spearman_WKNN_limma$predRes)
   pred_results  <- pred_res$ensembleRes
-  pred_results$pearson <- pearson_cells_assigned
-  pred_results$spearman <- spearmen_cells_assigned
+
+  for(metric in similarity){
+    column_name <- paste0(metric, "_WKNN_limma")
+    cells_assigned <- as.vector(pred_res[[column_name]]$predRes)
+    pred_results[[metric]] <- cells_assigned
+  }
   pred_results$cell_barcode <- rownames(pred_results)
 
-  #name_file <- paste0("scclassify_predict_", sample_name, ".rds")
-  #saveRDS(pred_results, name_file)
+  name_file <- paste0("scclassify_predict_", sample_name, ".rds")
+  saveRDS(pred_results, name_file)
 
   name_file <- paste0("Annotation_stats.dir/scclassify_predict_", sample_name, ".csv.gz")
-  write_csv(pred_results,name_file)
+  #write_csv(pred_results,name_file)
 
   seurat_object@meta.data[['scclassify_labels']] <- pred_results$cellTypes
 
