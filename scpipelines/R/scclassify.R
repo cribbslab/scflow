@@ -66,6 +66,7 @@ if(pretrain==FALSE){
 # Pre trained model
 if(method == "predict"){
   if ("scClassifyTrainModelList" %in% is(trainClass)) { # If train class is a list of multiple models
+    similarity  <- similarity[1] # Error with scClassify where multiple metrics seem to make predict_scClassifyJoint fail
     pred_res <- predict_scClassifyJoint(exprsMat_test = dgc_mat,
                                  trainRes = trainClass, # or pre-made reference using
                                  cellTypes_test = NULL,

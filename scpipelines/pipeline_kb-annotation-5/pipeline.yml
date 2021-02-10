@@ -44,6 +44,24 @@ reference:
   scRNAseq_option:
 
 #######################
+# Seurat markers
+#######################
+
+markers:
+
+  # Path to metadata file. First column sample_name, other columns specified by user
+  meta_data: metadata.csv
+
+  # Group to compare across e.g. stim, treated etc.
+  group: stim
+
+  # Conditions in stim to compare, separated with underscore. Multiple comparisons separated with space
+  DE_versus: cntrl_drug1 cntrl_drug2
+
+  predefined_list:
+
+
+#######################
 # SingleR
 #######################
 

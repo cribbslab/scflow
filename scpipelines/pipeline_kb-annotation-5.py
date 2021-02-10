@@ -39,21 +39,49 @@ RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-annotation-5","R
 # R folder in main directory
 R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 
-
 # Integrated output:
 # Harmony_integrated_SeuratObject.rds
 # SCT_integrated_SeuratObject.rds
-
 filtered_suffixes = "*_integrated_SeuratObject.rds"
 SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
+
+######################
+# Seurat markers
+######################
+
+@follows(mkdir("Annotation_Figures.dir"))
+@follows(mkdir("Annotation_stats.dir"))
+@transform(SEURAT_OBJECTS,
+	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
+	r"Annotation_stats.dir/ConservedMarkers_\1.csv")
+def integrated_markers(infile, outfile):
+	'''
+	Find conserved and differentially expressed markers across conditions
+	'''
+
+	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "R"))
+
+	meta = PARAMS['markers_meta_data']
+	group = PARAMS['markers_group']
+	DE = PARAMS['markers_DE_versus'].replace(" ", "-")
+
+	predefined_list = PARAMS['markers_predefined_list']
+	if predefined_list:
+		predef_options = "--predefined " + predefined_list
+	else:
+		predef_options = ""
+
+	statement = '''
+	Rscript %(R_PATH)s/conserved_differential_markers.R -i %(infile)s -m %(meta)s -g %(group)s 
+	--de %(DE)s %(predef_options)s'''
+
+	P.run(statement)
 
 ######################
 # Generate reference
 ######################
 
 @active_if(PARAMS['reference_generate'])
-@follows(mkdir("Annotation_stats.dir"))
-@follows(mkdir("Annotation_Figures.dir"))
 @originate("reference_sce.rds")
 def reference_generate(outfile):
 	'''
@@ -79,8 +107,6 @@ def reference_generate(outfile):
 	P.run(statement)
 
 @active_if(not PARAMS['reference_generate'])
-@follows(mkdir("Annotation_stats.dir"))
-@follows(mkdir("Annotation_Figures.dir"))
 @originate("reference_sce.rds")
 def reference_copy(outfile):
 	'''
