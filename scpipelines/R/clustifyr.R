@@ -52,10 +52,10 @@ if(var_features){
 res <- clustify(input=seurat_object, ref_mat= ref_mat, cluster_col="seurat_clusters", dr = dim_red, query_genes = vargenes, obj_out = FALSE)
 res_so <- clustify(input=seurat_object, ref_mat= ref_mat, cluster_col="seurat_clusters", dr = dim_red, query_genes = vargenes) # Outputs seurat object
 
-name_file <- paste0(c("clustifyr_correlation_matrix_", sample_name,".csv"), collapse="")
+name_file <- paste0(c("Annotation_stats.dir/clustifyr_correlation_matrix_", sample_name,".csv"), collapse="")
 write.csv(x = res, file = name_file, row.names = TRUE)
 
-name_file2 <- paste0(c("clustifyr_cluster_annotations_", sample_name,".csv"), collapse="")
+name_file2 <- paste0(c("Annotation_stats.dir/clustifyr_cluster_annotations_", sample_name,".csv"), collapse="")
 res2 <- cor_to_call(cor_mat = res, cluster_col = "seurat_clusters")
 res2$seurat_clusters <- as.integer(res2$seurat_clusters)
 res2 <- res2 %>% dplyr::arrange(seurat_clusters)

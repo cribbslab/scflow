@@ -52,6 +52,8 @@ SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
 ######################
 
 @active_if(PARAMS['reference_generate'])
+@follows(mkdir("Annotation_stats.dir"))
+@follows(mkdir("Annotation_Figures.dir"))
 @originate("reference_sce.rds")
 def reference_generate(outfile):
 	'''
@@ -77,6 +79,8 @@ def reference_generate(outfile):
 	P.run(statement)
 
 @active_if(not PARAMS['reference_generate'])
+@follows(mkdir("Annotation_stats.dir"))
+@follows(mkdir("Annotation_Figures.dir"))
 @originate("reference_sce.rds")
 def reference_copy(outfile):
 	'''
@@ -94,10 +98,8 @@ def reference_copy(outfile):
 # singleR
 ##########
 
-# Unsure about output files... or regex
-@follows(mkdir("Annotation_Figures.dir"))
-@follows(reference_generate, reference_copy)
 @active_if(PARAMS['singler_run'])
+@follows(reference_generate, reference_copy)
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
 	r"RDS_objects.dir/\1_singleR_annotated_SeuratObject.rds")
@@ -127,6 +129,7 @@ def singleR(infile, outfile):
 ############
 
 @active_if(PARAMS['clustifyr_run'])
+@follows(reference_generate, reference_copy)
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
 	r"RDS_objects.dir/\1_clustifyr_annotated_SeuratObject.rds")
@@ -157,6 +160,7 @@ def clustifyr(infile, outfile):
 #############
 
 @active_if(PARAMS['scclassify_run'])
+@follows(reference_generate, reference_copy)
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
 	r"RDS_objects.dir/\1_scclassify_annotated_SeuratObject.rds")

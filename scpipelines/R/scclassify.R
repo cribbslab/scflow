@@ -95,7 +95,7 @@ if(method == "predict"){
   #name_file <- paste0("scclassify_predict_", sample_name, ".rds")
   #saveRDS(pred_results, name_file)
 
-  name_file <- paste0("scclassify_predict_", sample_name, ".csv.gz")
+  name_file <- paste0("Annotation_stats.dir/scclassify_predict_", sample_name, ".csv.gz")
   write_csv(pred_results,name_file)
 
   seurat_object@meta.data[['scclassify_labels']] <- pred_results$cellTypes
@@ -133,7 +133,7 @@ if(method != "predict"){
     results[[metric]] <- metric_cells_assigned
   }
   results$cell_barcode <- rownames(results)
-  name_file <- paste0("scclassify_train_", sample_name, ".csv.gz")
+  name_file <- paste0("Annotation_stats.dir/scclassify_train_", sample_name, ".csv.gz")
   write_csv(results,name_file)
 
 
