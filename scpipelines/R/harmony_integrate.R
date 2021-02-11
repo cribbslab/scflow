@@ -34,7 +34,7 @@ for (i in sample_files){
 # Data processing and integration by Harmony
 # Uses harmony to reduce dimensions.
 
-data.list <- mget(ls(pattern = "filtered_SeuratObject"))
+data.list <- mget(ls(pattern = "filtered_clustered_SeuratObject"))
 
 data.integrated <- Reduce(function(x, y){merge(x,y)}, data.list)
 

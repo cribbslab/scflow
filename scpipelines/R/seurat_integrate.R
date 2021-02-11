@@ -29,8 +29,9 @@ for (i in sample_files){
 
 # Normalise the data by SCTransform
 
-data.list <- mget(ls(pattern = "filtered_SeuratObject"))
+data.list <- mget(ls(pattern = "filtered_clustered_SeuratObject"))
 
+print(data.list)
 for (i in 1:length(data.list)) {
   data.list[[i]] <- PercentageFeatureSet(data.list[[i]], pattern = pattern, col.name = colname)
   data.list[[i]] <- SCTransform(data.list[[i]], vars.to.regress = vars_to_regress, verbose = FALSE)
