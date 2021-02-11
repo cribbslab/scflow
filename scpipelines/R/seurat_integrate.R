@@ -7,7 +7,7 @@ library(sctransform)
 library(patchwork)
 library(yaml)
 
-sample_files <- str_replace(Sys.glob("RDS_objects.dir/*_filtered_SeuratObject.rds"), "RDS_objects.dir/", "")
+sample_files <- str_replace(Sys.glob("RDS_objects.dir/*_filtered_clustered_SeuratObject.rds"), "RDS_objects.dir/", "")
 
 ini <- read_yaml("pipeline.yml")
 
@@ -21,7 +21,7 @@ num_dimensions <- ini$num_dimensions
 for (i in sample_files){
   name <- paste0("RDS_objects.dir/", i)
   so <- readRDS(name)
-  so@meta.data$sample_name <- str_replace(i, "_filtered_SeuratObject.rds", "")
+  so@meta.data$sample_name <- str_replace(i, "_filtered_clustered_SeuratObject.rds", "")
   assign(paste("so", i, sep = "."), so)
 }
 
