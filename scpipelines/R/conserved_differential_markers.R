@@ -27,16 +27,33 @@ group_var <- opt$group
 meta_data_path <- opt$meta
 
 de_conditions_long <- opt$de
-de_conditions <- str_split(de_conditions_long, "-")[[1]] # In for loop split by underscore to get conditions
+de_conditions <- str_split(de_conditions_long, "---")[[1]] # In for loop split by underscore to get conditions
 
-###############################
-# Read in and format meta data
-###############################
+#################################################
+# Read in and format meta data and seurat object
+#################################################
 
-
-
-# Read in RDS files (may take some time)
+# Read in SO RDS files (may take some time)
 seurat_object <- readRDS(seurat_object_path)
+
+meta <- read_csv(meta_data_path)
+meta <- meta[rowSums(is.na(meta))<ncol(meta),colSums(is.na(meta))<nrow(meta)] # Remove rows and columns that are all NAs
+
+sample_names <- unique(seurat_object@meta.data$sample_name)
+
+if((!setequal(meta$sample_name,sample_names)) | (length(sample_names) != length(meta$sample_name))){
+  stop("Check metadata.csv sample_name matches file names of objects")
+}
+
+meta <- meta[match(sample_names, meta$sample_name),] # Puts in the same order as SO
+cell_value <- as.vector(table(seurat_object@meta.data$sample_name)) # Number of cells of each sample.
+
+for(column in 2:length(colnames(meta))){
+  column_name <- colnames(meta)[column]
+  col <- meta[[column]]
+  big_vec <- rep(col,cell_value)
+  seurat_object@meta.data[[column_name]] <- big_vec
+}
 
 # Get total number of clusters
 num_clusters <- nlevels(seurat_object$seurat_clusters)
@@ -49,11 +66,11 @@ if(max_clusters){
 	final_cluster <- num_clusters - 1
 }
 
-DefaultAssay(seurat_object) <- "RNA"
-
 ############################################
 # Identify conserved cell type markers
 ############################################
+
+DefaultAssay(seurat_object) <- "RNA"
 
 combined <- c()
 combined_topmarkers <- c()
@@ -73,7 +90,7 @@ for(i in 0:final_cluster){
   conserved_markers$ensembl <- rownames(conserved_markers)
   conserved_markers$cluster <- i
 
-  conserved_markers_tib <- as_tibble(so_markers)
+  conserved_markers_tib <- as_tibble(conserved_markers)
   combined <- rbind(combined, conserved_markers_tib)
 
 
@@ -98,3 +115,41 @@ write_csv(combined, name_file)
 # Differential expression across conditions
 ############################################
 
+
+if(!group_var %in% colnames(seurat_object@meta.data)){
+  stop("Grouping variable not listed, check spelling against colnames of meta data file")
+}
+
+for(comparison in de_conditions){
+  conditions <- str_split(comparison, "_v_")[[1]]
+  condition1 <- conditions[1]
+  condition2 <- conditions[2]
+
+  de_markers <- FindMarkers(seurat_object, ident.1 = condition1, ident.2 = condition2,
+                            group.by = group_var) # Overall differences
+
+  de_markers$ensembl <- rownames(de_markers)
+  name_file <- paste0("Annotation_stats.dir/DifferentialMarkersAll_", condition1, "_vs_",condition2, ".csv")
+  de_markers <- de_markers %>% dplyr::select(ensembl, everything())
+  write_csv(de_markers, name_file)
+
+  combined <- c()
+  combined_topmarkers <- c()
+  for(i in 0:final_cluster){
+
+    de_markers_cluster <- FindMarkers(seurat_object, ident.1 = condition1, ident.2 = condition2,
+                            group.by = group_var, subset.ident = i)
+
+    de_markers_cluster$ensembl <- rownames(de_markers_cluster)
+    de_markers_cluster$cluster <- i
+
+    de_markers_tib <- as_tibble(de_markers_cluster)
+    combined <- rbind(combined, de_markers_tib)
+  }
+
+  name_file <- paste0("Annotation_stats.dir/DifferentialMarkersPerCluster_", condition1, "_vs_",condition2, ".csv")
+
+  combined <- combined %>% dplyr::select(ensembl, cluster, everything())
+  write_csv(combined, name_file)
+
+}

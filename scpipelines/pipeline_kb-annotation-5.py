@@ -63,7 +63,7 @@ def integrated_markers(infile, outfile):
 
 	meta = PARAMS['markers_meta_data']
 	group = PARAMS['markers_group']
-	DE = PARAMS['markers_DE_versus'].replace(" ", "-")
+	DE = PARAMS['markers_DE_versus'].replace(" ", "---")
 
 	predefined_list = PARAMS['markers_predefined_list']
 	if predefined_list:

@@ -55,8 +55,8 @@ markers:
   # Group to compare across e.g. stim, treated etc.
   group: stim
 
-  # Conditions in stim to compare, separated with underscore. Multiple comparisons separated with space
-  DE_versus: cntrl_drug1 cntrl_drug2
+  # Conditions in stim to compare, separated with "_v_". Multiple comparisons separated with space
+  DE_versus: cntrl_v_drug1 cntrl_v_drug2
 
   predefined_list:
 
