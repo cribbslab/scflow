@@ -136,7 +136,7 @@ for(comparison in de_conditions){
                             group.by = group_var) # Overall differences
 
   de_markers$ensembl <- rownames(de_markers)
-  name_file <- paste0("Annotation_stats.dir/DifferentialMarkersAll_", condition1, "_vs_",condition2, ".csv")
+  name_file <- paste0("Annotation_stats.dir/DifferentialMarkersAll_", sample_name, "_", condition1, "_vs_",condition2, ".csv")
   de_markers <- de_markers %>% dplyr::select(ensembl, everything())
   write_csv(de_markers, name_file)
 
@@ -154,7 +154,7 @@ for(comparison in de_conditions){
     combined <- plyr::rbind.fill(combined, de_markers_tib)
   }
 
-  name_file <- paste0("Annotation_stats.dir/DifferentialMarkersPerCluster_", condition1, "_vs_",condition2, ".csv")
+  name_file <- paste0("Annotation_stats.dir/DifferentialMarkersPerCluster_", sample_name, "_", condition1, "_vs_",condition2, ".csv")
 
   combined <- combined %>% dplyr::select(ensembl, cluster, everything())
   write_csv(combined, name_file)

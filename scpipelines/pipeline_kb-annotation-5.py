@@ -60,6 +60,8 @@ def integrated_markers(infile, outfile):
 	'''
 
 	R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "R"))
+	file_name = os.path.basename(infile)
+	sample = re.match(r'(\S+)_integrated_SeuratObject.rds', file_name).group(1)
 
 	meta = PARAMS['markers_meta_data']
 	group = PARAMS['markers_group']
@@ -73,7 +75,7 @@ def integrated_markers(infile, outfile):
 
 	statement = '''
 	Rscript %(R_PATH)s/conserved_differential_markers.R -i %(infile)s -m %(meta)s -g %(group)s 
-	--de %(DE)s %(predef_options)s'''
+	--de %(DE)s %(predef_options)s -s %(sample)s'''
 
 	P.run(statement)
 
