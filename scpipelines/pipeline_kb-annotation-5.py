@@ -238,7 +238,7 @@ def rmarkdown_annotate(outfile):
 
 ############################################################################################
 
-@follows(reference_generate, reference_copy, singleR, clustifyr, scclassify, rmarkdown_annotate)
+@follows(integrated_markers, reference_generate, reference_copy, singleR, clustifyr, scclassify, rmarkdown_annotate)
 def full():
 	pass
 

@@ -151,7 +151,7 @@ for(comparison in de_conditions){
     de_markers_cluster$cluster <- i
 
     de_markers_tib <- as_tibble(de_markers_cluster)
-    combined <- plyr::rbind.full(combined, de_markers_tib)
+    combined <- plyr::rbind.fill(combined, de_markers_tib)
   }
 
   name_file <- paste0("Annotation_stats.dir/DifferentialMarkersPerCluster_", condition1, "_vs_",condition2, ".csv")
