@@ -1,6 +1,7 @@
 library(Seurat)
 library(tidyverse)
 library(optparse)
+library(RColorBrewer)
 
 option_list <- list(
 		make_option(c("-i", "--input"), default=NULL,
@@ -66,6 +67,12 @@ if(max_clusters){
 	final_cluster <- num_clusters - 1
 }
 
+# Colour vector
+n <- length(unique(meta[[group_var]]))
+qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
+col <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+col_vector <- sample(col, n)
+
 ############################################
 # Identify conserved cell type markers
 ############################################
@@ -91,15 +98,15 @@ for(i in 0:final_cluster){
   conserved_markers$cluster <- i
 
   conserved_markers_tib <- as_tibble(conserved_markers)
-  combined <- rbind(combined, conserved_markers_tib)
+  combined <- plyr::rbind.fill(combined, conserved_markers_tib)
 
 
 }
 
 combined_topmarkers <- unique(combined_topmarkers)
 # Dotplot showing 2 top strong marker genes for each cluster
-dotplot <- DotPlot(seurat_object, features = rev(combined_topmarkers), cols = c("blue", "red"), dot.scale = 8,
-    split.by = group_var) + RotatedAxis()
+dotplot <- DotPlot(seurat_object, features = rev(combined_topmarkers), cols = col_vector, dot.scale = 8,
+    split.by = group_var) + RotatedAxis()  # Edit so number of colours reflect number of conditions in group being split by
 name <- paste0("Annotation_Figures.dir/DotPlot_TopConservedMarkers_", sample_name, ".eps")
 postscript(name)
 print(dotplot)
@@ -144,7 +151,7 @@ for(comparison in de_conditions){
     de_markers_cluster$cluster <- i
 
     de_markers_tib <- as_tibble(de_markers_cluster)
-    combined <- rbind(combined, de_markers_tib)
+    combined <- plyr::rbind.full(combined, de_markers_tib)
   }
 
   name_file <- paste0("Annotation_stats.dir/DifferentialMarkersPerCluster_", condition1, "_vs_",condition2, ".csv")
