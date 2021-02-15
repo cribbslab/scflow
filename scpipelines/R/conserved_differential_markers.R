@@ -142,7 +142,13 @@ for(comparison in de_conditions){
 
   combined <- c()
   combined_topmarkers <- c()
-  for(i in 0:final_cluster){
+
+  # Not every cluster is in every group. Subset for clusters that are in group
+  subset_so1 <- (seurat_object@meta.data %>% dplyr::filter(group_var == condition1))$seurat_clusters %>% unique() %>% as.character() %>% as.numeric() %>% sort()
+  subset_so2 <- (seurat_object@meta.data %>% dplyr::filter(group_var == condition2))$seurat_clusters %>% unique() %>% as.character() %>% as.numeric() %>% sort()
+  clusters_keep <- intersect(subset_so1, subset_so2)
+
+  for(i in clusters_keep){
 
     de_markers_cluster <- FindMarkers(seurat_object, ident.1 = condition1, ident.2 = condition2,
                             group.by = group_var, subset.ident = i)
