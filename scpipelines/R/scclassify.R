@@ -75,6 +75,10 @@ if(method == "predict"){
                                  similarity = similarity,
                                  prob_threshold = 0.7,
                                  verbose = FALSE)
+
+    pred_results  <- pred_res$jointRes
+    cells_assigned <- pred_results$cellTypes
+
   }else{
     pred_res <- predict_scClassify(exprsMat_test = dgc_mat,
                                  trainRes = trainClass, # or pre-made reference using
@@ -84,24 +88,34 @@ if(method == "predict"){
                                  similarity = similarity,
                                  prob_threshold = 0.7,
                                  verbose = FALSE)
+
+    if(length(similarity) > 1){
+      pred_results  <- pred_res$ensembleRes
+      cells_assigned <- pred_results$cellTypes
+
+    }else{
+      column_name <- paste0(metric, "_WKNN_limma")
+      cells_assigned <- as.vector(pred_res[[column_name]]$predRes)
+
+    }
+
   }
 
-  pred_results  <- pred_res$ensembleRes
 
-  for(metric in similarity){
-    column_name <- paste0(metric, "_WKNN_limma")
-    cells_assigned <- as.vector(pred_res[[column_name]]$predRes)
-    pred_results[[metric]] <- cells_assigned
-  }
-  pred_results$cell_barcode <- rownames(pred_results)
+  #for(metric in similarity){
+   # column_name <- paste0(metric, "_WKNN_limma")
+   # cells_assigned <- as.vector(pred_res[[column_name]]$predRes)
+   # pred_results[[metric]] <- cells_assigned
+  #}
+  #pred_results$cell_barcode <- rownames(pred_results)
 
-  name_file <- paste0("scclassify_predict_", sample_name, ".rds")
-  saveRDS(pred_results, name_file)
+  #name_file <- paste0("scclassify_predict_", sample_name, ".rds")
+  #saveRDS(pred_results, name_file)
 
-  name_file <- paste0("Annotation_stats.dir/scclassify_predict_", sample_name, ".csv.gz")
+  #name_file <- paste0("Annotation_stats.dir/scclassify_predict_", sample_name, ".csv.gz")
   #write_csv(pred_results,name_file)
 
-  seurat_object@meta.data[['scclassify_labels']] <- pred_results$cellTypes
+  seurat_object@meta.data$scclassify_labels <- cells_assigned
 
 }
 
@@ -130,17 +144,26 @@ if(method != "predict"){
   #saveRDS(scClassify_res_ensemble,name_file)
 
   results <- scClassify_res_ensemble$testRes$test$ensembleRes
-  for(metric in similarity){
+  if(length(similarity) > 1){
+    results  <- scClassify_res_ensemble$testRes$test$ensembleRes
+    cells_assigned <- results$cellTypes
+
+  }else{
     column_name <- paste0(metric, "_WKNN_limma")
-    metric_cells_assigned <- as.vector(scClassify_res_ensemble$testRes$test[[column_name]]$predRes)
-    results[[metric]] <- metric_cells_assigned
+    cells_assigned <- as.vector(scClassify_res_ensemble$testRes$test[[column_name]]$predRes)
+
   }
-  results$cell_barcode <- rownames(results)
-  name_file <- paste0("Annotation_stats.dir/scclassify_train_", sample_name, ".csv.gz")
-  write_csv(results,name_file)
+  #for(metric in similarity){
+  #  column_name <- paste0(metric, "_WKNN_limma")
+  #  metric_cells_assigned <- as.vector(scClassify_res_ensemble$testRes$test[[column_name]]$predRes)
+  #  results[[metric]] <- metric_cells_assigned
+  #}
+  #results$cell_barcode <- rownames(results)
+  #name_file <- paste0("Annotation_stats.dir/scclassify_train_", sample_name, ".csv.gz")
+  #write_csv(results,name_file)
 
 
-  seurat_object@meta.data[['scclassify_labels']] <- results$cellTypes
+  seurat_object@meta.data$scclassify_labels <- cells_assigned
 
 }
 
