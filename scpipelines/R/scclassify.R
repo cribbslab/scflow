@@ -121,7 +121,7 @@ if(method == "predict"){
 
 
 # Ensemble/non-ensembl classify. Train and test model in one
-if(method != "predict"){
+if(method == "train"){
 
   if (any(table(cellTypes_train) == 1)) { # Sort out stop error thrown by scClassify which doesn't like cell types with 1 cell only
     tab <- table(cellTypes_train)
