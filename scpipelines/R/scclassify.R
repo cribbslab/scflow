@@ -143,7 +143,6 @@ if(method != "predict"){
   #name_file <- paste0("scclassify_ensembl_", sample_name, ".rds")
   #saveRDS(scClassify_res_ensemble,name_file)
 
-  results <- scClassify_res_ensemble$testRes$test$ensembleRes
   if(length(similarity) > 1){
     results  <- scClassify_res_ensemble$testRes$test$ensembleRes
     cells_assigned <- results$cellTypes
