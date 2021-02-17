@@ -216,31 +216,8 @@ def scclassify(infile, outfile):
 
 	P.run(statement)
 
-#############
-# Rmarkdown
-#############
 
-# Need to write
-@follows(singleR, clustifyr, scclassify)
-@originate('Annotation.html')
-def rmarkdown_annotate(outfile):
-	'''
-	Rmarkdown html generation and visualisation of figures
-	'''
-
-	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-annotation-5", "Rmarkdown")
-
-	job_memory ="50G"
-
-	statement='''
-	cp %(RMD_ROOT)s/Annotation.Rmd . &&
-	R -e "rmarkdown::render('Annotation.Rmd', output_file='Annotation.html')" '''
-
-	P.run(statement)
-
-############################################################################################
-
-@follows(integrated_markers, reference_generate, reference_copy, singleR, clustifyr, scclassify, rmarkdown_annotate)
+@follows(integrated_markers, reference_generate, reference_copy, singleR, clustifyr, scclassify)
 def full():
 	pass
 
