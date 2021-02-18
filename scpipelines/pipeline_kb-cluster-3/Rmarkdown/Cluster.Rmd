@@ -1,7 +1,8 @@
 ---
 title: "Clustering of samples individually"
 output:
-  html_document
+  html_document:
+    toc: true
 ---
 
 Notebook to visualise clustering of samples. Linear (PCA) and non-linear dimensional reduction techniques (UMAP/tSNE).
@@ -21,7 +22,7 @@ sample_names <- gsub("_filtered_clustered_SeuratObject.rds", "", sample_files)
 
 # Read in seurat objects
 
-```{r read_seurat_objects}
+```{r read_seurat_objects, echo = FALSE}
 for (i in sample_names){
   name <- paste0("RDS_objects.dir/", i, "_filtered_clustered_SeuratObject.rds")
   so <- readRDS(name)
@@ -32,11 +33,10 @@ for (i in sample_names){
 # Variable features
 Top variable features, number specified by user (default = 2000). Genes with highest cell-to-cell variation per sample (i.e. highly expressed in some cells, lowly expressed in others). The top 10 genes are labelled.
 
-```{r variable_features, echo = FALSE}
+```{r variable_features, results='asis', echo = FALSE}
 
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-  cat("\n")
 
   cat("## ",i,"\n")
   top10 <- head(VariableFeatures(so), 10)
@@ -44,33 +44,33 @@ for (i in sample_names){
   plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
 
   print(plot2)
-  cat("\n\n")
 
   name<- paste0("Clustering_Figures.dir/VariableFeatures_", i, ".eps")
   postscript(name)
   print(plot2)
   dev.off()
+
+  cat('\n\n')
 }
 ```
 
 # Dimensionality of the data
 
-```{r dimensionality, echo = FALSE}
+```{r dimensionality, results='asis', echo = FALSE}
 
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-  cat("\n")
 
   cat("## ",i,"\n")
 
   jack_plot <- JackStrawPlot(so, dims = 1:15)
+
   elb_plt <- ElbowPlot(so)
 
   print(jack_plot)
-  cat("\n")
   print(elb_plt)
 
-  cat("\n\n")
+  cat('\n\n')
 
 }
 ```
@@ -78,59 +78,59 @@ for (i in sample_names){
 
 # PCA- PC1 PC2 plot
 
-```{r pca_dimplot, echo = FALSE}
+```{r pca_dimplot, results='asis', echo = FALSE}
 
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
   # Visualize PCA plot (PC1 and PC2)
-  cat("\n")
 
   cat("## ",i,"\n")
   plt <- DimPlot(so, reduction = "pca")
 
   print(plt)
-  cat("\n\n")
 
   name<- paste0("Clustering_Figures.dir/DimPlotPCA_", i, ".eps")
   postscript(name)
   print(plt)
   dev.off()
-}
+
+  cat('\n\n')
+} 
 ```
 
 # PCA Loading plot
 Plot of top 30 genes contributing the most to PC1 and PC2.
 
-```{r pca_loading, echo = FALSE}
+```{r pca_loading, results='asis', echo = FALSE}
 
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
   # Visualize PCA plot (PC1 and PC2)
-  cat("\n")
 
   cat("## ",i,"\n")
   plt <- VizDimLoadings(so, dims = 1:2, reduction = "pca")
 
   print(plt)
 
-  cat("\n\n")
 
   name<- paste0("Clustering_Figures.dir/LoadingPCA_", i, ".eps")
   postscript(name)
   print(plt)
   dev.off()
+
+  cat('\n\n')
+
 }
 ```
 
 # PCA Dimension Heatmaps
 Heatmap for 500 cells vs top genes for first 9 principle components
 
-```{r pca_loading2, echo = FALSE}
+```{r pca_loading2, results='asis', echo = FALSE}
 
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
   # Visualize PCA plot (PC1 and PC2)
-  cat("\n")
 
   cat("## ",i,"\n")
   plt <- DimHeatmap(so, dims = 1:9, cells = 500, balanced = TRUE, reduction = "pca")
@@ -138,57 +138,55 @@ for (i in sample_names){
 
   print(plt)
 
-  cat("\n\n")
 
   name<- paste0("Clustering_Figures.dir/DimensionHeatmap_", i, ".eps")
   postscript(name)
   print(plt)
   dev.off()
+
+  cat('\n\n')
 }
 ```
 
 
 # t-SNE
 
-```{r tsne_dimplot, echo = FALSE}
+```{r tsne_dimplot, results='asis', echo = FALSE}
 
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-
-  cat("\n")
 
   cat("## ",i,"\n")
   plt <- DimPlot(so, reduction = "tsne")
 
   print(plt)
-  cat("\n\n")
 
   name<- paste0("Clustering_Figures.dir/DimPlotTSNE_", i, ".eps")
   postscript(name)
   print(plt)
   dev.off()
+  cat('\n\n')
 }
 ```
 
 
 # UMAP
 
-```{r umap_dimplot, echo = FALSE}
+```{r umap_dimplot, results='asis', echo = FALSE}
 
 for (i in sample_names){
   so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
 
-  cat("\n")
 
   cat("## ",i,"\n")
   plt <- DimPlot(so, reduction = "umap")
 
   print(plt)
-  cat("\n\n")
 
   name<- paste0("Clustering_Figures.dir/DimPlotUMAP_", i, ".eps")
   postscript(name)
   print(plt)
   dev.off()
+  cat('\n\n')
 }
 ```

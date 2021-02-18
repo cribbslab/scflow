@@ -9,7 +9,8 @@ Clustering is visualised in an Rmarkdown notebook.
 
 Authors
 =======
-
+Anna James-Bott- anna.james-bott@st-hildas.ox.ac.uk
+Dr Adam P Cribbs- adam.cribbs@imm.ox.ac.uk
 
 Code
 ====
