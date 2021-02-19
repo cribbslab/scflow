@@ -49,6 +49,7 @@ SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
 # Seurat markers
 ######################
 
+@active_if(PARAMS['markerdiff'] == 1)
 @follows(mkdir("Annotation_Figures.dir"))
 @follows(mkdir("Annotation_stats.dir"))
 @transform(SEURAT_OBJECTS,

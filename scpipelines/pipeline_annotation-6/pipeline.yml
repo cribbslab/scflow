@@ -47,6 +47,9 @@ reference:
 # Seurat markers
 #######################
 
+# run seurat markers
+markerdiff: 0
+
 markers:
 
   # Path to metadata file. First column sample_name, other columns specified by user
