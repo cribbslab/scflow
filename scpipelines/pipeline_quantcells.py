@@ -82,7 +82,7 @@ PARAMS = P.get_parameters(
      "pipeline.yml"])
 
 
-JUPYTER_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kallistobus","Jupyter")
+JUPYTER_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_quantcells","Jupyter")
 
 # Determine the location of the input fastq files
 

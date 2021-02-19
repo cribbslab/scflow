@@ -35,7 +35,7 @@ PARAMS = P.get_parameters(
      "pipeline.yml"])
 
 # Root of Rmarkdown folder in pipeline folder
-RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-annotation-5","Rmarkdown")
+RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_annotation-6","Rmarkdown")
 # R folder in main directory
 R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 

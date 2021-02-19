@@ -35,7 +35,7 @@ PARAMS = P.get_parameters(
      "pipeline.yml"])
 
 # Root of Rmarkdown folder in pipeline folder
-RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-cluster-3","Rmarkdown")
+RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_cluster-3","Rmarkdown")
 # R folder in main directory
 R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 
@@ -114,7 +114,7 @@ def cluster_rmarkdown(infile, outfile):
 	R markdown to visualise clustering and dimensional reduction
 	'''
 
-	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-cluster-3","Rmarkdown")
+	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_cluster-3","Rmarkdown")
 	job_memory = "50G"
 
 	statement = ''' 
