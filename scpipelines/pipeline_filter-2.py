@@ -35,7 +35,7 @@ def rmarkdown_stats(outfile):
     experiments ran using pipeline_kb.py
     '''
 
-    RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-filter-2","Rmarkdown")
+    RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_filter-2","Rmarkdown")
 
     job_memory = "50G"
 

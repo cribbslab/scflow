@@ -58,7 +58,7 @@ def rmarkdown_doublet(outfile):
     Run rmarkdown to plot doublet presence
     '''
 
-    RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-doublet","Rmarkdown")
+    RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_doublet-4","Rmarkdown")
 
     job_memory = "50G"
 

@@ -3,7 +3,7 @@
 Pipeline sampleqc
 =================
 
-The pipeline should be  exectued within the directory that pipeline_kb.py
+The pipeline should be  exectued within the directory that pipeline_quantcells.py or pipeline_quantnuclei.py
 was previously ran within.
 """
 
@@ -35,7 +35,7 @@ def rmarkdown_stats(outfile):
     experiments ran using pipeline_kb.py
     '''
 
-    RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_kb-sampleqc-1","Rmarkdown")
+    RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_qc-1","Rmarkdown")
 
     job_memory = "50G"
 
