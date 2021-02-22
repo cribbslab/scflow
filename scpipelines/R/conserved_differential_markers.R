@@ -15,7 +15,9 @@ option_list <- list(
         make_option(c("-m", "--meta"), default="metadata.csv", type = "character",
 			help="Name of meta data csv file [default %default]"),
         make_option(c("--de"), type = "character",
-			help="Differential expression versus conditions.")
+			help="Differential expression versus conditions."),
+        make_option(c("--predefined"), defualt = NULL,
+			help="User pre-defined list of marker genes")
 )
 
 # Read in options
@@ -166,5 +168,32 @@ for(comparison in de_conditions){
 
   combined <- combined %>% dplyr::select(ensembl, cluster, everything())
   write_csv(combined, name_file)
+
+}
+
+# Pre-defined list of markers
+predefined <- opt$predefined
+if(!is.null(predefined)){
+  predefined_list <- str_split(predefined, "_")[[1]]
+  number_markers <- length(predefined_list)
+
+  for(marker in predefined_list){
+
+    vln_plt <- VlnPlot(seurat_object, features = marker,  group.by = "seurat_clusters",
+    pt.size = 0)
+
+    ft_plt <- FeaturePlot(seurat_object, features = marker, label=TRUE)
+
+    name<- paste0("Annotation_Figures.dir/Clusters_ViolinPlot_", sample_name, "_", marker ,".eps")
+    postscript(name)
+    print(vln_plt)
+    dev.off()
+
+    name<- paste0("Annotation_Figures.dir/Clusters_FeaturePlot_", sample_name, "_", marker ,".eps")
+    postscript(name)
+    print(ft_plt)
+    dev.off()
+
+  }
 
 }
