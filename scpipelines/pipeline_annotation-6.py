@@ -68,7 +68,7 @@ def integrated_markers(infile, outfile):
 	group = PARAMS['markers_group']
 	DE = PARAMS['markers_DE_versus'].replace(" ", "---")
 
-	predefined_list = PARAMS['markers_predefined_list']
+	predefined_list = PARAMS['predefined_list']
 	if predefined_list:
 		predef_options = "--predefined " + predefined_list
 	else:
@@ -209,11 +209,17 @@ def scclassify(infile, outfile):
 	sim = PARAMS['scclassify_similarity']
 	sim = sim.replace(" ", "_")
 
+	predefined_list = PARAMS['predefined_list']
+	if predefined_list:
+		predef_options = "--predefined " + predefined_list
+	else:
+		predef_options = ""
+
 	job_memory = "50G"
 
 	statement = '''
 	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  
-	--pretrained %(pretrained)s -m %(method)s --similarity %(sim)s -o %(outfile)s'''
+	--pretrained %(pretrained)s -m %(method)s --similarity %(sim)s -o %(outfile)s %(predef_options)s'''
 
 	P.run(statement)
 
