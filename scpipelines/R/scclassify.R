@@ -148,10 +148,10 @@ DefaultAssay(seurat_object) <- "RNA"
 
 # Labelled UMAP and tSNE dimension plots with scClassify labels
 umap_plt <- DimPlot(seurat_object, group.by = "scclassify_labels", reduction = "umap")
-umap_labelled <- DimPlot(seurat_object, group.by = "scclassify_labels", label = TRUE, , reduction = "umap")
+umap_labelled <- DimPlot(seurat_object, group.by = "scclassify_labels", label = TRUE, reduction = "umap")
 
 tsne_plt <- DimPlot(seurat_object, group.by = "scclassify_labels", reduction = "tsne")
-tsne_labelled <- DimPlot(seurat_object, group.by = "scclassify_labels", label = TRUE, , reduction = "tsne")
+tsne_labelled <- DimPlot(seurat_object, group.by = "scclassify_labels", label = TRUE, reduction = "tsne")
 
 name<- paste0("Annotation_Figures.dir/scClassify_UMAP_", sample_name, ".eps")
 postscript(name)
