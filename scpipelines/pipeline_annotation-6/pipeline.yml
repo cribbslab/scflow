@@ -61,7 +61,8 @@ markers:
   # Conditions in stim to compare, separated with "_v_". Multiple comparisons separated with space
   DE_versus: cntrl_v_drug1 cntrl_v_drug2
 
-  predefined_list:
+# List of pre-defined markers. Separate genes by underscore e.g. ENSG00000081237_ENSG00000090339_ENSG00000139193
+predefined_list: ENSG00000081237_ENSG00000090339_ENSG00000139193
 
 
 #######################
