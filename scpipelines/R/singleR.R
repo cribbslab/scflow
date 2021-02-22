@@ -77,5 +77,31 @@ postscript(name)
 print(plotDeltaDistribution(pred, ncol = 3))
 dev.off()
 
-# To combine annotations with tSNE and UMAP.
-# ...
+DefaultAssay(seurat_object) <- "RNA"
+
+# Labelled UMAP and tSNE dimension plots with singleR labels
+umap_plt <- DimPlot(seurat_object, group.by = "singleR_labels", reduction = "umap")
+umap_labelled <- DimPlot(seurat_object, group.by = "singleR_labels", label = TRUE, reduction = "umap")
+
+tsne_plt <- DimPlot(seurat_object, group.by = "singleR_labels", reduction = "tsne")
+tsne_labelled <- DimPlot(seurat_object, group.by = "singleR_labels", label = TRUE, reduction = "tsne")
+
+name<- paste0("Annotation_Figures.dir/singleR_UMAP_", sample_name, ".eps")
+postscript(name)
+print(umap_plt)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/singleR_UMAP_labelled_", sample_name, ".eps")
+postscript(name)
+print(umap_labelled)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/singleR_tSNE_", sample_name, ".eps")
+postscript(name)
+print(tsne_plt)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/singleR_tSNE_labelled_", sample_name, ".eps")
+postscript(name)
+print(tsne_labelled)
+dev.off()
