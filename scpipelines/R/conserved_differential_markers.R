@@ -171,6 +171,7 @@ for(comparison in de_conditions){
 
 }
 
+DefaultAssay(seurat_object) <- "RNA"
 # Pre-defined list of markers
 predefined <- opt$predefined
 if(!is.null(predefined)){
