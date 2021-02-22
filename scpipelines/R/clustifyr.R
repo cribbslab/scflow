@@ -65,7 +65,7 @@ write_csv(res2, name_file2)
 cell_types <- res_so@meta.data$type
 r <- res_so@meta.data$r
 
-seurat_object@meta.data$clustifyr_labels <- cell_types
-seurat_object@meta.data$clustifyr_rvalues <- r
+seurat_object@meta.data[['clustifyr_labels']] <- cell_types
+seurat_object@meta.data[['clustifyr_rvalues']] <- r
 
 saveRDS(seurat_object, output_file) # Save seurat object with labels
