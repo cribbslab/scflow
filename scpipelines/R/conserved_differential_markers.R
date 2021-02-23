@@ -16,7 +16,7 @@ option_list <- list(
 			help="Name of meta data csv file [default %default]"),
         make_option(c("--de"), type = "character",
 			help="Differential expression versus conditions."),
-        make_option(c("--predefined"), defualt = NULL,
+        make_option(c("--predefined"), default = NULL,
 			help="User pre-defined list of marker genes")
 )
 
