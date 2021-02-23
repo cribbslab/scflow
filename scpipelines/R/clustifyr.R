@@ -18,7 +18,9 @@ option_list <- list(
 		make_option(c("-d", "--dimReduction"), default="umap", type = "character",
 			help="Dimension reduction technique, e.g. umap, pca, tsne."),
 		make_option(c("-v", "--varFeatures"), default=1, type = "integer",
-			help="Whether to use previously generated list of variable features for clustify function.")
+			help="Whether to use previously generated list of variable features for clustify function."),
+        make_option(c("--predefined"), default=NULL,
+			help="User pre-defined list of marker genes")
 )
 
 # Read in options
@@ -98,3 +100,21 @@ name<- paste0("Annotation_Figures.dir/clustifyr_tSNE_labelled_", sample_name, ".
 postscript(name)
 print(tsne_labelled)
 dev.off()
+
+# Pre-defined list of markers
+predefined <- opt$predefined
+if(!is.null(predefined)){
+  predefined_list <- str_split(predefined, "_")[[1]]
+  number_markers <- length(predefined_list)
+
+  for(marker in predefined_list){
+
+    vln_plt <- VlnPlot(seurat_object, features = marker,  group.by = "clustifyr_labels",
+    pt.size = 0)
+
+    name<- paste0("Annotation_Figures.dir/clustifyr_ViolinPlot_", sample_name, "_", marker ,".eps")
+    postscript(name)
+    print(vln_plt)
+    dev.off()
+  }
+}

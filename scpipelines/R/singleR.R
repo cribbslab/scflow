@@ -19,7 +19,9 @@ option_list <- list(
         make_option(c("-d", "--DEmethod"), default=0, type="integer",
             help="Whether to apply Wilcoxin pairwise comparison tests between labels. [default %default, i.e. no DE test]"),
         make_option(c("-m", "--method"), default="single", type="character",
-            help="SingleR method, annotating by single cells or by cluster. [default %default]")
+            help="SingleR method, annotating by single cells or by cluster. [default %default]"),
+        make_option(c("--predefined"), default=NULL,
+			help="User pre-defined list of marker genes")
 )
 
 # Read in options
@@ -105,3 +107,21 @@ name<- paste0("Annotation_Figures.dir/singleR_tSNE_labelled_", sample_name, ".ep
 postscript(name)
 print(tsne_labelled)
 dev.off()
+
+# Pre-defined list of markers
+predefined <- opt$predefined
+if(!is.null(predefined)){
+  predefined_list <- str_split(predefined, "_")[[1]]
+  number_markers <- length(predefined_list)
+
+  for(marker in predefined_list){
+
+    vln_plt <- VlnPlot(seurat_object, features = marker,  group.by = "singleR_labels",
+    pt.size = 0)
+
+    name<- paste0("Annotation_Figures.dir/singleR_ViolinPlot_", sample_name, "_", marker ,".eps")
+    postscript(name)
+    print(vln_plt)
+    dev.off()
+  }
+}

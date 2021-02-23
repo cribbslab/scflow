@@ -190,8 +190,5 @@ if(!is.null(predefined)){
     postscript(name)
     print(vln_plt)
     dev.off()
-
-
   }
-
 }

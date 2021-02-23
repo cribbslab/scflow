@@ -146,10 +146,17 @@ def singleR(infile, outfile):
 	DE = PARAMS['singler_DEmethod']
 	method = PARAMS['singler_method']
 
+	predefined_list = PARAMS['predefined_list']
+	if predefined_list:
+		predef_options = "--predefined " + predefined_list
+	else:
+		predef_options = ""
+
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/singleR.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(DE)s -m %(method)s -o %(outfile)s '''
+	Rscript %(R_PATH)s/singleR.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(DE)s 
+	-m %(method)s -o %(outfile)s %(predef_options)s '''
 
 	P.run(statement)
 
@@ -176,11 +183,17 @@ def clustifyr(infile, outfile):
 	dim_red = PARAMS['clustifyr_dimRed']
 	var_features = PARAMS['clustifyr_var_features']
 
+	predefined_list = PARAMS['predefined_list']
+	if predefined_list:
+		predef_options = "--predefined " + predefined_list
+	else:
+		predef_options = ""
+
 	job_memory = "50G"
 
 	statement = '''
 	Rscript %(R_PATH)s/clustifyr.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(dim_red)s 
-	-v %(var_features)s -o %(outfile)s'''
+	-v %(var_features)s -o %(outfile)s %(predef_options)s'''
 
 	P.run(statement)
 
@@ -218,8 +231,8 @@ def scclassify(infile, outfile):
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  
-	--pretrained %(pretrained)s -m %(method)s --similarity %(sim)s -o %(outfile)s %(predef_options)s'''
+	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  -m %(method)s
+	--pretrained %(pretrained)s --similarity %(sim)s -o %(outfile)s %(predef_options)s'''
 
 	P.run(statement)
 
