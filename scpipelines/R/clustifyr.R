@@ -36,13 +36,13 @@ var_features <- opt$varFeatures
 # Load seurat object
 seurat_object <- readRDS(input_file)
 
-#seurat_object_mat <- as.matrix(object_data(seurat_object, "data"))
-#metadata <- seurat_meta(seurat_object, dr = dr)
-
 # Load in reference sce object
-ref_sce <- readRDS(reference_sce_loc)
-ref_mat <- as.matrix(assay(ref_sce))
-colnames(ref_mat) <- ref_sce$label
+ref <- readRDS(reference_sce_loc)
+ref_sce <- as(ref, "SingleCellExperiment")
+new_ref_matrix_sce <- object_ref(
+  input = ref_sce,               # SCE object
+  cluster_col = "label"       # name of column in colData containing cell identities
+)
 
 # Variable features
 if(var_features){
@@ -51,8 +51,8 @@ if(var_features){
 	vargenes <- NULL
 }
 
-res <- clustify(input=seurat_object, ref_mat= ref_mat, cluster_col="seurat_clusters", dr = dim_red, query_genes = vargenes, obj_out = FALSE)
-res_so <- clustify(input=seurat_object, ref_mat= ref_mat, cluster_col="seurat_clusters", dr = dim_red, query_genes = vargenes) # Outputs seurat object
+res <- clustify(input=seurat_object, ref_mat= new_ref_matrix_sce, cluster_col="seurat_clusters", dr = dim_red, query_genes = vargenes, obj_out = FALSE)
+res_so <- clustify(input=seurat_object, ref_mat= new_ref_matrix_sce, cluster_col="seurat_clusters", dr = dim_red, query_genes = vargenes) # Outputs seurat object
 
 name_file <- paste0(c("Annotation_stats.dir/clustifyr_correlation_matrix_", sample_name,".csv"), collapse="")
 write.csv(x = res, file = name_file, row.names = TRUE)
