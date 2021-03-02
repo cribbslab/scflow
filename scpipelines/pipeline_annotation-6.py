@@ -49,9 +49,9 @@ SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
 # Seurat markers
 ######################
 
-@active_if(PARAMS['markerdiff'] == 1)
 @follows(mkdir("Annotation_Figures.dir"))
 @follows(mkdir("Annotation_stats.dir"))
+@active_if(PARAMS['markerdiff'])
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
 	r"Annotation_stats.dir/ConservedMarkers_\1.csv")
@@ -236,8 +236,24 @@ def scclassify(infile, outfile):
 
 	P.run(statement)
 
+@follows(integrated_markers,singleR, clustifyr, scclassify)
+@originate("Annotation.html")
+def annotation_rmarkdown(outfile):
+	'''
+	Rmarkdown and html to visualise annotation
+	'''
 
-@follows(integrated_markers, reference_generate, reference_copy, singleR, clustifyr, scclassify)
+	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_annotation-6","Rmarkdown")
+	job_memory = "50G"
+
+	statement = ''' 
+	cp %(RMD_ROOT)s/Annotation.Rmd . &&
+	R -e "rmarkdown::render('Annotation.Rmd', output_file='Annotation.html')" '''
+
+	P.run(statement)
+
+@follows(integrated_markers, reference_generate, reference_copy,
+		 singleR, clustifyr, scclassify, annotation_rmarkdown)
 def full():
 	pass
 
