@@ -104,3 +104,11 @@ ggsave(filename = name_dot_prop, plot = dot_prop, device = "eps")
 ggsave(filename = name_dot_numb, plot = dot_numb, device = "eps")
 
 # To do with annotations
+
+# Save composition matrix
+comp_csv_name <- paste0("Annotation_stats.dir/Composition_Cluster_CellNumbers_", sample_name ,".csv")
+write_csv(x=composite_tib, path = comp_csv_name)
+
+comp_csv_name_prop <- paste0("Annotation_stats.dir/Composition_Cluster_CellProportions_", sample_name ,".csv")
+write_csv(x=proportion, path = comp_csv_name_prop)
+# Output task check ^^
