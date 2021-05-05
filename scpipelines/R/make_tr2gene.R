@@ -19,15 +19,6 @@ opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
 
 
-if(opt$input2 != FALSE){
-	tr2g <- BUSpaRse::transcript2gene(fasta_file = c(opt$input1, opt$input2),
-                        kallisto_out_path = opt$out)
+tr2g <- BUSpaRse::tr2g_fasta(file=opt$input1)
 
-
-}else{
-	tr2g <- BUSpaRse::transcript2gene(fasta_file = opt$input1,
-                        kallisto_out_path = opt$out)
-}
-
-
-save_tr2g_bustools(tr2g, opt$outfile)
+write.table(tr2g, file=opt$outfile, quote=FALSE, sep="\t", col.names=F, row.names=F)

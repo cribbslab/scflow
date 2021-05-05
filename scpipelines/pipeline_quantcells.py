@@ -214,8 +214,9 @@ def build_tr2g(infile, outfile):
     if PARAMS['mixed_species']:
         input1, input2 = PARAMS['geneset'].split(" ")
 
-        statement = """Rscript %(R_PATH)s/make_tr2gene.R -i %(input1)s -j %(input2)s -o %(infile)s/
-                       -f %(outfile)s 2> %(outfile)s.log"""
+        statement = """zcat %(input1)s %(input2)s > cat_input.fasta && 
+                       Rscript %(R_PATH)s/make_tr2gene.R -i cat_input.fasta  -o %(infile)s/
+                       -f %(outfile)s 2> %(outfile)s.log && rm -rf tx_filtered.fa tr2g.tsv """
     else:
         statement = """Rscript  %(R_PATH)s/make_tr2gene.R -i %(geneset)s -o %(infile)s -f %(outfile)s"""
 
