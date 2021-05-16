@@ -2,19 +2,28 @@
 scflow.py - Single Cell analysis workflows for cribbslab
 ========================================================
 
-:Tags: Single-cell
+Our single-cell workflows are organised into three different sections.
+* main: contains the upstream pipelines for mapping, velocyto, QC and filtering
+* seurat: contains Seurat specific workflows
+* scanpy: contains scanpy specific workflows 
 
-To use a specific workflow, type::
-
-    scflow <workflow> [workflow options] [workflow arguments]
 
 For this message and a list of available keywords type::
 
     scflow --help
 
+
+To see the available pipelines within each section type::
+
+    scflow <section>
+
+To run a specific pipeline/workflow type the following:: 
+    
+    scflow <section> <workflow> [workflow options] [workflow arguments]
+
 To get help for a specify workflow, type::
 
-    scflow <workflow> --help
+    scflow <section> <workflow> --help
 '''
 
 import os
@@ -62,27 +71,62 @@ def main(argv=None):
     # paths to look for pipelines:
     print(scpipelines.__file__)
     path = os.path.abspath(os.path.dirname(scpipelines.__file__))
-    relpath = os.path.abspath("../src")
+    scanpy = path + "/scanpy/"
+    seurat = path + "/seurat/"
 
-    paths = [path, relpath]
+    paths = [path, scanpy, seurat]
 
     if len(argv) == 1 or argv[1] == "--help" or argv[1] == "-h":
-        pipelines = []
-        for path in paths:
-            pipelines.extend(glob.glob(os.path.join(path, "pipeline_*.py")))
+        
         print((globals()["__doc__"]))
+        print("The list of available sections are:\n")
+        print("main  scanpy  seurat\n")
+        return
+
+    elif argv[1] == "main":
+        print((globals()["__doc__"]))
+
+        pipelines = []
+        pipelines.extend(glob.glob(os.path.join(path, "pipeline_*.py")))
         print("The list of available single cell pipelines is:\n")
         print("{}\n".format(
             printListInColumns(
                 sorted([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines]),
                 3)))
+    elif argv[1] == "seurat":
+        print((globals()["__doc__"]))
+	
+        pipelines = []
+        pipelines.extend(glob.glob(os.path.join(seurat, "pipeline_*.py")))
+        print("The list of available single cell pipelines is:\n")
+        print("{}\n".format(
+            printListInColumns(
+                sorted([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines]),
+                3)))
+
+    elif argv[1] == "scanpy":
+        print((globals()["__doc__"]))
+	
+        pipelines = []
+        pipelines.extend(glob.glob(os.path.join(scanpy, "pipeline_*.py")))
+        print("The list of available single cell pipelines is:\n")
+        print("{}\n".format(
+            printListInColumns(
+                sorted([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines]),
+                3)))
+
+    else:
+        print("please select an appropriate workflow section: main, scanpy or seurat")
+
+
+    try:
+        command = argv[2]
+        pipeline = "pipeline_{}".format(command)
+    except:
+        print("No pipeline has been selected under the %s section" % (argv[1]))
         return
 
-    command = argv[1]
-    command = re.sub("-", "_", command)
-    pipeline = "pipeline_{}".format(command)
-
-    # remove 'cgatsc' from sys.argv
+    # remove 'scflow' from sys.argv
     del sys.argv[0]
 
     (file, pathname, description) = imp.find_module(pipeline, paths)
