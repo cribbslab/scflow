@@ -140,16 +140,13 @@ def build_kallisto_index(outfile):
     ----------
     '''
 
-
-    job_memory = "65G"
-
     statement = '''
     kb ref -i geneset.dir/index.idx -g geneset.dir/t2g.txt -f1 geneset.dir/cdna.fa
     -f2 geneset.dir/intron.fa -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt
     --workflow %(kallisto_workflow)s  %(genome_file)s %(geneset)s 2> ref.log
     '''
 
-    P.run(statement)
+    P.run(statement, job_memory = "100G")
 
 
 ############################################
