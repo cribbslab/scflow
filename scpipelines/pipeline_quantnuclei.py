@@ -189,7 +189,7 @@ if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
 
 else:
     SEQUENCEFILES_REGEX = regex(
-        "(\S+).(fastq.gz|fastq.1.gz)")
+        "\S+/(\S+).(fastq.gz|fastq.1.gz)")
 
     SEQUENCEFILES_KALLISTO_OUTPUT = (
         r"kallisto.dir/\1/bus/output.bus")
