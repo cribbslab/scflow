@@ -79,7 +79,7 @@ def main(argv=None):
         return
 
     command = argv[1]
-    command = re.sub("-", "_", command)
+    #command = re.sub("-", "_", command)
     pipeline = "pipeline_{}".format(command)
 
     # remove 'cgatsc' from sys.argv
