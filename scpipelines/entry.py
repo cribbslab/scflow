@@ -5,7 +5,7 @@ scflow.py - Single Cell analysis workflows for cribbslab
 Our single-cell workflows are organised into three different sections.
 * main: contains the upstream pipelines for mapping, velocyto, QC and filtering
 * seurat: contains Seurat specific workflows
-* scanpy: contains scanpy specific workflows 
+* scanpy: contains scanpy specific workflows
 
 
 For this message and a list of available keywords type::
@@ -17,8 +17,8 @@ To see the available pipelines within each section type::
 
     scflow <section>
 
-To run a specific pipeline/workflow type the following:: 
-    
+To run a specific pipeline/workflow type the following::
+
     scflow <section> <workflow> [workflow options] [workflow arguments]
 
 To get help for a specify workflow, type::
@@ -77,7 +77,7 @@ def main(argv=None):
     paths = [path, scanpy, seurat]
 
     if len(argv) == 1 or argv[1] == "--help" or argv[1] == "-h":
-        
+
         print((globals()["__doc__"]))
         print("The list of available sections are:\n")
         print("main  scanpy  seurat\n")
@@ -95,7 +95,7 @@ def main(argv=None):
                 3)))
     elif argv[1] == "seurat":
         print((globals()["__doc__"]))
-	
+
         pipelines = []
         pipelines.extend(glob.glob(os.path.join(seurat, "pipeline_*.py")))
         print("The list of available single cell pipelines is:\n")
@@ -106,7 +106,7 @@ def main(argv=None):
 
     elif argv[1] == "scanpy":
         print((globals()["__doc__"]))
-	
+
         pipelines = []
         pipelines.extend(glob.glob(os.path.join(scanpy, "pipeline_*.py")))
         print("The list of available single cell pipelines is:\n")
