@@ -32,5 +32,8 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
         run: |
+          python setup.py install
+          pycodestyle --ignore=E501 tests
           nosetests -v tests/test_import.py
           nosetests -v tests/test_style.py
+          nosetests -v tests/test_pipeline_control.py
