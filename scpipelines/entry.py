@@ -118,12 +118,12 @@ def main(argv=None):
     else:
         print("please select an appropriate workflow section: main, scanpy or seurat")
 
-
     try:
         command = argv[2]
         pipeline = "pipeline_{}".format(command)
-    except:
+    except Exception:
         print("No pipeline has been selected under the %s section" % (argv[1]))
+        print("Problems?", sys.exc_info())
         return
 
     # remove 'scflow' from sys.argv
