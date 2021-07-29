@@ -120,6 +120,8 @@ def main(argv=None):
 
     try:
         command = argv[2]
+        if command == "-h" or command == "--help":
+            return
         pipeline = "pipeline_{}".format(command)
     except Exception:
         print("No pipeline has been selected under the %s section" % (argv[1]))
@@ -128,6 +130,7 @@ def main(argv=None):
 
     # remove 'scflow' from sys.argv
     del sys.argv[0]
+    del sys.argv[1]
 
     (file, pathname, description) = imp.find_module(pipeline, paths)
 
