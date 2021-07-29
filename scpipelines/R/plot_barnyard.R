@@ -37,8 +37,7 @@ qplot(bc_rank$total, bc_rank$rank, geom = "line") +
   labs(y = "Barcode rank", x = "Total UMI count")
 dev.off()
 
-
-res_mat <- res_mat[, tot_counts > metadata(bc_rank)$inflection]
+res_mat <- res_mat[, tot_counts > 50]
 dim(res_mat)
 
 library(tidyverse)
