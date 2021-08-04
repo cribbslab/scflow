@@ -98,11 +98,11 @@ def main(argv=None):
 
         pipelines = []
         pipelines.extend(glob.glob(os.path.join(seurat, "pipeline_*.py")))
-        print("The list of available single cell pipelines is:\n")
+        print("The list of available single cell seurat pipelines are:\n")
         print("{}\n".format(
             printListInColumns(
                 sorted([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines]),
-                3)))
+                5)))
 
     elif argv[1] == "scanpy":
         print((globals()["__doc__"]))
