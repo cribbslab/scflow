@@ -38,9 +38,11 @@ with iotools.open_file(args.fasta, "r") as handle:
         
         description = record.description
         trans = description.split(" ")[0]
-        gene = re.search('gene:(\S+)', description)
+        m = re.search('gene:(\S+)', description)
+        gene = m.group(1)
         try:
-            symbol = re.search('gene_symbol:(\S+)', description)
+            x = re.search('gene_symbol:(\S+)', description)
+            symbol = x.group(1)
         except Exception:
             pass
 
