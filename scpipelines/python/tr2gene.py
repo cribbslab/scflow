@@ -3,6 +3,7 @@ import cgatcore.iotools as iotools
 import argparse
 import sys
 import logging
+import re
 
 # ########################################################################### #
 # ###################### Set up the logging ################################# #
@@ -37,9 +38,9 @@ with iotools.open_file(args.fasta, "r") as handle:
         
         description = record.description
         trans = description.split(" ")[0]
-        gene = description.split(" ")[3].replace("gene:","")
+        gene = re.search('gene:(\S+)', description)
         try:
-            symbol = description.split(" ")[6].replace("gene_symbol:","")
+            symbol = re.search('gene_symbol:(\S+)', description)
         except Exception:
             pass
 
