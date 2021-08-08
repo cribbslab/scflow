@@ -19,6 +19,11 @@ mixed_species: 1
 # Mouse: ftp://ftp.ensembl.org/pub/release-99/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz
 geneset: Homo_sapiens.GRCh38.cdna.all.fa.gz Mus_musculus.GRCm38.cdna.all.fa.gz
 
+# Have you supplied a custom fasta file for non human or mice?
+# For each record provide the fasta header in the ensembl format: 
+# e.g. >ENST00000631435.1 cdna chromosome:GRCh38:CHR_HSCHR7_2_CTG6:142847306:142847317:1 gene:ENSG00000282253.1 gene_biotype:TR_D_gene transcript_biotype:TR_D_gene gene_symbol:TRBD1 description:T cell receptor beta diversity 1 [Source:HGNC Symbol;Acc:HGNC:12158]
+custom_fasta: 0
+
 # Copyright statement
 copyright: Cribbs Group, Botnar Research Centre (2020)
 

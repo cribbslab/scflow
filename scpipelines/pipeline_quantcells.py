@@ -210,14 +210,31 @@ def build_tr2g(infile, outfile):
     """Build a transcript to gene relationship """
 
     R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
+    PYTHON_PATH =  os.path.abspath(os.path.join(os.path.dirname(__file__),"python"))
 
     if PARAMS['mixed_species']:
-        input1, input2 = PARAMS['geneset'].split(" ")
 
-        statement = """Rscript %(R_PATH)s/make_tr2gene.R -i %(input1)s -j %(input2)s -o %(infile)s/
-                       -f %(outfile)s 2> %(outfile)s.log"""
+
+        if PARAMS['custom_fasta']:
+
+            statement = """zcat %(input1)s %(input2)s > cat_input.fasta && 
+                           python %(PYTHON_PATH)s/tr2gene.py --fasta cat_input.fasta --output %(outfile)s 2> %(outfile)s.log &&
+                           rm -rf cat_input.fasta"""
+
+        else:
+            input1, input2 = PARAMS['geneset'].split(" ")
+
+            statement = """zcat %(input1)s %(input2)s > cat_input.fasta && 
+                       Rscript %(R_PATH)s/make_tr2gene.R -i cat_input.fasta  -o %(infile)s/
+                       -f %(outfile)s 2> %(outfile)s.log && rm -rf tx_filtered.fa tr2g.tsv """
     else:
-        statement = """Rscript  %(R_PATH)s/make_tr2gene.R -i %(geneset)s -o %(infile)s -f %(outfile)s"""
+        if PARAMS['custom_fasta']:
+
+            statement = "python %(PYTHON_PATH)s/tr2gene.py --fasta %(geneset)s --output %(outfile)s 2> %(outfile)s.log"
+
+        else:
+
+            statement = """Rscript  %(R_PATH)s/make_tr2gene.R -i %(geneset)s -o %(infile)s -f %(outfile)s"""
 
     P.run(statement)
 
