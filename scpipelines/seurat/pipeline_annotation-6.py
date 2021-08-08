@@ -49,9 +49,9 @@ SEURAT_OBJECTS = tuple([os.path.join("RDS_objects.dir",filtered_suffixes)])
 # Seurat markers
 ######################
 
-@active_if(PARAMS['markerdiff'] == 1)
 @follows(mkdir("Annotation_Figures.dir"))
 @follows(mkdir("Annotation_stats.dir"))
+@active_if(PARAMS['markerdiff'])
 @transform(SEURAT_OBJECTS,
 	regex("RDS_objects.dir/(\S+)_integrated_SeuratObject.rds"),
 	r"Annotation_stats.dir/ConservedMarkers_\1.csv")
@@ -68,7 +68,7 @@ def integrated_markers(infile, outfile):
 	group = PARAMS['markers_group']
 	DE = PARAMS['markers_DE_versus'].replace(" ", "---")
 
-	predefined_list = PARAMS['markers_predefined_list']
+	predefined_list = PARAMS['predefined_list']
 	if predefined_list:
 		predef_options = "--predefined " + predefined_list
 	else:
@@ -146,10 +146,17 @@ def singleR(infile, outfile):
 	DE = PARAMS['singler_DEmethod']
 	method = PARAMS['singler_method']
 
+	predefined_list = PARAMS['predefined_list']
+	if predefined_list:
+		predef_options = "--predefined " + predefined_list
+	else:
+		predef_options = ""
+
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/singleR.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(DE)s -m %(method)s -o %(outfile)s '''
+	Rscript %(R_PATH)s/singleR.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(DE)s 
+	-m %(method)s -o %(outfile)s %(predef_options)s '''
 
 	P.run(statement)
 
@@ -176,11 +183,17 @@ def clustifyr(infile, outfile):
 	dim_red = PARAMS['clustifyr_dimRed']
 	var_features = PARAMS['clustifyr_var_features']
 
+	predefined_list = PARAMS['predefined_list']
+	if predefined_list:
+		predef_options = "--predefined " + predefined_list
+	else:
+		predef_options = ""
+
 	job_memory = "50G"
 
 	statement = '''
 	Rscript %(R_PATH)s/clustifyr.R -i %(infile)s -s %(sample)s -r %(ref)s  -d %(dim_red)s 
-	-v %(var_features)s -o %(outfile)s'''
+	-v %(var_features)s -o %(outfile)s %(predef_options)s'''
 
 	P.run(statement)
 
@@ -209,16 +222,38 @@ def scclassify(infile, outfile):
 	sim = PARAMS['scclassify_similarity']
 	sim = sim.replace(" ", "_")
 
+	predefined_list = PARAMS['predefined_list']
+	if predefined_list:
+		predef_options = "--predefined " + predefined_list
+	else:
+		predef_options = ""
+
 	job_memory = "50G"
 
 	statement = '''
-	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  
-	--pretrained %(pretrained)s -m %(method)s --similarity %(sim)s -o %(outfile)s'''
+	Rscript %(R_PATH)s/scclassify.R -i %(infile)s -s %(sample)s -r %(ref)s  -m %(method)s
+	--pretrained %(pretrained)s --similarity %(sim)s -o %(outfile)s %(predef_options)s'''
 
 	P.run(statement)
 
+@follows(integrated_markers,singleR, clustifyr, scclassify)
+@originate("Annotation.html")
+def annotation_rmarkdown(outfile):
+	'''
+	Rmarkdown and html to visualise annotation
+	'''
 
-@follows(integrated_markers, reference_generate, reference_copy, singleR, clustifyr, scclassify)
+	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_annotation-6","Rmarkdown")
+	job_memory = "50G"
+
+	statement = ''' 
+	cp %(RMD_ROOT)s/Annotation.Rmd . &&
+	R -e "rmarkdown::render('Annotation.Rmd', output_file='Annotation.html')" '''
+
+	P.run(statement)
+
+@follows(integrated_markers, reference_generate, reference_copy,
+		 singleR, clustifyr, scclassify, annotation_rmarkdown)
 def full():
 	pass
 

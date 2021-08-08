@@ -1,0 +1,291 @@
+---
+title: "Annotation of cell types"
+output:
+  html_document:
+    toc: true
+---
+
+
+Notebook to visualise cell type annotations. scClassify, singleR and clustifyr and Seurat techniques used.
+
+```{r load_modules, cache=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(Seurat)
+
+```
+
+# scClassify
+Annotation performed with scClasssify
+
+## UMAP Annotation {.tabset .tabset-fade}
+
+```{r umap_scc, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/scclassify_UMAP*.eps")
+if(length(plot_names) < 1){
+  cat("No scClassify UMAP plots")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/scclassify_UMAP_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## tSNE Annotation {.tabset .tabset-fade}
+
+```{r tsne_scc, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/scclassify_tSNE*.eps")
+if(length(plot_names) < 1){
+  cat("No scClassify tSNE plots")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/scclassify_tSNE_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## Violin Plot Pre-defined Markers {.tabset .tabset-fade}
+
+```{r violin_scc, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/scclassify_ViolinPlot*.eps")
+if(length(plot_names) < 1){
+  cat("No scClassify violin plots, either because scClassify hasn't been run or because no predefined markers were supplied.")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/scclassify_ViolinPlot_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+# Clustifyr
+Annotation performed with Clustifyr
+
+## UMAP Annotation {.tabset .tabset-fade}
+
+```{r umap_clust, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/clustifyr_UMAP*.eps")
+if(length(plot_names) < 1){
+  cat("No clustifyr UMAP plots")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/clustifyr_UMAP_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## tSNE Annotation {.tabset .tabset-fade}
+
+```{r tsne_clust, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/clustifyr_tSNE*.eps")
+if(length(plot_names) < 1){
+  cat("No clustifyr tSNE plots")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/clustifyr_tSNE_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## Violin Plot Pre-defined Markers {.tabset .tabset-fade}
+
+```{r violin_clust, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/clustifyr_ViolinPlot*.eps")
+if(length(plot_names) < 1){
+  cat("No clustifyr violin plots, either because clustifyr hasn't been run or because no predefined markers were supplied.")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/clustifyr_ViolinPlot_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+# SingleR
+Annotation performed with SingleR
+
+## UMAP Annotation {.tabset .tabset-fade}
+
+```{r umap_si, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/singleR_UMAP*.eps")
+if(length(plot_names) < 1){
+  cat("No singleR UMAP plots")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/singleR_UMAP_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## tSNE Annotation {.tabset .tabset-fade}
+
+```{r tsne_si, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/singleR_tSNE*.eps")
+if(length(plot_names) < 1){
+  cat("No singleR tSNE plots")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "",gsub(pattern = "Annotation_Figures.dir/singleR_tSNE_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## Violin Plot Pre-defined Markers {.tabset .tabset-fade}
+
+```{r violin_si, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/singleR_ViolinPlot*.eps")
+if(length(plot_names) < 1){
+  cat("No singleR violin plots, either because clustifyr hasn't been run or because no predefined markers were supplied.")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/singleR_ViolinPlot_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## SingleR Misc {.tabset .tabset-fade}
+
+```{r singleR_misc, results='asis', echo = FALSE}
+
+plot_names1 <- Sys.glob("Annotation_Figures.dir/singleR_deltaDistribution*.eps")
+plot_names2 <- Sys.glob("Annotation_Figures.dir/singleR_scoreDistribution*.eps")
+plot_names3 <- Sys.glob("Annotation_Figures.dir/singleR_scoreHeatmap*.eps")
+plot_names <- c(plot_names1,plot_names2,plot_names3)
+
+if(length(plot_names) < 1){
+  cat("No singleR misc plots.")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/singleR_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+# Conserved Markers
+
+## Dot Plots {.tabset .tabset-fade}
+
+```{r dotplot, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/DotPlot_TopConservedMarkers*.eps")
+
+if(length(plot_names) < 1){
+  cat("No dot plots. Has integrated_markers been run?")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/DotPlot_TopConservedMarkers_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## Top 9 Conserved markers per cluster {.tabset .tabset-fade}
+
+```{r feature9, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/FeaturePlot_TopConservedMarkers*.eps")
+
+if(length(plot_names) < 1){
+  cat("No feature plots. Has integrated_markers been run?")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/FeaturePlot_TopConservedMarkers_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+# Clusters and markers
+Pre-defined marker list general feature plot and violin plot (for each seurat cluster)
+
+## Feature plot {.tabset .tabset-fade}
+
+```{r feature9, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/Clusters_FeaturePlot_*.eps")
+
+if(length(plot_names) < 1){
+  cat("No feature plots. Either integrated_markers has not been run or no pre-defined markers list given in yml.")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/Clusters_FeaturePlot_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```
+
+## Violin plot {.tabset .tabset-fade}
+
+```{r violin_clusters, results='asis', echo = FALSE}
+
+plot_names <- Sys.glob("Annotation_Figures.dir/Clusters_ViolinPlot_*.eps")
+
+if(length(plot_names) < 1){
+  cat("No violin plots. Either integrated_markers has not been run or no pre-defined markers list given in yml.")
+}else{
+
+for (i in plot_names){
+  name_obj <- gsub(".eps", "", gsub(pattern = "Annotation_Figures.dir/Clusters_ViolinPlot_", "" , i))
+  cat("### ",name_obj,"\n")
+  knitr::include_graphics(path = i)
+  cat('\n\n')
+}
+}
+```

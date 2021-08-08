@@ -20,7 +20,9 @@ option_list <- list(
         make_option(c("-m", "--method"), default="predict", type = "character",
             help="scClassify method to use. predict, ensemble, nonensemble. [default %default]"),
         make_option(c("--similarity"), default="pearson_spearman", type = "character",
-            help="Similarity test to use. If multiple, separated by space. [default %default]")
+            help="Similarity test to use. If multiple, separated by space. [default %default]"),
+        make_option(c("--predefined"), default=NULL,
+			help="User pre-defined list of marker genes")
 )
 
 # Read in options
@@ -142,4 +144,51 @@ if(method == "train"){
   seurat_object@meta.data[['scclassify_labels']] <- cells_assigned
   saveRDS(seurat_object, output_file) # Save seurat object with labels
 
+}
+
+DefaultAssay(seurat_object) <- "RNA"
+
+# Labelled UMAP and tSNE dimension plots with scClassify labels
+umap_plt <- DimPlot(seurat_object, group.by = "scclassify_labels", reduction = "umap")
+umap_labelled <- DimPlot(seurat_object, group.by = "scclassify_labels", label = TRUE, reduction = "umap")
+
+tsne_plt <- DimPlot(seurat_object, group.by = "scclassify_labels", reduction = "tsne")
+tsne_labelled <- DimPlot(seurat_object, group.by = "scclassify_labels", label = TRUE, reduction = "tsne")
+
+name<- paste0("Annotation_Figures.dir/scClassify_UMAP_", sample_name, ".eps")
+postscript(name)
+print(umap_plt)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/scClassify_UMAP_labelled_", sample_name, ".eps")
+postscript(name)
+print(umap_labelled)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/scClassify_tSNE_", sample_name, ".eps")
+postscript(name)
+print(tsne_plt)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/scClassify_tSNE_labelled_", sample_name, ".eps")
+postscript(name)
+print(tsne_labelled)
+dev.off()
+
+# Pre-defined list of markers
+predefined <- opt$predefined
+if(!is.null(predefined)){
+  predefined_list <- str_split(predefined, "_")[[1]]
+  number_markers <- length(predefined_list)
+
+  for(marker in predefined_list){
+
+    vln_plt <- VlnPlot(seurat_object, features = marker,  group.by = "scclassify_labels",
+    pt.size = 0)
+
+    name<- paste0("Annotation_Figures.dir/scClassify_ViolinPlot_", sample_name, "_", marker ,".eps")
+    postscript(name)
+    print(vln_plt)
+    dev.off()
+  }
 }

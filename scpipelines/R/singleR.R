@@ -19,7 +19,9 @@ option_list <- list(
         make_option(c("-d", "--DEmethod"), default=0, type="integer",
             help="Whether to apply Wilcoxin pairwise comparison tests between labels. [default %default, i.e. no DE test]"),
         make_option(c("-m", "--method"), default="single", type="character",
-            help="SingleR method, annotating by single cells or by cluster. [default %default]")
+            help="SingleR method, annotating by single cells or by cluster. [default %default]"),
+        make_option(c("--predefined"), default=NULL,
+			help="User pre-defined list of marker genes")
 )
 
 # Read in options
@@ -77,5 +79,49 @@ postscript(name)
 print(plotDeltaDistribution(pred, ncol = 3))
 dev.off()
 
-# To combine annotations with tSNE and UMAP.
-# ...
+DefaultAssay(seurat_object) <- "RNA"
+
+# Labelled UMAP and tSNE dimension plots with singleR labels
+umap_plt <- DimPlot(seurat_object, group.by = "singleR_labels", reduction = "umap")
+umap_labelled <- DimPlot(seurat_object, group.by = "singleR_labels", label = TRUE, reduction = "umap")
+
+tsne_plt <- DimPlot(seurat_object, group.by = "singleR_labels", reduction = "tsne")
+tsne_labelled <- DimPlot(seurat_object, group.by = "singleR_labels", label = TRUE, reduction = "tsne")
+
+name<- paste0("Annotation_Figures.dir/singleR_UMAP_", sample_name, ".eps")
+postscript(name)
+print(umap_plt)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/singleR_UMAP_labelled_", sample_name, ".eps")
+postscript(name)
+print(umap_labelled)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/singleR_tSNE_", sample_name, ".eps")
+postscript(name)
+print(tsne_plt)
+dev.off()
+
+name<- paste0("Annotation_Figures.dir/singleR_tSNE_labelled_", sample_name, ".eps")
+postscript(name)
+print(tsne_labelled)
+dev.off()
+
+# Pre-defined list of markers
+predefined <- opt$predefined
+if(!is.null(predefined)){
+  predefined_list <- str_split(predefined, "_")[[1]]
+  number_markers <- length(predefined_list)
+
+  for(marker in predefined_list){
+
+    vln_plt <- VlnPlot(seurat_object, features = marker,  group.by = "singleR_labels",
+    pt.size = 0)
+
+    name<- paste0("Annotation_Figures.dir/singleR_ViolinPlot_", sample_name, "_", marker ,".eps")
+    postscript(name)
+    print(vln_plt)
+    dev.off()
+  }
+}

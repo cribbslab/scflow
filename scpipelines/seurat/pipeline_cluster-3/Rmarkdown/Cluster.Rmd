@@ -30,7 +30,7 @@ for (i in sample_names){
 }
 ```
 
-# Variable features
+# Variable features {.tabset .tabset-fade}
 Top variable features, number specified by user (default = 2000). Genes with highest cell-to-cell variation per sample (i.e. highly expressed in some cells, lowly expressed in others). The top 10 genes are labelled.
 
 ```{r variable_features, results='asis', echo = FALSE}
@@ -54,7 +54,7 @@ for (i in sample_names){
 }
 ```
 
-# Dimensionality of the data
+# Dimensionality of the data {.tabset .tabset-fade}
 
 ```{r dimensionality, results='asis', echo = FALSE}
 
@@ -76,7 +76,7 @@ for (i in sample_names){
 ```
 
 
-# PCA- PC1 PC2 plot
+# PCA- PC1 PC2 plot {.tabset .tabset-fade}
 
 ```{r pca_dimplot, results='asis', echo = FALSE}
 
@@ -98,7 +98,7 @@ for (i in sample_names){
 } 
 ```
 
-# PCA Loading plot
+# PCA Loading plot {.tabset .tabset-fade}
 Plot of top 30 genes contributing the most to PC1 and PC2.
 
 ```{r pca_loading, results='asis', echo = FALSE}
@@ -123,7 +123,7 @@ for (i in sample_names){
 }
 ```
 
-# PCA Dimension Heatmaps
+# PCA Dimension Heatmaps {.tabset .tabset-fade}
 Heatmap for 500 cells vs top genes for first 9 principle components
 
 ```{r pca_loading2, results='asis', echo = FALSE}
@@ -149,7 +149,7 @@ for (i in sample_names){
 ```
 
 
-# t-SNE
+# t-SNE {.tabset .tabset-fade}
 
 ```{r tsne_dimplot, results='asis', echo = FALSE}
 
@@ -170,7 +170,7 @@ for (i in sample_names){
 ```
 
 
-# UMAP
+# UMAP {.tabset .tabset-fade}
 
 ```{r umap_dimplot, results='asis', echo = FALSE}
 
