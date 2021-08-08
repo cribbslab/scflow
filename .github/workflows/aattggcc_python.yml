@@ -1,4 +1,4 @@
-name: cellhub
+name: scflow
 
 on:
   push:
