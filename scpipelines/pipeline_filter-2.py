@@ -46,9 +46,34 @@ def rmarkdown_stats(outfile):
 
     P.run(statement)
 
+
+RDSFILES = os.path.join("RDS_objects.dir", "*")
+
+@follows(mkdir("Anndata.dir"))
 @follows(rmarkdown_stats)
+@transform(RDSFILES,
+           regex("RDS_objects.dir/(\S+)_filtered_SeuratObject"),
+           r"Anndata.dir/\1.h5ad")
+def seurat2anndata(infile, outfile):
+    '''
+    convert from seurat to anndata 
+    '''
+
+    R_ROOT = os.path.join(os.path.dirname(__file__), "R")
+
+    job_memory = "20G"
+
+    statement = '''
+    Rscript %(R_ROOT)s/seurat2anndata.R --input=%(infile)s
+    '''
+
+    P.run(statement)
+
+
+@follows(seurat2anndata)
 def full():
     pass
+
 
 def main(argv=None):
     if argv is None:
