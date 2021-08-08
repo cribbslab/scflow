@@ -8,3 +8,4 @@
 # fastq files need to have the suffix read1: .fastq.1.gz read2: .fastq.2.gz
 data: data.dir
 
+memory: 20G
