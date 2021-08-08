@@ -42,7 +42,7 @@ for (i in sample_files){
   rownames(res_mat) <- gsub("\\.\\d+$","", rownames(res_mat))
   
   
-  so <- CreateSeuratObject(res_mat, min.cells=10, min.features=50) %>% 
+  so <- CreateSeuratObject(res_mat, min.cells=20, min.features=200) %>% 
     NormalizeData(verbose=FALSE) %>% 
     ScaleData(verbose=FALSE) %>% 
     FindVariableFeatures(verbose=FALSE)
