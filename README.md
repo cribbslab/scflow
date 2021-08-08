@@ -3,8 +3,8 @@
 <p align="left">
 	<a href='https://single-cell.readthedocs.io/en/latest/?badge=latest'>
     <img src='https://readthedocs.org/projects/single-cell/badge/?version=latest' alt='Documentation Status' /></a>
-	<a href="https://travis-ci.com/Acribbs/scflow.svg?branch=master", alt="Travis">
-		<img src="https://travis-ci.com/Acribbs/scflow.svg?branch=master" /></a>
+	<a href="https://github.com/Acribbs/scflow/actions/workflows/aattggcc_python.yml/badge.svg", alt="Actions">
+		<img src="https://github.com/Acribbs/scflow/actions/workflows/aattggcc_python.yml/badge.svg" /></a>
 	<a href="https://twitter.com/CribbsP?lang=en", alt="Twitter followers">
 		<img src="https://img.shields.io/twitter/url/http/shields.io.svg?style=social&logo=twitter" /></a>
 </p>
