@@ -14,13 +14,17 @@ colname: "percent.mt"
 vars_to_regress: "percent.mt"
 
 
-# Seurat_integration
+
+
+
+# rpca_integration
 num_variable_features: 3000
 
 resolution: 0.35
 
 num_dimensions: 30
 
+kweight: 100
 # Harmony_integration
 
 group_vars: "orig.ident"

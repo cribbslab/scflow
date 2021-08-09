@@ -53,7 +53,7 @@ data.list <- lapply(X = data.list, FUN = function(x) {
 
 data.anchors <- FindIntegrationAnchors(object.list = data.list, reduction = "rpca", 
                                        anchor.features = data.features, verbose = FALSE)
-data.integrated <- IntegrateData(anchorset = data.anchors, verbose = FALSE)
+data.integrated <- IntegrateData(anchorset = data.anchors, verbose = FALSE, k.weight = ini$kweight)
 
 
 data.integrated <- ScaleData(data.integrated, verbose=FALSE)
