@@ -64,12 +64,10 @@ data.integrated <- RunPCA(object = data.integrated, npcs = 30, verbose = FALSE)
 # Non-linear cluster techniques, e.g. UMAP and tSNE.
 # Uses PCA to reduce dimensions.
 # UMAP
+dims.use <- seq(1,num_dimensions,1)
 
 data.integrated <- RunUMAP(object = data.integrated, reduction = "pca", dims = dims.use)
 
-# Number of dimensions to reduce
-
-dims.use <- seq(1,num_dimensions,1)
 
 # Clustering and data visualization in UMAP and tSNE - Seurat
 

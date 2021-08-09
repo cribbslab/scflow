@@ -1,0 +1,9 @@
+##########################
+#
+# configuration file for pipeline_cluster
+#
+##########################
+
+# The quantcells or quantnuclei pipeline should have been ran prior to this 
+
+memory: 20G
