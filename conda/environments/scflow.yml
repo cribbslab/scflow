@@ -34,3 +34,5 @@ dependencies:
  - r-tidyverse
  - scanpy
  - scipy
+ - papermill
+ - leidenalg

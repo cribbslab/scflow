@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 import anndata
+import scipy
 from scipy import io
 import concurrent.futures
 import argparse
@@ -71,7 +72,7 @@ def import_tcc_matrix_as_anndata(
     )
     
     return anndata.AnnData(
-        X=scipy.io.mmread(matrix_path).tocsr(), obs=df_barcodes, var=txnames
+        X=io.mmread(matrix_path).tocsr(), obs=df_barcodes, var=txnames
     )
 
 adata = import_tcc_matrix_as_anndata(matrix_path=args.matrix,

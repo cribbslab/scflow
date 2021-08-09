@@ -103,5 +103,5 @@ pdf("Integration_Figures.dir/tSNE_rcpa_Integration_persample.eps")
 print(DimPlot(data.integrated, reduction="tsne", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5), width=15, height=15)
 dev.off()
 
-saveRDS(data.integrated, file= "RDS_objects.dir/rcpa_integrated_SeuratObject.rds")
+saveRDS(data.integrated, file= "RDS_objects.dir/rpca_integrated_SeuratObject.rds")
 
