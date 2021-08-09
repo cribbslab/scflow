@@ -1,0 +1,30 @@
+##########################
+#
+# configuration file for pipeline_kb-integration-4
+#
+##########################
+
+# Arguments for PercentageFeatureSet
+
+pattern: "^MT-"
+colname: "percent.mt"
+
+# an argument for SCTransform
+
+vars_to_regress: "percent.mt"
+
+
+# Seurat_integration
+num_variable_features: 3000
+
+resolution: 0.35
+
+num_dimensions: 30
+
+# Harmony_integration
+
+group_vars: "orig.ident"
+plot_convergence: TRUE
+assay_use: "SCT"
+
+
