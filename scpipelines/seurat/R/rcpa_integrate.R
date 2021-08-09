@@ -1,4 +1,3 @@
-
 library(tidyverse)
 library(SingleCellExperiment)
 library(ggplot2)
@@ -32,24 +31,41 @@ for (i in sample_files){
 data.list <- mget(ls(pattern = "filtered_clustered_SeuratObject"))
 
 print(data.list)
-for (i in 1:length(data.list)) {
-  data.list[[i]] <- PercentageFeatureSet(data.list[[i]], pattern = pattern, col.name = colname)
-  data.list[[i]] <- SCTransform(data.list[[i]], vars.to.regress = vars_to_regress, verbose = FALSE)
-}
+
+# normalize and identify variable features for each dataset independently
+data.list <- lapply(X = data.list, FUN = function(x) {
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
+
 
 # Integration by Seurat
 options(future.globals.maxSize = 20000 *1024^2)
 
 data.features <- SelectIntegrationFeatures(object.list = data.list, nfeatures = num_variable_features)
-data.list <- PrepSCTIntegration(object.list = data.list, anchor.features = data.features)
-data.anchors <- FindIntegrationAnchors(object.list = data.list, normalization.method = "SCT", 
-                                       anchor.features = data.features, verbose = FALSE)
-data.integrated <- IntegrateData(anchorset = data.anchors, normalization.method = "SCT", verbose = FALSE)
 
+# select features that are repeatedly variable across datasets for integration run PCA on each
+# dataset using these features
+data.list <- lapply(X = data.list, FUN = function(x) {
+    x <- ScaleData(x, features = data.features, verbose = FALSE)
+    x <- RunPCA(x, features = data.features, verbose = FALSE)
+})
+
+data.anchors <- FindIntegrationAnchors(object.list = data.list, reduction = "rpca", 
+                                       anchor.features = data.features, verbose = FALSE)
+data.integrated <- IntegrateData(anchorset = data.anchors, verbose = FALSE)
+
+
+data.integrated <- ScaleData(data.integrated, verbose=FALSE)
 
 # Principal component analysis (PCA)
 data.integrated <- RunPCA(object = data.integrated, npcs = 30, verbose = FALSE)
 
+# Non-linear cluster techniques, e.g. UMAP and tSNE.
+# Uses PCA to reduce dimensions.
+# UMAP
+
+data.integrated <- RunUMAP(object = data.integrated, reduction = "pca", dims = dims.use)
 
 # Number of dimensions to reduce
 
@@ -60,21 +76,16 @@ dims.use <- seq(1,num_dimensions,1)
 data.integrated <- FindNeighbors(data.integrated, dims = dims.use, reduction = "pca")
 data.integrated <- FindClusters(data.integrated, resolution = resolution)
 
-# Non-linear cluster techniques, e.g. UMAP and tSNE.
-# Uses PCA to reduce dimensions.
-# UMAP
 
-data.integrated <- RunUMAP(object = data.integrated, reduction = "pca", dims = dims.use)
-
-pdf("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples.eps")
+pdf("Integration_Figures.dir/UMAP_rcpa_Integration_allsamples.eps")
 print(DimPlot(data.integrated, reduction="umap", pt.size = 0.5, label = TRUE))
 dev.off()
 
-pdf("Integration_Figures.dir/UMAP_Seurat_Integration_allsamples_colour.eps")
+pdf("Integration_Figures.dir/UMAP_rcpa_Integration_allsamples_colour.eps")
 print(DimPlot(data.integrated, reduction="umap", group.by="sample", pt.size = 0.5, label = TRUE))
 dev.off()
 
-pdf("Integration_Figures.dir/UMAP_Seurat_Integration_persample.eps")
+pdf("Integration_Figures.dir/UMAP_rcpa_Integration_persample.eps")
 print(DimPlot(data.integrated, reduction="umap", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5), width=15, height=15)
 dev.off()
 
@@ -82,17 +93,17 @@ dev.off()
 
 data.integrated <- RunTSNE(object = data.integrated, reduction = "pca", dims = dims.use)
 
-pdf("Integration_Figures.dir/tSNE_Seurat_Integration_allsamples.eps")
+pdf("Integration_Figures.dir/tSNE_rcpa_Integration_allsamples.eps")
 print(DimPlot(data.integrated, reduction="tsne", pt.size = 0.5, label = TRUE))
 dev.off()
 
-pdf("Integration_Figures.dir/tSNE_Seurat_Integration_persamples_colour.eps")
+pdf("Integration_Figures.dir/tSNE_rcpa_Integration_persamples_colour.eps")
 print(DimPlot(data.integrated, reduction="tsne", group.by="sample", pt.size = 0.5, label = TRUE))
 dev.off()
 
-pdf("Integration_Figures.dir/tSNE_Seurat_Integration_persample.eps")
+pdf("Integration_Figures.dir/tSNE_rcpa_Integration_persample.eps")
 print(DimPlot(data.integrated, reduction="tsne", split.by = "sample", ncol = 4, label = TRUE, pt.size = 0.5), width=15, height=15)
 dev.off()
 
-saveRDS(data.integrated, file= "RDS_objects.dir/SCT_integrated_SeuratObject.rds")
+saveRDS(data.integrated, file= "RDS_objects.dir/rcpa_integrated_SeuratObject.rds")
 

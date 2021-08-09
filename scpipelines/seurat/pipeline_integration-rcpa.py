@@ -49,7 +49,7 @@ RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_integration-rcpa","
 
 R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 
-@follows(mkdir("Integration_Figures-rcpa.dir"))
+@follows(mkdir("Integration_Figures.dir"))
 @originate("RDS_objects.dir/rcpa_integrated_SeuratObject.rds")
 def integrate(outfile):
 	'''
