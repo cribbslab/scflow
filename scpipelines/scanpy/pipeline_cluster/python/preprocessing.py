@@ -75,7 +75,7 @@ def import_tcc_matrix_as_anndata(
     )
 
 adata = import_tcc_matrix_as_anndata(matrix_path=args.matrix,
-                                     barcodes_path=arg.barcodes,
+                                     barcodes_path=args.barcodes,
                                      ec_path=args.ec,
                                      txnames_path=args.genename)
 
