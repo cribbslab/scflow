@@ -33,3 +33,4 @@ dependencies:
  - r-seurat
  - r-tidyverse
  - scanpy
+ - scipy

@@ -50,7 +50,7 @@ RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_integration-rcpa","
 R_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),"R"))
 
 @follows(mkdir("Integration_Figures.dir"))
-@originate("RDS_objects.dir/rcpa_integrated_SeuratObject.rds")
+@originate("RDS_objects.dir/rpca_integrated_SeuratObject.rds")
 def integrate(outfile):
 	'''
 	R script task to run seurat integration
@@ -82,18 +82,18 @@ def harmony(outfile):
 
 @follows(harmony)
 @merge([integrate, harmony],
-	"Integration.html")
+	"Integration-rpca.html")
 def integrate_rmarkdown(infile, outfile):
 	'''
 	R markdown to visualise clustering and dimensional reduction after integration
 	'''
 
-	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_integration-5","Rmarkdown")
+	RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_integration-rpca","Rmarkdown")
 	job_memory = "50G"
 
 	statement = ''' 
-	cp %(RMD_ROOT)s/Integration.Rmd . &&
-	R -e "rmarkdown::render('Integration.Rmd', output_file='Integration.html')" '''
+	cp %(RMD_ROOT)s/Integration-rpca.Rmd . &&
+	R -e "rmarkdown::render('Integration-rpca.Rmd', output_file='Integration-rpca.html')" '''
 
 	P.run(statement)
 

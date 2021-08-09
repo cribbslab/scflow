@@ -19,7 +19,7 @@ library(harmony)
 library(cowplot)
 library(yaml)
 
-data.integrated <- readRDS("RDS_objects.dir/SCT_integrated_SeuratObject.rds")
+data.integrated <- readRDS("RDS_objects.dir/rpca_integrated_SeuratObject.rds")
 data_harmony <- readRDS("RDS_objects.dir/Harmony_integrated_SeuratObject.rds")
 
 ```
