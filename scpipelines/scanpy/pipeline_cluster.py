@@ -20,7 +20,6 @@ import cgatcore.pipeline as P
 import cgatcore.experiment as E
 
 
-
 # Load options from the config file
 
 PARAMS = P.get_parameters(
@@ -56,7 +55,29 @@ def preprocessing(infile, outfile):
     P.run(statement)
 
 
-@follows(preprocessing)
+@mkdir("Scanpy_cluster.dir")
+@transform(preprocessing,
+           regex("Scanpy_QC.dir/(\S+).hd5ad"),
+           r"Scanpy_cluster.dir/\1.html")
+def run_jupyter(infile, outfile):
+    """Run a jupyter notebook containing a scanpy workflow that implements clustering"""
+
+    JUPYTER_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_cluster","python")
+
+    name = infile.replace(".hd5ad", "")
+    name = name.replace("Scanpy_QC.dir/", "")
+
+    results_file = infile.replace("Scanpy_QC.dir/", "Scanpy_cluster.dir")
+    results_file = results_file.replace(".hd5ad", "_cluster.hd5ad")
+
+    statement = """cp %(JUPYTER_ROOT)s/run_scanpy.ipynb %(name)s_run_scanpy.ipynb
+                   papermill   Scanpy_cluster.dir/%(name)s_run_scanpy.ipynb  \
+                   Scanpy_cluster.dir/%(name)s_run_scanpy.ipynb -p h5_input %(infile)s results_file %(results_file)s &&
+                   cd Scanpy_cluster.dir && jupyter nbconvert %(name)s_run_scanpy.ipynb --to html
+                   """
+
+
+@follows(run_jupyter)
 def full():
     pass
 
