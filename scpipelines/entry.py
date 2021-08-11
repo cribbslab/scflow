@@ -34,36 +34,6 @@ import imp
 import scpipelines
 
 
-def printListInColumns(l, ncolumns):
-    '''output list *l* in *ncolumns*.'''
-    ll = len(l)
-
-    if ll == 0:
-        return
-
-    max_width = max([len(x) for x in l]) + 3
-    n = ll // ncolumns
-    if ll % 3 != 0:
-        n += 1
-
-    # build columns
-    columns = [l[x * n:x * n + n] for x in range(ncolumns)]
-
-    # add empty fields for missing columns in last row
-    for x in range(ncolumns - (len(l) % ncolumns)):
-        columns[-(x + 1)].append('')
-
-    # convert to rows
-    rows = list(zip(*columns))
-
-    # build pattern for a row
-    p = '%-' + str(max_width) + 's'
-    pattern = ' '.join([p for x in range(ncolumns)])
-
-    # put it all together
-    return '\n'.join([pattern % row for row in rows])
-
-
 def main(argv=None):
 
     argv = sys.argv
@@ -90,9 +60,8 @@ def main(argv=None):
         pipelines.extend(glob.glob(os.path.join(path, "pipeline_*.py")))
         print("The list of available single cell pipelines is:\n")
         print("{}\n".format(
-            printListInColumns(
-                sorted([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines]),
-                3)))
+                "  ".join([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines])))
+
     elif argv[1] == "seurat":
         print((globals()["__doc__"]))
 
@@ -100,9 +69,7 @@ def main(argv=None):
         pipelines.extend(glob.glob(os.path.join(seurat, "pipeline_*.py")))
         print("The list of available single cell seurat pipelines are:\n")
         print("{}\n".format(
-            printListInColumns(
-                sorted([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines]),
-                5)))
+                "  ".join([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines])))
 
     elif argv[1] == "scanpy":
         print((globals()["__doc__"]))
@@ -111,9 +78,7 @@ def main(argv=None):
         pipelines.extend(glob.glob(os.path.join(scanpy, "pipeline_*.py")))
         print("The list of available single cell pipelines is:\n")
         print("{}\n".format(
-            printListInColumns(
-                sorted([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines]),
-                3)))
+                "  ".join([os.path.basename(x)[len("pipeline_"):-len(".py")] for x in pipelines])))
 
     else:
         print("please select an appropriate workflow section: main, scanpy or seurat")
