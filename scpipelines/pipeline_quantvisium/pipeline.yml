@@ -9,3 +9,8 @@
 data: data.dir
 
 
+spaceranger_module: spaceranger/1.2.2
+
+# Location of the genome file for running spaceranger
+trans_file: /t1-data/project/tendonhca/shared/refdata-gex-GRCh38-2020-A
+
