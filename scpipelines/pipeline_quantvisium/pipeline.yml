@@ -1,0 +1,11 @@
+##########################
+#
+# configuration file for pipeline_quantvisium
+#
+##########################
+
+# Specify where the fastq files are located.
+# fastq files need to have the suffix read1: .fastq.1.gz read2: .fastq.2.gz
+data: data.dir
+
+
