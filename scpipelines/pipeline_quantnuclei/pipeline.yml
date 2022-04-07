@@ -5,10 +5,12 @@
 ##########################
 
 # primary assembly downloaded according to documentation instructions
+# wget http://ftp.ensembl.org/pub/release-105/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
 genome_file: Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
 
 # Provide a reference geneset (suffix= ".gtf.gz")
 # Geneset should be located in working directory
+# wget http://ftp.ensembl.org/pub/release-105/gtf/homo_sapiens/Homo_sapiens.GRCh38.105.gtf.gz
 geneset: Homo_sapiens.GRCh38.99.gtf.gz
 
 
