@@ -37,7 +37,7 @@ def rmarkdown_stats(outfile):
 
     RMD_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_filter-2","Rmarkdown")
 
-    job_memory = "50G"
+    job_memory = PARAMS['mem']
 
     statement = '''
     cp %(RMD_ROOT)s/Filter.Rmd . &&
