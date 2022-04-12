@@ -4,6 +4,8 @@
 #
 ##########################
 
+# Specify memory for running pipeline tasks
+mem: 100G
 
 # Number of features to keep as a minimum - we suggest a minimum of 300
 features_greater: 300
