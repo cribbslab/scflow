@@ -36,3 +36,5 @@ dependencies:
  - scipy
  - papermill
  - leidenalg
+ - bioconductor-busparse 
+ - bustools
