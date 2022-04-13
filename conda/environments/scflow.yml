@@ -38,3 +38,4 @@ dependencies:
  - leidenalg
  - bioconductor-busparse 
  - bustools
+ - bioconductor-tximport
