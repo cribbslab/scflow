@@ -9,3 +9,6 @@
 data: data.dir
 
 memory: 20G
+
+# Specify the mirror for bioMart
+mirror: useast
