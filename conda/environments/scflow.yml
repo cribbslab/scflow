@@ -32,6 +32,7 @@ dependencies:
  - r-optparse
  - r-seurat
  - r-tidyverse
+ - r-ggthemes
  - scanpy
  - scipy
  - papermill
