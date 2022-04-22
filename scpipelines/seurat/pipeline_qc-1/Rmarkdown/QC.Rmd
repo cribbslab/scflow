@@ -20,8 +20,12 @@ library(scales)
 library(tximport)
 library(BUSpaRse)
 library(Seurat)
+library(yaml)
 
 library("biomaRt")
+
+
+ini <- read_yaml("pipeline.yml")
 
 # Specify the sample directory that you would like analysed:
 sample_files <- str_replace(Sys.glob("kallisto.dir/*"), "kallisto.dir/", "")
@@ -151,7 +155,7 @@ for (i in sample_files){
 ```{r}
 
 # useMart keeps not working every so often (issue https://github.com/grimbough/biomaRt/issues/31)
-ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl", mirror=ini$mirror))
 if(class(ensembl) == "try-error"){
   httr::set_config(httr::config(ssl_verifypeer = FALSE))
   ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
