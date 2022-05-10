@@ -259,7 +259,7 @@ def merge_mtx(infile, outfile):
     P.run(statement)
 
 
-@follows(merge_mtx)
+@follows(merge_mtx, run_fastqc)
 def full():
     pass
 
