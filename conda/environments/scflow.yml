@@ -32,7 +32,11 @@ dependencies:
  - r-optparse
  - r-seurat
  - r-tidyverse
+ - r-ggthemes
  - scanpy
  - scipy
  - papermill
  - leidenalg
+ - bioconductor-busparse 
+ - bustools
+ - bioconductor-tximport
