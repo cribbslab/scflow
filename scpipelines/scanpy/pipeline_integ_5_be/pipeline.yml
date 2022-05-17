@@ -1,0 +1,7 @@
+##########################
+#
+# configuration file for pipeline_integ_be
+#
+##########################
+
+memory: 20G

@@ -1,0 +1,9 @@
+##########################################
+#
+# configuration file for pipeline_integ_qc
+#
+##########################################
+
+memory: 30G
+
+sjf: 'jianfeng sun'

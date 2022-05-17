@@ -1,0 +1,8 @@
+##########################
+#
+# configuration file for pipeline_sgl_qc
+#
+##########################
+
+
+memory: 20G

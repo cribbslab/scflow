@@ -40,3 +40,10 @@ dependencies:
  - bioconductor-busparse 
  - bustools
  - bioconductor-tximport
+ - pybiomart # start adding by j.sun
+ - desc
+ - graphviz
+ - pydot
+ - scrublet
+ - harmonypy
+ - bbknn # end adding by j.sun

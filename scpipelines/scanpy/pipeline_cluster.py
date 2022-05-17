@@ -38,7 +38,7 @@ def preprocessing(infile, outfile):
     experiments ran using pipeline_kb.py
     '''
 
-    PYTHON_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_cluster","python")
+    PYTHON_ROOT = os.path.join(os.path.dirname(__file__), "pipeline_cluster", "python")
 
     job_memory = PARAMS['memory']
 
