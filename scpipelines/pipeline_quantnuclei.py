@@ -140,11 +140,17 @@ def build_kallisto_index(outfile):
     ----------
     '''
 
-    statement = '''
-    kb ref -i geneset.dir/index.idx -g geneset.dir/t2g.txt -f1 geneset.dir/cdna.fa
-    -f2 geneset.dir/intron.fa -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt
-    --workflow %(kallisto_workflow)s  %(genome_file)s %(geneset)s 2> ref.log
-    '''
+    if PARAMS['kallisto_workflow'] == "nucleus":
+
+        statement = '''
+        kb ref -i geneset.dir/index.idx -g geneset.dir/t2g.txt -f1 geneset.dir/cdna.fa
+        -f2 geneset.dir/intron.fa -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt
+        --workflow %(kallisto_workflow)s  %(genome_file)s %(geneset)s 2> ref.log
+        '''
+    else:
+
+        statement = '''kb ref -i  geneset.dir/index.idx -g geneset.dir/t2g.txt -f1 geneset.dir/cdna.fa 
+        %(genome_file)s %(geneset)s 2> ref.log'''
 
     P.run(statement, job_memory = "100G")
 
@@ -165,11 +171,12 @@ def run_fastqc(infile, outfile):
     '''
     # paired end mode
     if "fastq.1.gz" in infile:
+
         second_read = infile.replace(".fastq.1.gz", ".fastq.2.gz")
         statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s %(second_read)s"
 
     else:
-        statement = "fastqc -q -o fastqc_pre.dir/ %(infile)s"
+        statement = "fastqc -q -o fastqc_pre.dir/%(infile)s"
 
     P.run(statement)
 
@@ -245,6 +252,7 @@ def merge_mtx(infile, outfile):
 
     outpath = outfile.replace("genes.mtx", "")
     inpath = outfile.replace("/genecount/genes.mtx", "/counts_unfiltered/")
+    count_path = outfile.replace("/genecount/genes.mtx", "/counts_unfiltered/")
 
     if not os.path.exists(outpath):
         os.mkdir(outpath)
@@ -252,14 +260,20 @@ def merge_mtx(infile, outfile):
 
     PYTHON_PATH =  os.path.join(os.path.dirname(__file__), "python/")
 
-    statement = """python %(PYTHON_PATH)sMergeSplicedMatrix.py -o %(outpath)s -s %(inpath)sspliced.mtx 
+    if PARAMS['kallisto_workflow'] == "nucleus":
+        statement = """python %(PYTHON_PATH)sMergeSplicedMatrix.py -o %(outpath)s -s %(inpath)sspliced.mtx 
                    -c %(inpath)sspliced.barcodes.txt -a %(inpath)sspliced.genes.txt -u %(inpath)sunspliced.mtx
                    -b %(inpath)sunspliced.barcodes.txt -g %(inpath)sunspliced.genes.txt"""
+    else:
+        statement = '''mv  %(count_path)s/cells_x_genes.barcodes.txt %(outpath)s/genes.barcodes.txt &&
+                       mv  %(count_path)s/cells_x_genes.genes.txt %(outpath)s/genes.genes.txt &&
+                       mv  %(count_path)s/cells_x_genes.mtx %(outpath)s/genes.mtx'''
+
 
     P.run(statement)
 
 
-@follows(merge_mtx)
+@follows(merge_mtx, run_fastqc)
 def full():
     pass
 
