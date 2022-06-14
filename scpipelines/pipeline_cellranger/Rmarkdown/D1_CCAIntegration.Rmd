@@ -1,0 +1,82 @@
+---
+title: "Integrate data"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+The aim of this Rmardown document is to integrate all of the samples together in one seurat object. This Rmarkdown page will only render if there are more than 2 samples in the analysis.
+
+# Import the Seurat objects
+
+```{r}
+knitr::opts_chunk$set(cache=FALSE, warning=FALSE,message=FALSE,error=FALSE)
+library(Seurat)
+library(ggplot2)
+samples <- str_replace(Sys.glob("../kallisto.dir/*"), "../kallisto.dir/", "")
+
+# Stop if only one file
+if (length(samples) == 1){
+  knitr::knit_exit()
+}
+```
+
+# Import the data
+
+```{r}
+for (i in samples){
+  name <- paste("../kallisto.dir/", i, "/seurat_output.rds", sep="")
+  so <- readRDS(name)
+  assign(paste("so", i, sep = "."), so)
+  rm(so)
+  
+  }
+```
+
+# Integration Anchors
+
+We then identify anchors using the FindIntegrationAnchors function, which takes a list of Seurat objects as input, and use these anchors to integrate the two datasets together with IntegrateData.
+
+```{r}
+data.list <- mget(ls(pattern = "^so"))
+
+data.anchors <- FindIntegrationAnchors(object.list = data.list, dims = 1:15)
+
+data.integrated <- IntegrateData(anchorset = data.anchors, dims = 1:15)
+```
+
+# Perform visualisation of the data
+
+
+```{r, results='asis'}
+
+# switch to integrated assay. The variable features of this assay are automatically
+# set during IntegrateData
+DefaultAssay(data.integrated) <- "integrated"
+
+# Run the standard workflow for visualization and clustering
+data.integrated <- ScaleData(data.integrated, verbose = FALSE)
+data.integrated <- RunPCA(data.integrated, npcs = 30, verbose = FALSE)
+data.integrated <- RunUMAP(data.integrated, reduction = "pca", dims = 1:30)
+DimPlot(data.integrated, reduction = "umap")
+```
+
+# Cluster and plot UMAP
+
+```{r}
+
+data.integrated <- FindNeighbors(data.integrated, reduction = "pca", dims = 1:30)
+data.integrated <- FindClusters(data.integrated, resolution = 0.35)
+DimPlot(data.integrated, reduction = "umap", label = TRUE)
+
+```
+
+# Save normal data integration
+
+```{r}
+saveRDS(data.integrated, file = "integrated_CCA.rds")
+```
+
+# Harmony Analysis
+
+We will next compare the typical CCA analysis of Seurat with Harmony 

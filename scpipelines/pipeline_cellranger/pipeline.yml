@@ -1,0 +1,54 @@
+##########################
+#
+# configuration file for pipeline_singlecell
+#
+##########################
+
+# Specify where the fastq files are located.
+# fastq files need to have the suffix read1: .fastq.1.gz read2: .fastq.2.gz
+data: data.dir
+
+# Specify if you are running a mixed species experiment
+mixed_species: 1
+
+# Provide a reference geneset (suffix= ".fa.gz")
+# Genesets can be downloaded from ensembl ftp server
+# If you would like to index two different species then
+# add the fasta file after the first
+# Human: wget ftp://ftp.ensembl.org/pub/release-99/fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz
+# Mouse: ftp://ftp.ensembl.org/pub/release-99/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz
+geneset: Homo_sapiens.GRCh38.cdna.all.fa.gz Mus_musculus.GRCm38.cdna.all.fa.gz
+
+# Have you supplied a custom fasta file for non human or mice?
+# For each record provide the fasta header in the ensembl format: 
+# e.g. >ENST00000631435.1 cdna chromosome:GRCh38:CHR_HSCHR7_2_CTG6:142847306:142847317:1 gene:ENSG00000282253.1 gene_biotype:TR_D_gene transcript_biotype:TR_D_gene gene_symbol:TRBD1 description:T cell receptor beta diversity 1 [Source:HGNC Symbol;Acc:HGNC:12158]
+custom_fasta: 0
+
+# Copyright statement
+copyright: Cribbs Group, Botnar Research Centre (2020)
+
+#######################
+# Kallisto
+#######################
+
+kallisto:
+  # kmer size for kallisto. Default is 31 and max is 31
+  # Used to generate the kallisto index
+  # Kallisto will ignore transcripts shorter than this
+  kmer: 31
+
+  # Number of threads for kallisto
+  threads: 5
+
+  # Must specify a single cell tchnology to generate bustools file
+  # allowable technology:
+  # 10Xv1
+  # 10Xv2
+  # DropSeq
+  # inDrop
+  # CELSeq
+  # CELSeq2
+  # SCRBSeq
+  # Not that 10Xv3 is not supported in version 0.44 of kallisto
+  sctechnology: DropSeq
+
