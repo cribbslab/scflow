@@ -89,14 +89,14 @@ SEQUENCEFILES = tuple([os.path.join(DATADIR, suffix_name)
 
 @follows(mkdir("counts.dir"))
 @transform(SEQUENCEFILES,
-           regex("(\S+).fastq.(\d).gz")
+           regex("data.dir/(\S+).fastq.1.gz"),
            r"counts.dir/\1/cellranger.count.dummy")
-def cellranger_count(infiles, outfile):
+def cellranger_count(infile, outfile):
     '''
     Execute the cell ranger pipleline for each sample.
     '''
 
-    read1, read2 = infile
+    read2 = infile.replace(".1.gz",".2.gz")
 
     # set key parameters
     transcriptome = PARAMS["cellranger_transcriptome"]
@@ -106,19 +106,17 @@ def cellranger_count(infiles, outfile):
 
     log_file = infile + ".log"
 
-    id_tag = read1.replace(".fastq.1.gz", "")
+    id_tag = infile.replace(".fastq.1.gz", "")
 
     job_threads = 3
     job_memory = "24000M"
-    statement = (
-        '''cellranger count
+    statement ='''cellranger count
                    --id %(id_tag)s
-                   --fastqs %(infile)s
+                   --fastqs %(infile)s %(read2)s
                    --transcriptome %(transcriptome)s
                    --chemistry %(cellranger_chemistry)s
-                   --jobmode=slurm
             &> %(log_file)s
-        ''')
+        '''
 
     P.run(statement)
 
