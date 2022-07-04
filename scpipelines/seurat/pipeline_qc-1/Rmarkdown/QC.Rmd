@@ -155,7 +155,7 @@ for (i in sample_files){
 ```{r}
 
 # useMart keeps not working every so often (issue https://github.com/grimbough/biomaRt/issues/31)
-ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl", mirror=ini$mirror))
+ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
 if(class(ensembl) == "try-error"){
   httr::set_config(httr::config(ssl_verifypeer = FALSE))
   ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
