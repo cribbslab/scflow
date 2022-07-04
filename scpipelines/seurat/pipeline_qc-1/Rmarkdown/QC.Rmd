@@ -46,7 +46,7 @@ for (i in sample_files){
   rownames(res_mat) <- gsub("\\.\\d+$","", rownames(res_mat))
   
   
-  so <- CreateSeuratObject(res_mat, min.cells=20, min.features=200) %>% 
+  so <- CreateSeuratObject(res_mat, min.cells=20) %>% 
     NormalizeData(verbose=FALSE) %>% 
     ScaleData(verbose=FALSE) %>% 
     FindVariableFeatures(verbose=FALSE)
@@ -226,7 +226,7 @@ for (i in sample_files){
   counts <- get(gsub("SAMPLE_FILE",i , "res_mat.SAMPLE_FILE"))
   metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
 # Keep cells with nUMI greater than 100
-idx <- which(metadata$nUMI > 5)
+idx <- which(metadata$nUMI > ini$UMI_filter)
 
 # Extract the counts for those cells
 counts_c <- counts[, idx]
