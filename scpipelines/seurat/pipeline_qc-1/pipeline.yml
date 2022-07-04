@@ -12,3 +12,6 @@ memory: 20G
 
 # Specify the mirror for bioMart
 mirror: useast
+
+#Specifiy the number of counts for filtering
+UMI_filter: 100
