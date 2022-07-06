@@ -276,13 +276,13 @@ We will explore the following metrics through visualizations to decide on which 
 * Mitochondrial counts ratio
 * Novelty
 
-# Visualize the number of cell counts per cell {.tabset .tabset-fade}
+# Visualize the number of cell counts per sample {.tabset .tabset-fade}
 
 ```{r, results='asis', echo = FALSE}
 dir.create("QC_Figures.dir", showWarnings = FALSE)
 for (i in sample_files){
   metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
-# Visualize the number of cell counts per cell
+# Visualize the number of cell counts per sample
 
 cat("## ",i,"\n")
 plt <- metrics %>% 
@@ -314,6 +314,7 @@ plt <- metrics %>%
         geom_density() + 
         scale_x_log10() + 
         ylab("log10 cell density") +
+        ggtitle("UMI counts per cell") +
         geom_vline(xintercept = 50) + theme_Publication()
 plot(plt)
 
@@ -325,7 +326,7 @@ cat('\n\n')
 }
 ```
 
-# Genes detected per cell {.tabset .tabset-fade}
+# Genes detected per cell (histogram) {.tabset .tabset-fade}
 
 Seeing gene detection in the range of 500-5000 is normal for inDrop analysis. Similar expectations for gene detection as for UMI detection, although may be a bit lower than UMIs.
 
@@ -339,6 +340,7 @@ plt <- metrics %>%
         ggplot(aes(color=sample, x=nGene, fill= sample)) + 
         geom_density() + 
         scale_x_log10() + 
+        ggtitle("Genes detected per cell")+
         geom_vline(xintercept = 20) + theme_Publication()
 print(plt)
 
@@ -350,23 +352,22 @@ cat('\n\n')
 }
 ```
 
-# Ncells vs Ngenes {.tabset .tabset-fade}
+# Genes detected per cell (boxplot) {.tabset .tabset-fade}
 
 ```{r, results='asis', echo = FALSE}
 for (i in sample_files){
   metrics <- get(gsub("SAMPLE_FILE",i , "metrics.SAMPLE_FILE"))
-# Visualize the distribution of genes detected per cell via histogram
+# Visualize the distribution of genes detected per cell via boxplot
 
 cat("## ",i,"\n")
-# Visualize the distribution of genes detected per cell via boxplot
 plt <- metrics %>% 
         ggplot(aes(x=sample, y=log10(nGene), fill=sample)) + 
         geom_boxplot() + 
-        ggtitle("NCells vs NGenes") + theme_Publication()
+        ggtitle("nGenes per cell") + theme_Publication()
 print(plt)
 
 
-name<- paste0("QC_Figures.dir/NcellsvsNgenes_", i, ".eps")
+name<- paste0("QC_Figures.dir/GenesDetectedBoxplot_", i, ".eps")
 postscript(name)
 plot(plt)
 dev.off()
@@ -420,11 +421,12 @@ plt<- metrics %>%
         ggplot(aes(color=sample, x=mitoRatio, fill=sample)) + 
         geom_density() + 
         scale_x_log10() + 
+        ggtitle("Mitochondrial gene expression")+
         geom_vline(xintercept = 0.3) + theme_Publication()
 print(plt)
 
 
-name<- paste0("QC_Figures.dir/MitoRatio_nGenevsnUMI", i, ".eps")
+name<- paste0("QC_Figures.dir/MitoRatio_", i, ".eps")
 postscript(name)
 print(plt)
 dev.off()
@@ -445,7 +447,8 @@ cat("## ",i,"\n")
 # Visualize the overall novelty of the gene expression by visualizing the genes detected per UMI
 plt <- metrics %>%
         ggplot(aes(x=log10GenesPerUMI, color = sample, fill=sample)) +
-        geom_density() + theme_Publication()
+        geom_density() + theme_Publication()+
+        ggtitle("Novelty")
 print(plt)
 
 name<- paste0("QC_Figures.dir/Novelty_", i, ".eps")
