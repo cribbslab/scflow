@@ -14,7 +14,7 @@ This repository contains a collection of pipelines that aid the analysis of sing
 
 ## Installation
 
-### pip install 
+### pip install
 
 You can install scflow using pip, this will only install the package without any dependancies, which will have to be installed seperately.::
 
@@ -22,20 +22,20 @@ You can install scflow using pip, this will only install the package without any
 
 ### Conda installation - **in progress**
 
-The preferred method for installation is through conda. Currently this installation is still in working progress. Preferably the 
+The preferred method for installation is through conda. Currently this installation is still in working progress. Preferably the
 installation should be in a seperate environment::
 
     conda create -n scflow -c cgat scflow
     conda activate scflow
     scflow --help
-   
+
 ### Manual installation
 
 The respository can also be installed manually, but dependancies will need to be installed seperately::
 
     python setup.py install
     scflow --help
-    
+
 ## Usage
 
 Run the ``scflow --help`` command view the help documentation for how to run the single-cell repository.
@@ -47,11 +47,11 @@ To run the main single_cell droplet based pipeline run first generate a configur
 Then run the pipeline::
 
     scflow singlecell make full -v5
-    
+
 Then to run the report::
 
     scflow singlecell make build_report
-    
+
 ## Documentation
 
 Further help that introduces single-cell and provides a tutorial of how to run example
@@ -61,7 +61,19 @@ code can be found at [read the docs](http://single-cell.readthedocs.io/)
 
 ## scflow main quantnuclei
 
+**Commands**
+
+Generate the pipeline.yml file
+
+    scflow main quantnuclei config
+
+Run the pipeline
+
+    scflow main quantnuclei make full -v5
+
+
 **Inputs:**  
+
 Genome reference files  
 Fastq files from 10X experiment  
 pipeline.yml
@@ -73,15 +85,31 @@ pipeline.yml
 4. Merges the spliced and unspliced matrix using custom python script
 
 **Outputs**  
+
 Kallisto index  
 Fastqc html files  
 Count matrix  
 
 ## seurat qc-1  
 
+**Commands**
+
+Generate the pipeline.yml file
+
+    scflow seurat qc-1 config
+
+Run the pipeline
+
+    scflow seurat qc-1 make full -v5
+
+The pipeline pipeline_qc-1.py runs an R markdown file called QC.Rmd
+
+### QC.Rmd  
+
 **Inputs:**  
+
 Count matrix generated from quantnuclei pipeline  
-  
+
 **Steps:**
 1. Read in the count matrix
 2. Create Seurat object, Normalize data, scale data and find variable features
@@ -100,10 +128,47 @@ Count matrix generated from quantnuclei pipeline
 	- Novelty
 
 **Outputs:**  
+
 QC.Rmd knitted to html  
 SingleCellExperiment and Seurat Object RDS objects saved in RDS_objects.dir  
 QC plots saved as .eps files in QC_Figures.dir  
 
 
+## seurat filter-2
+
+**Commands**
+
+Generate the pipeline.yml file
+
+    scflow seurat filter-2 config
+
+Run the pipeline
+
+    scflow seurat filter-2 make full -v5
+
+The first step in pipeline_filter-2.py runs an R markdown file called Filter.Rmd
+
+### Filter.Rmd
 
 
+**Inputs:**  
+
+Seurat Object generated in qc-1
+
+**Steps:**
+1. Read in Seurat Object from qc-1
+2. Set publication themes for ggplot
+3. Filtering - more stringent than in qc-1. nGene 300-6000, nUMI > 100 and mitoRatio <0.1 are defaults, these can be updated in the pipeline.yml file.
+4. Save Seurat Object as RDS file.
+5. Make QC plots post-filtering as in qc-1 pipeline.
+
+
+**Outputs:**  
+
+Filter.Rmd knitted to html
+Filtered SingleCellExperiment and Seurat Object RDS objects saved in RDS_objects.dir
+QC plots saved as .eps files in Filtered_Figures.dir
+
+At this point it is good to compare the outputs of QC.html and Filter.html to check that the filtering steps have tidied up the dataset as you would expect (removed outliers and so on).
+
+pipeline_filter-2.py then converts the Seurat Objects (.rds files) into AnnData files stored in Andata.dir. This is another format of annotated data matrices that is used in python scripts.
