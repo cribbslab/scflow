@@ -91,8 +91,8 @@ dev.off()
 
 # Number of dimensions to reduce to. Look at Jackdraw / elbow plots, if not user-defined runs Embeddings
 if(is.null(num_dimensions)){
-  reddim<-Embeddings(filtered_seurat_object, reduction.type = reduction_technique)
-  ncol(reddim)->maxN
+  red_dim<-Embeddings(filtered_seurat_object, reduction = reduction_technique)
+  ncol(red_dim)->maxN
   dims.use <- seq(1,maxN,1)
 } else{
   dims.use <- seq(1,num_dimensions,1) #change this if you want to use less components, or use the significant ones only (jackstraw procedure on PCA)
