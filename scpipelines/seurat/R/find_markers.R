@@ -35,7 +35,7 @@ num_clusters <- nlevels(seurat_object$seurat_clusters)
 
 # Get minimum between number of clusters selected and total number of clusters
 if(max_clusters){
-	num_clusters_to_use <- min(c(max_clusters, final_cluster))
+	num_clusters_to_use <- min(c(max_clusters, num_clusters))
 	final_cluster <- num_clusters_to_use - 1
 } else{
 	final_cluster <- num_clusters - 1
@@ -127,9 +127,10 @@ combined_logfc_order <- combined %>% dplyr::arrange(cluster, desc(abs(avg_log2FC
 # All together, test and see which output is best. Need to look out for bugs in this
 markers_filter_stats_combined$p.adj <- p.adjust(markers_filter_stats_combined$p_val, method="BH")
 markers_filter_stats_combined$p.adj.bonferroni <- markers_filter_stats_combined$p_val_adj
-markers_filter_stats_combined <- markers_filter_stats_combined %>% dplyr::select(ensembl, cluster, p.adj, p_val, p.adj.bonferroni, avg_log2FC, pct.1, pct.2,
-	cluster_mean, other_mean, cluster_pct ,other_pct)
-markers_filter_stats_combined <- markers_filter_stats_combined %>% dplyr::arrange(cluster, p.adj, desc(abs(avg_log2FC)))
+markers_filter_stats_combined <- markers_filter_stats_combined %>% 
+  dplyr::select(ensembl, cluster, p.adj, p_val, p.adj.bonferroni, avg_log2FC, pct.1, pct.2,
+	cluster_mean, other_mean, cluster_pct ,other_pct) %>% 
+  dplyr::arrange(cluster, p.adj, desc(abs(avg_log2FC)))
 
 
 # Make file names
