@@ -33,6 +33,7 @@ dependencies:
  - r-seurat
  - r-tidyverse
  - r-ggthemes
+ - bioconductor-scdblfinder
  - scanpy
  - scipy
  - papermill
