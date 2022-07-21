@@ -70,6 +70,16 @@ for (i in sample_names){
   print(jack_plot)
   print(elb_plt)
 
+  name<- paste0("Clustering_Figures.dir/JackStrawPlot_", i, ".eps")
+  postscript(name)
+  print(jack_plot)
+  dev.off()
+
+  name<- paste0("Clustering_Figures.dir/ElbowPlot_", i, ".eps")
+  postscript(name)
+  print(elb_plt)
+  dev.off()
+
   cat('\n\n')
 
 }
