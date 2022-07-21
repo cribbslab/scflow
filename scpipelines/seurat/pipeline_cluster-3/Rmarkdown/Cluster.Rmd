@@ -117,8 +117,8 @@ for (i in sample_names){
   postscript(name)
   print(elb_plt)
   dev.off()
-  
-  cat('\n\n')
+
+cat('\n\n')
 
 }
 ```
