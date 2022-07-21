@@ -11,8 +11,8 @@ Notebook to visualise clustering of samples. Linear (PCA) and non-linear dimensi
 knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(SingleCellExperiment)
-library(ggplot2)
 library(Seurat)
+library(biomaRt)
 
 # Specify the rds files
 sample_files <- str_replace(Sys.glob("RDS_objects.dir/*_filtered_clustered_SeuratObject.rds"), "RDS_objects.dir/", "")
@@ -33,6 +33,22 @@ for (i in sample_names){
 # Variable features {.tabset .tabset-fade}
 Top variable features, number specified by user (default = 2000). Genes with highest cell-to-cell variation per sample (i.e. highly expressed in some cells, lowly expressed in others). The top 10 genes are labelled.
 
+First use biomart to get readable gene names from EnsemblIDs
+
+```{r}
+# useMart keeps not working every so often (issue https://github.com/grimbough/biomaRt/issues/31)
+ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
+if(class(ensembl) == "try-error"){
+  httr::set_config(httr::config(ssl_verifypeer = FALSE))
+  ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+}
+
+mapping <- getBM(attributes = c("ensembl_gene_id", "hgnc_symbol"), mart = ensembl)
+
+
+```
+
+
 ```{r variable_features, results='asis', echo = FALSE}
 
 for (i in sample_names){
@@ -40,18 +56,40 @@ for (i in sample_names){
 
   cat("## ",i,"\n")
   top10 <- head(VariableFeatures(so), 10)
+  
+  # Intersect top10 EnsemblIDs and gene names
+  top10_genes <- top10 %>% as.data.frame() 
+  colnames(top10_genes) <- "ensembl_gene_id"
+  top10_genes <- left_join(top10_genes, mapping, na_matches = "na") 
+
+  # plot variable features
   plot1 <- VariableFeaturePlot(so)
-  plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+  
+  # label with gene names
+  plot2 <- LabelPoints(plot = plot1, points = top10, labels = top10_2$hgnc_symbol, 
+                       repel = TRUE, xnudge = 0, ynudge = 0)
 
   print(plot2)
 
-  name<- paste0("Clustering_Figures.dir/VariableFeatures_", i, ".eps")
+  name<- paste0("Clustering_Figures.dir/VariableFeaturesGenes_", i, ".eps")
   postscript(name)
   print(plot2)
+  dev.off()
+  
+  # label with ensemblIDs
+  plot3 <- LabelPoints(plot = plot1, points = top10,  
+                       repel = TRUE, xnudge = 0, ynudge = 0)
+
+  print(plot3)
+
+  name<- paste0("Clustering_Figures.dir/VariableFeaturesEnsemblID_", i, ".eps")
+  postscript(name)
+  print(plot3)
   dev.off()
 
   cat('\n\n')
 }
+
 ```
 
 # Dimensionality of the data {.tabset .tabset-fade}
@@ -69,7 +107,7 @@ for (i in sample_names){
 
   print(jack_plot)
   print(elb_plt)
-
+  
   name<- paste0("Clustering_Figures.dir/JackStrawPlot_", i, ".eps")
   postscript(name)
   print(jack_plot)
@@ -80,7 +118,7 @@ for (i in sample_names){
   print(elb_plt)
   dev.off()
 
-  cat('\n\n')
+cat('\n\n')
 
 }
 ```
