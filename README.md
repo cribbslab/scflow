@@ -31,7 +31,7 @@ installation should be in a seperate environment::
 
 ### Manual installation
 
-The respository can also be installed manually, but dependancies will need to be installed seperately::
+The repository can also be installed manually, but dependencies will need to be installed seperately::
 
     python setup.py install
     scflow --help
@@ -60,6 +60,9 @@ code can be found at [read the docs](http://single-cell.readthedocs.io/)
 # Pipelines overview
 
 ## scflow main quantnuclei
+
+
+- [ ] [Introduction to the quantnuclei pipeline](docs/pipelines/Singlenuclei.rst)
 
 **Commands**
 
@@ -102,7 +105,7 @@ Run the pipeline
 
     scflow seurat qc-1 make full -v5
 
-The pipeline pipeline_qc-1.py runs an R markdown file called QC.Rmd
+The pipeline pipeline_qc-1.py runs an R markdown file called QC.Rmd to assess the statistics of single-cell experiments run using pipeline_kb.py,  pipeline_quantnuclei.py or pipeline_quantcells.py.
 
 ### QC.Rmd  
 
