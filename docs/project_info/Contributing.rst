@@ -13,3 +13,5 @@ Andreas Heger
 Jakub Scaber
 
 Anna James-Bott
+
+`Carla Cohen <https://www.rdm.ox.ac.uk/people/carla-cohen>`_
