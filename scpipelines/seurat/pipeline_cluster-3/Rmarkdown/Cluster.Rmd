@@ -66,7 +66,7 @@ for (i in sample_names){
   plot1 <- VariableFeaturePlot(so)
   
   # label with gene names
-  plot2 <- LabelPoints(plot = plot1, points = top10, labels = top10_2$hgnc_symbol, 
+  plot2 <- LabelPoints(plot = plot1, points = top10, labels = top10_genes$hgnc_symbol, 
                        repel = TRUE, xnudge = 0, ynudge = 0)
 
   print(plot2)
