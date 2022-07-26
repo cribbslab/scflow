@@ -25,22 +25,8 @@ sample_files <- str_replace(Sys.glob("kallisto.dir/*"), "kallisto.dir/", "")
 
 ```{r}
 for (i in sample_files){
-  name <- paste0("RDS_objects.dir/", i, "_filtered_SeuratObject.rds")
+  name <- paste0("RDS_objects.dir/", i, "_filtered_clustered_doublet_SeuratObject.rds")
   so <- readRDS(name)
-  assign(paste("so", i, sep = "."), so)
-}
-```
-
-
-# add doublet metadata to so meta.data
-
-```{r}
-for (i in sample_files){
-  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-  metadata <- read.csv(paste0("Doublet_Figures.dir/", i, "_metadata.csv"), row.names = 1)
-  
-  so@meta.data <- metadata
-  so@meta.data
   assign(paste("so", i, sep = "."), so)
 }
 ```
@@ -90,5 +76,3 @@ print(DimPlot(filtered_seurat_object, reduction="umap", pt.size = 0.5))
 }
 ```
 
-# need to import metadata with the doublet and overwrte that with the so
-# then plot the doublet numbers in plot and umap
