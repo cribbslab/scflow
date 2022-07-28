@@ -52,12 +52,19 @@ for (i in sample_files){
     NormalizeData(verbose=FALSE) %>% 
     ScaleData(verbose=FALSE) %>% 
     FindVariableFeatures(verbose=FALSE)
+
+  counts <- Matrix::colSums(so@assays$RNA@counts)
+  genes <- Matrix::colSums(so@assays$RNA@counts>0)
   
   metadata <- as.data.frame(so@meta.data)
   assign(paste("so", i, sep = "."), so)
+  assign(paste("counts", i, sep = "."), counts)
+  assign(paste("genes", i, sep = "."), genes)
   assign(paste("res_mat", i, sep = "."), res_mat)
   assign(paste("metadata", i, sep = "."), metadata)
   rm(so)
+  rm(counts)
+  rm(genes)
   rm(metadata)
 }
 
