@@ -17,7 +17,6 @@ dependencies:
  - numpy
  - pandas
  - kallisto
- - salmon>=0.13.1
  - multiqc
  - fastqc
  - fastq-screen
