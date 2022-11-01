@@ -197,7 +197,7 @@ def run_kallisto_bus(infiles, outfile):
     2> %(outfile)s_kblog.log
     '''
 
-    job_memory = '20G'
+    job_memory = PARAMS['bustools_memory']
 
     P.run(statement)
 

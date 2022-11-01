@@ -52,3 +52,7 @@ kallisto:
   # Not that 10Xv3 is not supported in version 0.44 of kallisto
   sctechnology: DropSeq
 
+# Specify bustools options
+bustools:
+
+   memory: 50G
