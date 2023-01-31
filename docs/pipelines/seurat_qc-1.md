@@ -23,7 +23,7 @@ Count matrix generated from quantnuclei pipeline
 2. Create Seurat object
 3. Generate additional QC metrics: percent mitochondrial genes, log10GenesPerUMI
 4. Add gene symbols to the meta.features of the RNA assay
-5. Save Seurat Object, Create SingleCellExperiment object and save RDS files
+5. Save Seurat Object or Create SingleCellExperiment object and save RDS files
 6. Plot and save QC metrics
 	- Cell counts per sample
 	- UMI counts per cell
@@ -35,5 +35,5 @@ Count matrix generated from quantnuclei pipeline
 **Outputs:**
 
 QC.Rmd knitted to html  
-SingleCellExperiment and Seurat Object RDS objects saved in RDS_objects.dir  
+SingleCellExperiment or Seurat Object RDS objects saved in RDS_objects.dir  (set in .yml file)
 QC plots saved as .png files in QC_Figures.dir  

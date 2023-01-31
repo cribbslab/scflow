@@ -137,7 +137,7 @@ for(i in 1:length(file_list)){
     #add a column of unique names, remove the "_" from ensembl_ids
     df[[i]]$unique_name <- uniquifyFeatureNames(df[[i]]$ensembl_gene_id, df[[i]]$hgnc_symbol)
     df[[i]]$unique_name <- gsub("^_", "", df[[i]]$unique_name)
-    df[[i]] <- df[[i]] %>% distinct(ensembl_gene_id) #remove duplicated rows
+    df[[i]] <- df[[i]] %>% distinct(ensembl_gene_id, .keep_all = TRUE) #remove duplicated rows
     
     #add ensembl_IDs to row names
     rownames(df[[i]]) <- rownames(so[[i]])
@@ -162,10 +162,15 @@ se <- list()
 
 for(i in 1:length(file_list)){
     
-    #save the Seurat Object
-    saveRDS(so[[i]], file = paste0("RDS_objects.dir/", so[[i]]@project.name, "_unfiltered_SeuratObject.rds"))
+    if (ini$output == "seurat_object"){
+        
+        #save the Seurat Object
+        saveRDS(so[[i]], file = paste0("RDS_objects.dir/", so[[i]]@project.name, "_unfiltered_SeuratObject.rds"))
+        
+    }
     
-    #Create a single cell object
+    else {
+        #Create a single cell object
     se[[i]] <- as.SingleCellExperiment(so[[i]])
     
     # add the unique gene IDs to the rowData
@@ -173,6 +178,9 @@ for(i in 1:length(file_list)){
     
     # Save the single cell object
     saveRDS(se[[i]], paste0("RDS_objects.dir/", so[[i]]@project.name, "_raw_unfiltered_SingleCellExp.rds"))
+        
+    }
+    
 }
 
 
@@ -225,9 +233,9 @@ p
 ```
 
 
-```{r, include=FALSE, fig.height=10}
+```{r, include=FALSE}
 #save the plot
-ggsave("QC_Figures.dir/nCells.png", p, device = "png")
+ggsave("QC_Figures.dir/nCells.png", p, device = "png", width = 10)
 ```
 
 
@@ -244,7 +252,7 @@ plot_list <- list()
 for (i in 1:length(file_list)) {
     
     # do a violin plot
-    plot_list[[i]] <- VlnPlot(so[[i]], "nCount_RNA", pt.size = 0.01)+
+    plot_list[[i]] <- VlnPlot(so[[i]], "nCount_RNA", pt.size = 0)+
         #remove text on x axis
         theme(axis.text.x = element_blank())+
         #add a title
@@ -263,9 +271,10 @@ p
 
 
 ```
+
 ```{r, include=FALSE}
 #save the plot
-ggsave("QC_Figures.dir/ncount_RNA.png", p, device = "png")
+ggsave("QC_Figures.dir/ncount_RNA.png", p, device = "png", width = 10, height = 10, bg = "white")
 
 
 ```
@@ -280,7 +289,7 @@ Seeing gene detection in the range of 500-5000 is normal for inDrop analysis. Si
 
 plot_list <- list()
 for (i in 1:length(file_list)) {
-  plot_list[[i]] <- VlnPlot(so[[i]], "nFeature_RNA", pt.size = 0.01)+
+  plot_list[[i]] <- VlnPlot(so[[i]], "nFeature_RNA", pt.size = 0)+
       theme(axis.text.x = element_blank())+
       ggtitle(so[[i]]@project.name) +
       theme(plot.title = element_text(size = 12))+
@@ -312,7 +321,7 @@ Plot the mitochondrial content (percent_mt)
 
 plot_list <- list()
 for (i in 1:length(file_list)) {
-  plot_list[[i]] <- VlnPlot(so[[i]], "percent_mt", pt.size = 0.01)+
+  plot_list[[i]] <- VlnPlot(so[[i]], "percent_mt", pt.size = 0)+
       theme(axis.text.x = element_blank())+
       ggtitle(so[[i]]@project.name) +
       theme(plot.title = element_text(size = 12))+
