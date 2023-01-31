@@ -1,152 +1,84 @@
 ---
 title: "Quality Control of sc samples"
-output: 
-  html_document
+author: "Adam Cribbs, updated by Carla Cohen"
+date: "`r Sys.Date()`"
+output: html_document
 ---
 
-The first notebook will introduce you the quality control concepts that will be critical for detecting the "good" cells from the "bad" cells. QC is the most critical step in any single-cell workflow and you should ideally spend at least 70% of your time on quality checking the data.
+# QC-1 workflow
 
-We have a saying, "crap in crap out". Bioinformatic software will always give you an answer no matter the quality of the data. You need to be smart about what is fed into the software so you can be confident of the biological interpretability.
+This workflow follows the scflow quantnuclei pipeline and is part of the seurat qc-1 pipeline.
 
-The first thing we will do is load the required packages:
+The main steps are as follows:  
+* import counts matrix  
+* create a Seurat Object with crude filtering  
+* save RDS files
+* generate and plot QC metrics  
 
-```{r, cache=FALSE, warning = FALSE, message = FALSE}
-knitr::opts_chunk$set(cache=FALSE, warning = FALSE, message = FALSE)
-library(tidyverse)
-library(SingleCellExperiment)
-library(Matrix)
-library(ggplot2)
-library(scales)
-library(tximport)
-library(BUSpaRse)
-library(Seurat)
+```{r setup, include=FALSE}
+
 library(yaml)
-library("biomaRt")
-library(jsonlite)
 library(tidyverse)
-library(grid)
-library(ggthemes)
+library(Seurat)
+library(BUSpaRse)
+library(biomaRt)
+library(cowplot)
+library(scater)
+
 
 # Read in the yml file
 ini <- read_yaml("pipeline.yml")
 
-# Specify the sample directory that you would like analysed:
-sample_files <- str_replace(Sys.glob("kallisto.dir/*"), "kallisto.dir/", "")
+```
 
+###  Read in the data and create the Seurat Object
+
+
+```{r, echo=FALSE, warning=FALSE}
+#make a list of sample files
+file_list <- list.files("kallisto.dir/", pattern="genes.mtx", recursive = TRUE)
+
+#Make a new list for the seurat objects
+so <- list()
+
+# generate a list of seurat objects
+for (i in 1:length(file_list)){
+    
+    name <- str_replace(file_list[i], "genes.mtx", "")
+    
+    res_mat <- read_count_output(dir = paste0("kallisto.dir/",name),
+                                 name = "genes", 
+                                 tcc = FALSE)
+    
+    project_title <- str_replace(file_list[i], "/bus/genecount/genes.mtx", "") %>% 
+        str_remove("-H-date[:digit:].+")
+    
+    seurat_object <- CreateSeuratObject(res_mat, 
+                             min.cells=20, 
+                             min.features=ini$so_filter,
+                             project = project_title
+    )
+
+    so[[i]] <- seurat_object
+    
+    print(project_title)
+    print(so[[i]])
+}
 
 ```
 
 
-Next we will load the counts data into memory using the tximport package. In addition to this we will load the barcodes generated from salmon and will import a list of genes.
 
-```{r}
+### Generate additional QC metrics 
 
-for (i in sample_files){
-  name <- paste("kallisto.dir/", i, "/bus/genecount/", sep="")
-  res_mat <- read_count_output(name,
-                             name = "genes", tcc = FALSE)
-  # Get rid of version number on ensembl gene
-  rownames(res_mat) <- gsub("\\.\\d+$","", rownames(res_mat))
-  
-  so <- CreateSeuratObject(res_mat, min.cells=20, min.features=ini$so_filter) %>% 
-    NormalizeData(verbose=FALSE) %>% 
-    ScaleData(verbose=FALSE) %>% 
-    FindVariableFeatures(verbose=FALSE)
-
-  counts <- Matrix::colSums(so@assays$RNA@counts)
-  genes <- Matrix::colSums(so@assays$RNA@counts>0)
-  
-  metadata <- as.data.frame(so@meta.data)
-  assign(paste("so", i, sep = "."), so)
-  assign(paste("counts", i, sep = "."), counts)
-  assign(paste("genes", i, sep = "."), genes)
-  assign(paste("res_mat", i, sep = "."), res_mat)
-  assign(paste("metadata", i, sep = "."), metadata)
-  rm(so)
-  rm(counts)
-  rm(genes)
-  rm(metadata)
-}
-
-```
-
-Specify some ggplot themes for use later
-```{r setup}
-knitr::opts_chunk$set(echo = TRUE)
-
-theme_Publication <- function(base_size=12, base_family="Arial") {
-      (theme_bw(base_size=base_size, base_family=base_family)
-       + theme(plot.title = element_text(face = "bold",
-                                         size = rel(1.2), hjust = 0.5),
-               text = element_text(),
-               panel.background = element_rect(colour = NA),
-               plot.background = element_rect(colour = NA),
-               panel.border = element_rect(colour = NA),
-               axis.title = element_text(face = "bold",size = rel(1)),
-               axis.title.y = element_text(angle=90,vjust =2),
-               axis.title.x = element_text(),
-               axis.text = element_text(), 
-               axis.line = element_line(colour="black"),
-               axis.ticks = element_line(),
-               panel.grid.major = element_line(colour="#f0f0f0"),
-               panel.grid.minor = element_blank(),
-               legend.key = element_rect(colour = NA),
-               legend.position = "bottom",
-               legend.direction = "horizontal",
-               legend.key.size= unit(0.2, "cm"),
-               legend.margin = margin(0, 0, 0, 0, "cm"),
-               legend.title = element_text(face="italic"),
-               plot.margin=unit(c(10,5,5,5),"mm"),
-               strip.background=element_rect(colour="#f0f0f0",fill="#f0f0f0"),
-               strip.text = element_text(face="bold")
-          ))
-      
-}
-
-scale_fill_Publication <- function(...){
-      discrete_scale("fill","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffff33")), ...)
-
-}
-
-scale_colour_Publication <- function(...){
-      discrete_scale("colour","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffff33")), ...)
-
-}
-```
-
-# Creating metadata object with some QC metrics
-
-Now that we have a counts matrix with the genes as row names and cells as columns, we can create our metadata with information about the different metrics to evaluate during quality control assessment.
-
-We will create the metadata with only the cell IDs:
-
-```{r}
-for (i in sample_files){
-  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-  # rename nCount_RNA to nUMI in metadata
-  colnames(metadata)[2] <- "nUMI"
-  # rename nFeature_RNA to nGene
-  colnames(metadata)[3] <- "nGene"
-  # Add number of UMIs per gene for each cell to metadata
-  metadata$log10GenesPerUMI <- log10(metadata$nGene) / log10(metadata$nUMI)
-  # Add sample name associated with each cell to metadata 
-  metadata$sample <- gsub("SAMPLE_FILE",i ,"SAMPLE_FILE")
-  so@meta.data <- metadata
-  assign(paste("metadata", i, sep = "."), metadata)
-  assign(paste("so", i, sep = "."), so)
-  rm(metadata)
-}
-```
-
-
-
-# Generate additional QC metrics
+* Mitochondrial reads
+* number of UMIs per gene for each cell
 
 Identify EnsemblIDs for mitochondrial genes
 
-```{r}
+```{r, echo=FALSE}
 
+# Access the useMart database
 # useMart keeps not working every so often (issue https://github.com/grimbough/biomaRt/issues/31)
 ensembl <- try(useMart("ensembl", dataset = "hsapiens_gene_ensembl"))
 if(class(ensembl) == "try-error"){
@@ -154,103 +86,101 @@ if(class(ensembl) == "try-error"){
   ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
 }
 
-mapping <- getBM(attributes = c("ensembl_transcript_id_version","ensembl_gene_id_version","ensembl_gene_id", "hgnc_symbol"), mart = ensembl)
-mito <- grep("^MT-", mapping$hgnc_symbol, value=TRUE)
-mito <- mapping %>% filter(hgnc_symbol %in% mito)
-mito <- mito$ensembl_gene_id
+# get a df of ensemble_id vs gene symbol
+mapping <- getBM(attributes = c("ensembl_gene_id", "hgnc_symbol"), mart = ensembl)
+
+#identify mitochondrial genes starting MT-
+mito <- mapping %>% filter(grepl("^MT-", hgnc_symbol))
+
 ```
 
-Add details of reads from mitochondrial genes to the metadata
+Add details of reads from mitochondrial genes, and number of UMIs per gene for each cell to  the metadata
 
-```{r}
+```{r, echo=FALSE}
 
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
-  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-  metadata$mtUMI <- Matrix::colSums(so@assays$RNA@counts[which(rownames(so@assays$RNA@counts) %in% mito),], na.rm = T)
-  
-  # Calculate of mitoRatio per cell
-  metadata$mitoRatio <- metadata$mtUMI/metadata$nUMI
-  assign(paste("metadata", i, sep = "."), metadata)
-  so@meta.data <- metadata
-  assign(paste("so", i, sep = "."), so)
+for(i in 1:length(file_list)){
+    
+    #get positions of mitochondrial genes in the so rownames
+    positions <- match(mito$ensembl_gene_id, rownames(so[[i]]))
+    
+    #use the positions to get the list of mito genes
+    mito_subset <- rownames(so[[i]])[positions]
+    
+    #remove NAs
+    mito_subset <- mito_subset[!is.na(mito_subset)]
+    
+    #add percent_mt to metadata
+    so[[i]][["percent_mt"]] <- PercentageFeatureSet(so[[i]], features = mito_subset)
+    
+    #add number of UMIs per gene for each cell to metadata
+    so[[i]][["log10GenesPerUMI"]] <- log10(so[[i]][["nFeature_RNA"]]) / log10(so[[i]][["nCount_RNA"]])
 }
 
 
 ```
+### Add gene symbols to the meta.features of the RNA assay
 
-Map ensembl symbols to hgnc symbols using biomart
+Where no gene symbol is available, leave in the EnsemblID  
+For the Seurat object this has to be added for each assay.  
+For Bioconductor SingleCellExperiment this can be added as rowData.  
 
-```{r hgnc}
 
-mapping2 <- distinct(mapping[,2:4]) # remove transcripts IDs
+```{r, echo=FALSE, message = FALSE}
 
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-  counts <- get(gsub("SAMPLE_FILE",i , "counts.SAMPLE_FILE"))
-  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-
-  ensembl_genes_so <- data.frame(ensembl_gene_id = rownames(so))
-  joined_ensembl_hgnc <- plyr::join(ensembl_genes_so, mapping2, by = "ensembl_gene_id", type = "left", match="first")
-  # Matches first HGNC, if multiple HGNC map to one ensembl id. Keep the same order unlike merge function
-  joined_ensembl_hgnc$hgnc_symbol <-  na_if(joined_ensembl_hgnc$hgnc_symbol, "")
-  # Changes "" to NAs
-
-  so_assay <- AddMetaData(so[["RNA"]], joined_ensembl_hgnc$hgnc_symbol, col.name = "hgnc_symbols")
-  # Can't add as normal metdata, have to add to assay instead :@
-  so[["RNA"]] <- so_assay # Symbols stored in so@assays$RNA@meta.features$hgnc_symbols
-
-  assign(paste("so", i, sep = "."), so)
+df <- list()
+for(i in 1:length(file_list)){
+    
+    #make a df with ensemble_id and hgnc_symbol
+    df[[i]] <- data.frame("ensembl_gene_id" = rownames(so[[i]])) %>% 
+        left_join(mapping)
+    
+    #add a column of unique names, remove the "_" from ensembl_ids
+    df[[i]]$unique_name <- uniquifyFeatureNames(df[[i]]$ensembl_gene_id, df[[i]]$hgnc_symbol)
+    df[[i]]$unique_name <- gsub("^_", "", df[[i]]$unique_name)
+    df[[i]] <- df[[i]] %>% distinct(ensembl_gene_id) #remove duplicated rows
+    
+    #add ensembl_IDs to row names
+    rownames(df[[i]]) <- rownames(so[[i]])
+    
+    #add to the meta.features in the RNA assay
+    so[[i]][["RNA"]]@meta.features <- df[[i]]
+    #print(head(so[[i]][["RNA"]]@meta.features))
+    
 }
 
 ```
 
-# Filtering!!!
+### Save the RDS objects
 
-This is very important to get correct as any "bad cells" will ultimately end up ruining your downstream analysis.
+Save as a Seurat object.   
+Convert to a SingleCellExperiment and save.  
 
-## Initial filtering
+```{r, echo=FALSE}
 
-Prior to assessing our metrics, we are going to perform a very minimal filtering of those cells with less than 100 UMIs to get rid of the cells that are clearly junk, containing less than 100 UMIs.
-
-```{r}
-for (i in sample_files){
-  counts <- get(gsub("SAMPLE_FILE",i , "res_mat.SAMPLE_FILE"))
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Keep cells with nUMI greater than 100
-idx <- which(metadata$nUMI > ini$UMI_filter)
-
-# Extract the counts for those cells
-counts_c <- counts[, idx]
-
-# Extract the metadata for those cells
-metadata_c <- metadata[idx,]
-assign(paste("metadata_c", i, sep = "."), metadata)
-}
-```
-
-# Saving metrics to single cell experiment
-
-Before we assess our metrics we are going to save all of the work we have done thus far to a single cell experiment object, which is a standard object for single cell data in R (https://www.bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html).
-
-```{r}
-for (i in sample_files){
-  so <- get(gsub("SAMPLE_FILE",i , "so.SAMPLE_FILE"))
-  counts <- so@assays$RNA@counts
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Save data to single cell experiment variable
-se <- SingleCellExperiment(assays=list(counts=counts), 
-                           colData = metadata)
 dir.create("RDS_objects.dir", showWarnings = FALSE)
-# Create .RData object to load at any time
-saveRDS(so, gsub("SAMPLE_FILE",i ,"RDS_objects.dir/SAMPLE_FILE_unfiltered_SeuratObject.rds"))
-saveRDS(se, gsub("SAMPLE_FILE",i ,"RDS_objects.dir/SAMPLE_FILE_raw_unfiltered_SingleCellExp.rds"))
-assign(paste("se", i, sep = "."), se)
+se <- list()
+
+for(i in 1:length(file_list)){
+    
+    #save the Seurat Object
+    saveRDS(so[[i]], file = paste0("RDS_objects.dir/", so[[i]]@project.name, "_unfiltered_SeuratObject.rds"))
+    
+    #Create a single cell object
+    se[[i]] <- as.SingleCellExperiment(so[[i]])
+    
+    # add the unique gene IDs to the rowData
+    rowData(se[[i]]) <- so[[i]]@assays$RNA@meta.features
+    
+    # Save the single cell object
+    saveRDS(se[[i]], paste0("RDS_objects.dir/", so[[i]]@project.name, "_raw_unfiltered_SingleCellExp.rds"))
 }
+
+
 ```
 
-# Assessing the quality metrics
+
+
+## Assessing the quality metrics
 
 We will explore the following metrics through visualizations to decide on which cells are low quality and should be removed from the analysis:
 
@@ -261,185 +191,252 @@ We will explore the following metrics through visualizations to decide on which 
 * Mitochondrial counts ratio
 * Novelty
 
-# Visualize the number of cell counts per sample {.tabset .tabset-fade}
+Each metric is plotted and individual plots are saved in QC_Fitures.dir.
 
-```{r, results='asis', echo = FALSE}
-dir.create("QC_Figures.dir", showWarnings = FALSE)
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Visualize the number of cell counts per sample
+#### Cell Counts
 
-cat("## ",i,"\n")
-plt <- metadata %>% 
-  ggplot(aes(x=sample, fill=sample)) + 
-  geom_bar() + 
-  ggtitle("Number of Cells") + theme_Publication()
-print(plt)
+Plot the total number of cells per sample
 
-name<- paste0("QC_Figures.dir/NumberOfCells_", i, ".eps")
-postscript(name)
-print(plt)
-dev.off()
-cat('\n\n')
+```{r, echo=FALSE}
+
+dir.create ("QC_Figures.dir", showWarnings = FALSE)
+
+#create a df of number of cells per sample
+df <- data.frame()
+
+for (i in 1:length(file_list)) {
+    sample <- so[[i]]@project.name
+    cells <- ncol(so[[i]])
+    df[i,1] <- sample
+    df[i, 2] <- cells
 }
+
+colnames(df) <- c("sample", "cells")
+
+#plot the number of cells per sample as a bar chart
+p <- ggplot(df, aes(x = sample, y = cells, fill = sample))+
+    geom_col()+
+    ggtitle("Number of cells per sample")+
+    theme(axis.text.x = element_text(angle = 45, hjust=1))+
+    theme(legend.position="none")
+
+p
+
 ```
 
-# UMI counts (transcripts) per cell {.tabset .tabset-fade}
+
+```{r, include=FALSE, fig.height=10}
+#save the plot
+ggsave("QC_Figures.dir/nCells.png", p, device = "png")
+```
+
+
+#### UMI counts per cell
+
+Plot the number of counts per cell (nCount_RNA)
 
 The UMI counts per cell should generally be above 500, although usable, it’s still low if between 500-1000 counts. If UMIs per cell is 500-1000 counts, then the cells probably should have been sequenced more deeply.
 
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Visualize the number UMIs/transcripts per cell
+```{r, echo=FALSE, fig.height=10}
 
-cat("## ",i,"\n")
-plt <- metadata %>% 
-        ggplot(aes(color=sample, x=nUMI, fill= sample)) + 
-        geom_density() + 
-        scale_x_log10() + 
-        ylab("log10 cell density") +
-        ggtitle("UMI counts per cell") +
-        geom_vline(xintercept = 50) + theme_Publication()
-plot(plt)
+plot_list <- list()
 
-name<- paste0("QC_Figures.dir/Log10CellDensity_", i, ".eps")
-postscript(name)
-plot(plt)
-dev.off()
-cat('\n\n')
+for (i in 1:length(file_list)) {
+    
+    # do a violin plot
+    plot_list[[i]] <- VlnPlot(so[[i]], "nCount_RNA", pt.size = 0.01)+
+        #remove text on x axis
+        theme(axis.text.x = element_blank())+
+        #add a title
+        ggtitle(so[[i]]@project.name) +
+        theme(plot.title = element_text(size = 12))+
+        #remove the legend
+        theme(legend.position="none")
 }
+
+#add an overall title and arrange the graphs on one page
+title <- ggdraw() + draw_label("ncount_RNA", fontface='bold', size = 24)
+p <- plot_grid(plotlist = plot_list, label_size = 24, ncol = 3)
+p <- plot_grid(title, p, ncol=1, rel_heights=c(0.1, 1))
+
+p
+
+
+```
+```{r, include=FALSE}
+#save the plot
+ggsave("QC_Figures.dir/ncount_RNA.png", p, device = "png")
+
+
 ```
 
-# Genes detected per cell (histogram) {.tabset .tabset-fade}
+#### Genes detected per cell
+
+Plot the number of genes per cell (nFeature_RNA)
 
 Seeing gene detection in the range of 500-5000 is normal for inDrop analysis. Similar expectations for gene detection as for UMI detection, although may be a bit lower than UMIs.
 
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Visualize the distribution of genes detected per cell via histogram
+```{r, echo=FALSE, fig.height=10}
 
-cat("## ",i,"\n")
-plt <- metadata %>% 
-        ggplot(aes(color=sample, x=nGene, fill= sample)) + 
-        geom_density() + 
-        scale_x_log10() + 
-        ggtitle("Genes detected per cell")+
-        geom_vline(xintercept = 20) + theme_Publication()
-print(plt)
-
-name<- paste0("QC_Figures.dir/GenesDetectedDensity_", i, ".eps")
-postscript(name)
-plot(plt)
-dev.off()
-cat('\n\n')
+plot_list <- list()
+for (i in 1:length(file_list)) {
+  plot_list[[i]] <- VlnPlot(so[[i]], "nFeature_RNA", pt.size = 0.01)+
+      theme(axis.text.x = element_blank())+
+      ggtitle(so[[i]]@project.name) +
+      theme(plot.title = element_text(size = 12))+
+      theme(legend.position="none")
 }
+
+title <- ggdraw() + draw_label("nFeature_RNA", fontface='bold', size = 24)
+p <- plot_grid(plotlist = plot_list, label_size = 12, ncol = 3)
+p <- plot_grid(title, p, ncol=1, rel_heights=c(0.1, 1))
+
+p
+
+
 ```
 
-# Genes detected per cell (boxplot) {.tabset .tabset-fade}
-
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Visualize the distribution of genes detected per cell via boxplot
-
-cat("## ",i,"\n")
-plt <- metadata %>% 
-        ggplot(aes(x=sample, y=log10(nGene), fill=sample)) + 
-        geom_boxplot() + 
-        ggtitle("nGenes per cell") + theme_Publication()
-print(plt)
+```{r, include=FALSE}
+#save the plot
+ggsave("QC_Figures.dir/nFeature_RNA.png", p, device = "png", width = 10, height = 10, bg = "white")
 
 
-name<- paste0("QC_Figures.dir/GenesDetectedBoxplot_", i, ".eps")
-postscript(name)
-plot(plt)
-dev.off()
-cat('\n\n')
-}
 ```
 
 
-# UMIs vs. genes detected {.tabset .tabset-fade}
+#### Mitochondrial counts ratio
+
+Plot the mitochondrial content (percent_mt)
+
+```{r, echo=FALSE, fig.height=10}
+
+plot_list <- list()
+for (i in 1:length(file_list)) {
+  plot_list[[i]] <- VlnPlot(so[[i]], "percent_mt", pt.size = 0.01)+
+      theme(axis.text.x = element_blank())+
+      ggtitle(so[[i]]@project.name) +
+      theme(plot.title = element_text(size = 12))+
+      theme(legend.position="none")
+}
+
+title <- ggdraw() + draw_label("percent_mt", fontface='bold', size = 24)
+p <- plot_grid(plotlist = plot_list, label_size = 12, ncol = 3)
+p <- plot_grid(title, p, ncol=1, rel_heights=c(0.1, 1))
+
+p
+
+
+```
+
+```{r, include=FALSE}
+#save the plot
+ggsave("QC_Figures.dir/percent_mt.png", p, device = "png", bg = "white", width = 10, height = 10)
+
+
+```
+
+
+#### UMIs vs. genes detected 
 
 Poor quality cells are likely to have low genes and UMIs per cell. Therefore, a poor sample is likely to have cells in the lower left of the graph. Good cells should exhibit both higher number of genes per cell and higher numbers of UMIs. We also expect similar lines with similar slopes for all samples.
 
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Visualize the distribution of genes detected per cell via histogram
+```{r, echo=FALSE, fig.height=10}
 
-cat("## ",i,"\n")
-# Visualize the correlation between genes detected and number of UMIs and determine whether strong presence of cells with low numbers of genes/UMIs
-plt <- metadata %>% 
-  ggplot(aes(x=nUMI, y=nGene, color=mitoRatio)) + 
-  geom_point() + 
-  stat_smooth(method=lm) +
-  scale_x_log10() + 
-  scale_y_log10() + 
-  geom_vline(xintercept = 800) +
-  facet_wrap(~sample) + theme_Publication()
-print(plt)
-
-name<- paste0("QC_Figures.dir/nUMIvsnGene_", i, ".eps")
-postscript(name)
-print(plt)
-dev.off()
-cat('\n\n')
+plot_list <- list()
+for (i in 1:length(file_list)) {
+  plot_list[[i]] <- FeatureScatter(so[[i]], feature1 = "nCount_RNA", feature2 = "nFeature_RNA")+
+      theme(axis.text.x = element_blank())+
+      ggtitle(so[[i]]@project.name) +
+      theme(plot.title = element_text(size = 12))+
+      theme(legend.position="none")
 }
+
+title <- ggdraw() + draw_label("UMIs vs genes detected", fontface='bold', size = 24)
+p <- plot_grid(plotlist = plot_list, label_size = 12, ncol = 3)
+p <- plot_grid(title, p, ncol=1, rel_heights=c(0.1, 1))
+
+p
+
+
+```
+
+```{r, include=FALSE}
+#save the plot
+ggsave("QC_Figures.dir/UMI_vs_genes.png", p, device = "png", width = 14, height = 14, bg = "white")
+
 ```
 
 
-# Mitochondrial counts ratio {.tabset .tabset-fade}
+Plot UMIs vs genes coloured by percent_mt
 
-This metric can identify whether there is a large amount of mitochondrial contamination from dead or dying cells. Poor quality samples for mitochondrial counts would have larger peaks above the 0.1 mitochondrial ratio mark, unless it is expected based on sample type.
+```{r, echo=FALSE, message=FALSE, fig.height=10, fig.width=10}
 
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Visualize the distribution of genes detected per cell via histogram
+plot_list <- list()
+for (i in 1:length(file_list)) {
+  
+    metadata <- so[[i]][[]]
 
-cat("## ",i,"\n")
-# Visualize the distribution of mitochondrial gene expression detected per cell
-plt<- metadata %>% 
-        ggplot(aes(color=sample, x=mitoRatio, fill=sample)) + 
-        geom_density() + 
+    plot_list[[i]] <- metadata %>% 
+        ggplot(aes(x=nCount_RNA, y=nFeature_RNA, color=percent_mt)) + 
+        geom_point() + 
+        stat_smooth(method=lm) +
         scale_x_log10() + 
-        ggtitle("Mitochondrial gene expression")+
-        geom_vline(xintercept = 0.3) + theme_Publication()
-print(plt)
-
-
-name<- paste0("QC_Figures.dir/MitoRatio_", i, ".eps")
-postscript(name)
-print(plt)
-dev.off()
-cat('\n\n')
+        scale_y_log10() + 
+        geom_vline(xintercept = 800) +
+        ggtitle(so[[i]]@project.name) +
+        theme(plot.title = element_text(size = 12))
 }
+
+title <- ggdraw() + draw_label("UMIs vs genes detected", fontface='bold', size = 24)
+p <- plot_grid(plotlist = plot_list, label_size = 12, ncol = 3)
+p <- plot_grid(title, p, ncol=1, rel_heights=c(0.1, 2))
+
+p
+
+
 ```
 
-# Novelty {.tabset .tabset-fade}
+```{r, include=FALSE}
+#save the plot
+ggsave("QC_Figures.dir/UMI_vs_genes_mt.png", p, device = "png", bg = "white", width = 14, height = 14)
+
+
+```
+
+
+#### Novelty 
+
+Visualize the overall novelty of the gene expression by visualizing the genes detected per UMI
 
 We can see the samples where we sequenced each cell less have a higher overall novelty, that is because we have not started saturating the sequencing for any given gene for these samples. Outlier cells in these samples might be cells that have a less complex RNA species than other cells. Sometimes we can detect contamination with low complexity cell types like red blood cells via this metric. Generally, we expect the novelty score to be above 0.80.
 
-```{r, results='asis', echo = FALSE}
-for (i in sample_files){
-  metadata <- get(gsub("SAMPLE_FILE",i , "metadata.SAMPLE_FILE"))
-# Visualize the distribution of genes detected per cell via histogram
+```{r, echo=FALSE, fig.height=10}
 
-cat("## ",i,"\n")
-# Visualize the overall novelty of the gene expression by visualizing the genes detected per UMI
-plt <- metadata %>%
-        ggplot(aes(x=log10GenesPerUMI, color = sample, fill=sample)) +
-        geom_density() + theme_Publication()+
-        ggtitle("Novelty")
-print(plt)
+plot_list <- list()
+for (i in 1:length(file_list)) {
+  
+    metadata <- so[[i]][[]]
 
-name<- paste0("QC_Figures.dir/Novelty_", i, ".eps")
-postscript(name)
-print(plt)
-dev.off()
-cat('\n\n')
+    plot_list[[i]] <- metadata %>% 
+        ggplot(aes(x=log10GenesPerUMI, fill = sample)) +
+        geom_density() +
+        ggtitle(so[[i]]@project.name)+
+        theme(plot.title = element_text(size = 12))+
+        theme(legend.position="none")
 }
+
+title <- ggdraw() + draw_label("Novelty", fontface='bold', size = 24)
+p <- plot_grid(plotlist = plot_list, label_size = 12, ncol = 3)
+p <- plot_grid(title, p, ncol=1, rel_heights=c(0.1, 1))
+
+p
+
 ```
+
+```{r, include=FALSE}
+#save the plot
+ggsave("QC_Figures.dir/Novelty.png", p, device = "png", bg = "white", width = 12, height = 12)
+
+
+```
+
