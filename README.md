@@ -86,6 +86,10 @@ code can be found at [read the docs](http://single-cell.readthedocs.io/)
 
 - [ ] [Overview of the seurat doublet-4 pipeline](docs/pipelines/seurat_doublet-4.md)
 
+## seurat integration-5
+
+- [ ] [Overview of the seurat doublet-4 pipeline](docs/pipelines/seurat_doublet-4.md)
+
 # Project Info
 
 - [ ] [Contributors](docs/project_info/Contributing.rst)
