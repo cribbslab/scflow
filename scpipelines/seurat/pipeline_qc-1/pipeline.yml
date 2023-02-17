@@ -18,3 +18,6 @@ so_filter: 100
 
 #Specificy the number of counts if more stringent filter is required
 UMI_filter: 100
+
+#Specify the format of output files
+output: seurat_object
