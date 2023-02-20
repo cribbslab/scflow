@@ -15,6 +15,8 @@ The main steps are as follows:
 * save RDS files
 * generate and plot QC metrics  
 
+TO DO move the addition of patient metadata to the next pipeline that is specific to the samples being analysed. 
+
 ```{r setup, include=FALSE}
 
 library(yaml)
@@ -24,15 +26,20 @@ library(BUSpaRse)
 library(biomaRt)
 library(cowplot)
 library(scater)
-
+library(celda)
+library(scDblFinder)
+library(viridis)
 
 # Read in the yml file
 ini <- read_yaml("pipeline.yml")
 
+#Read in the metadata file
+metadata <- read.table("Files/metadata.txt", sep = "\t", header = TRUE)
+
 ```
 
 ###  Read in the data and create the Seurat Object
-
+NB this first part could be re-written in bioconductor to avoid having to convert the object later. 
 
 ```{r, echo=FALSE, warning=FALSE}
 #make a list of sample files
@@ -51,10 +58,10 @@ for (i in 1:length(file_list)){
                                  tcc = FALSE)
     
     project_title <- str_replace(file_list[i], "/bus/genecount/genes.mtx", "") %>% 
-        str_remove("-H-date[:digit:].+")
+        str_remove("-[:alpha:]+-date[:digit:].+")
     
     seurat_object <- CreateSeuratObject(res_mat, 
-                             min.cells=20, 
+                             min.cells=3, 
                              min.features=ini$so_filter,
                              project = project_title
     )
@@ -98,7 +105,7 @@ Add details of reads from mitochondrial genes, and number of UMIs per gene for e
 
 ```{r, echo=FALSE}
 
-for(i in 1:length(file_list)){
+for(i in 1:length(so)){
     
     #get positions of mitochondrial genes in the so rownames
     positions <- match(mito$ensembl_gene_id, rownames(so[[i]]))
@@ -128,7 +135,7 @@ For Bioconductor SingleCellExperiment this can be added as rowData.
 ```{r, echo=FALSE, message = FALSE}
 
 df <- list()
-for(i in 1:length(file_list)){
+for(i in 1:length(so)){
     
     #make a df with ensemble_id and hgnc_symbol
     df[[i]] <- data.frame("ensembl_gene_id" = rownames(so[[i]])) %>% 
@@ -150,40 +157,127 @@ for(i in 1:length(file_list)){
 
 ```
 
-### Save the RDS objects
 
-Save as a Seurat object.   
-Convert to a SingleCellExperiment and save.  
+### Add patient metadata to each sample
+
+Read in patient metadata for each sample including the following fields 
+- sex
+- diagnosis
+- surgeon
+- affected side
+- surgical procedure
+- age
+- sequencing date
+- disease status
+Modify to add any other required fields. 
+
 
 ```{r, echo=FALSE}
 
-dir.create("RDS_objects.dir", showWarnings = FALSE)
-se <- list()
 
-for(i in 1:length(file_list)){
+for (i in 1:length(so)){
     
-    if (ini$output == "seurat_object"){
-        
-        #save the Seurat Object
-        saveRDS(so[[i]], file = paste0("RDS_objects.dir/", so[[i]]@project.name, "_unfiltered_SeuratObject.rds"))
-        
-    }
+    #cat ("analysing sample ", i)
+    #cat("\n")
+    sample_name <- str_sub(so[[i]]@project.name, 1, 7)
+    info <- metadata %>% filter(Patient == sample_name)
     
-    else {
-        #Create a single cell object
-    se[[i]] <- as.SingleCellExperiment(so[[i]])
+    so[[i]]@meta.data$sex <- info$Sex
+    so[[i]]@meta.data$diagnosis <- info$Diagnosis
+    so[[i]]@meta.data$surgeon <- info$Surgeon
+    so[[i]]@meta.data$affected_side <- info$Affected.side
+    so[[i]]@meta.data$surgical_procedure <- info$Surgical.procedure
+    so[[i]]@meta.data$age <- info$Age
+    so[[i]]@meta.data$sequencing_date <- info$Sequencing.date
+    so[[i]]@meta.data$disease_status <- info$Disease.status
+    
+}
+    
+    
+```
+
+
+Convert to a SingleCellExperiment.
+Identify and remove empty droplets. 
+Identify ambient RNA.
+Identify doublets. 
+
+
+
+```{r, include=FALSE}
+
+sce <- list()
+sce_empty <- list()
+
+for(i in 1:length(so)){
+    
+    cat (paste0("Analysing sample ", i, ", ", so[[i]]@project.name))
+    
+    #Create a single cell experiment object
+    sce[[i]] <- as.SingleCellExperiment(so[[i]])
     
     # add the unique gene IDs to the rowData
-    rowData(se[[i]]) <- so[[i]]@assays$RNA@meta.features
+    rowData(sce[[i]]) <- so[[i]]@assays$RNA@meta.features
     
-    # Save the single cell object
-    saveRDS(se[[i]], paste0("RDS_objects.dir/", so[[i]]@project.name, "_raw_unfiltered_SingleCellExp.rds"))
-        
-    }
+    # remove cells with no reads at all
+    sce[[i]] <- sce[[i]][, colSums(assay(sce[[i]], "counts")) > 0]
     
+    # run emptydrops
+    set.seed(1)
+    out <- DropletUtils::emptyDrops(assay(sce[[i]], "counts"), lower = 50)
+    
+    # add emptydrops info to colData
+    sce[[i]]@colData$empty_drops_FDR <- out$FDR
+    colData(sce[[i]])$empty_drop <- colData(sce[[i]])$empty_drops_FDR > 0.01
+    
+    #remove likely empty droplets
+    sce_empty[[i]] <- sce[[i]][, which(out$FDR <= 0.01)]
+    
+    # run decontX to identify ambient RNA
+    sce_empty[[i]] <- decontX(sce_empty[[i]])
+    
+    # run scdDblFinder
+    sce_empty[[i]] <- scDblFinder(sce_empty[[i]])
+    
+   
 }
 
 
+```
+
+
+
+
+### Save the RDS objects
+
+Save versions including all droplets and with empty droplets removed for later analysis. 
+Save as a SingleCellExperiment object.   
+Convert to a Seurat Object and save.  
+
+```{r, include=FALSE}
+
+dir.create("RDS_objects.dir/unfiltered", showWarnings = FALSE)
+
+so_empty <- list()
+
+for(i in 1:length(sce)){
+    
+    # Save the Single Cell Experiment objects
+    saveRDS(sce[[i]], paste0("RDS_objects.dir/unfiltered/", so[[i]]@project.name, "_raw_unfiltered_SingleCellExp.rds"))
+    saveRDS(sce_empty[[i]], paste0("RDS_objects.dir/unfiltered/", so[[i]]@project.name, "_empty_SingleCellExp.rds"))
+    
+    #Convert the SingleCellExperiment to a Seurat Object
+    
+    so_empty[[i]] <- as.Seurat(sce_empty[[i]])
+    so_empty[[i]]@project.name <- so[[i]]@project.name
+    so_empty[[i]][["decontXcounts"]] <- CreateAssayObject(counts = decontXcounts(sce_empty[[i]]))
+    
+    #save the Seurat Objects
+    saveRDS(so[[i]], file = paste0("RDS_objects.dir/unfiltered/", so[[i]]@project.name, "_unfiltered_SeuratObject.rds"))
+    saveRDS(so_empty[[i]], file = paste0("RDS_objects.dir/unfiltered/", so_empty[[i]]@project.name, "_empty_SeuratObject.rds"))
+        
+}
+    
 ```
 
 
@@ -205,19 +299,19 @@ Each metric is plotted and individual plots are saved in QC_Fitures.dir.
 
 Plot the total number of cells per sample
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.height=6}
 
 dir.create ("QC_Figures.dir", showWarnings = FALSE)
 
 #create a df of number of cells per sample
 df <- data.frame()
 
-for (i in 1:length(file_list)) {
+for (i in 1:length(sce)) {
     sample <- so[[i]]@project.name
     cells <- ncol(so[[i]])
     df[i,1] <- sample
     df[i, 2] <- cells
-}
+ }
 
 colnames(df) <- c("sample", "cells")
 
@@ -225,9 +319,14 @@ colnames(df) <- c("sample", "cells")
 p <- ggplot(df, aes(x = sample, y = cells, fill = sample))+
     geom_col()+
     ggtitle("Number of cells per sample")+
-    theme(axis.text.x = element_text(angle = 45, hjust=1))+
-    theme(legend.position="none")
-
+    theme_cowplot()+
+    theme(plot.title = element_text(size = 24))+
+    theme(axis.text.x = element_text(size = 12, angle = 45, hjust=1))+
+    theme(legend.position="none")+
+    scale_fill_viridis_d()
+    
+    
+    
 p
 
 ```
@@ -236,6 +335,7 @@ p
 ```{r, include=FALSE}
 #save the plot
 ggsave("QC_Figures.dir/nCells.png", p, device = "png", width = 10)
+ggsave("QC_Figures.dir/nCells.pdf", p, device = "pdf", width = 10)
 ```
 
 
@@ -245,21 +345,23 @@ Plot the number of counts per cell (nCount_RNA)
 
 The UMI counts per cell should generally be above 500, although usable, it’s still low if between 500-1000 counts. If UMIs per cell is 500-1000 counts, then the cells probably should have been sequenced more deeply.
 
-```{r, echo=FALSE, fig.height=10}
+```{r, echo=FALSE, fig.height=10, message = FALSE}
 
 plot_list <- list()
 
-for (i in 1:length(file_list)) {
+for (i in 1:length(so)) {
     
     # do a violin plot
     plot_list[[i]] <- VlnPlot(so[[i]], "nCount_RNA", pt.size = 0)+
         #remove text on x axis
         theme(axis.text.x = element_blank())+
+        scale_fill_viridis_d()+
         #add a title
         ggtitle(so[[i]]@project.name) +
         theme(plot.title = element_text(size = 12))+
         #remove the legend
-        theme(legend.position="none")
+        theme(legend.position="none")+
+        scale_y_log10()
 }
 
 #add an overall title and arrange the graphs on one page
@@ -272,9 +374,11 @@ p
 
 ```
 
+
 ```{r, include=FALSE}
 #save the plot
 ggsave("QC_Figures.dir/ncount_RNA.png", p, device = "png", width = 10, height = 10, bg = "white")
+ggsave("QC_Figures.dir/ncount_RNA.pdf", p, device = "pdf", width = 10, height = 10, bg = "white")
 
 
 ```
@@ -285,15 +389,17 @@ Plot the number of genes per cell (nFeature_RNA)
 
 Seeing gene detection in the range of 500-5000 is normal for inDrop analysis. Similar expectations for gene detection as for UMI detection, although may be a bit lower than UMIs.
 
-```{r, echo=FALSE, fig.height=10}
+```{r, echo=FALSE, fig.height=10, message = FALSE}
 
 plot_list <- list()
-for (i in 1:length(file_list)) {
+for (i in 1:length(so)) {
   plot_list[[i]] <- VlnPlot(so[[i]], "nFeature_RNA", pt.size = 0)+
       theme(axis.text.x = element_blank())+
+      scale_fill_viridis_d()+
       ggtitle(so[[i]]@project.name) +
       theme(plot.title = element_text(size = 12))+
-      theme(legend.position="none")
+      theme(legend.position="none")+
+      scale_y_log10()
 }
 
 title <- ggdraw() + draw_label("nFeature_RNA", fontface='bold', size = 24)
@@ -308,7 +414,7 @@ p
 ```{r, include=FALSE}
 #save the plot
 ggsave("QC_Figures.dir/nFeature_RNA.png", p, device = "png", width = 10, height = 10, bg = "white")
-
+ggsave("QC_Figures.dir/nFeature_RNA.pdf", p, device = "pdf", width = 10, height = 10, bg = "white")
 
 ```
 
@@ -320,12 +426,14 @@ Plot the mitochondrial content (percent_mt)
 ```{r, echo=FALSE, fig.height=10}
 
 plot_list <- list()
-for (i in 1:length(file_list)) {
+for (i in 1:length(so)) {
   plot_list[[i]] <- VlnPlot(so[[i]], "percent_mt", pt.size = 0)+
       theme(axis.text.x = element_blank())+
+      scale_fill_viridis_d()+
       ggtitle(so[[i]]@project.name) +
       theme(plot.title = element_text(size = 12))+
       theme(legend.position="none")
+      
 }
 
 title <- ggdraw() + draw_label("percent_mt", fontface='bold', size = 24)
@@ -340,7 +448,7 @@ p
 ```{r, include=FALSE}
 #save the plot
 ggsave("QC_Figures.dir/percent_mt.png", p, device = "png", bg = "white", width = 10, height = 10)
-
+ggsave("QC_Figures.dir/percent_mt.pdf", p, device = "pdf", bg = "white", width = 10, height = 10)
 
 ```
 
@@ -349,52 +457,27 @@ ggsave("QC_Figures.dir/percent_mt.png", p, device = "png", bg = "white", width =
 
 Poor quality cells are likely to have low genes and UMIs per cell. Therefore, a poor sample is likely to have cells in the lower left of the graph. Good cells should exhibit both higher number of genes per cell and higher numbers of UMIs. We also expect similar lines with similar slopes for all samples.
 
-```{r, echo=FALSE, fig.height=10}
-
-plot_list <- list()
-for (i in 1:length(file_list)) {
-  plot_list[[i]] <- FeatureScatter(so[[i]], feature1 = "nCount_RNA", feature2 = "nFeature_RNA")+
-      theme(axis.text.x = element_blank())+
-      ggtitle(so[[i]]@project.name) +
-      theme(plot.title = element_text(size = 12))+
-      theme(legend.position="none")
-}
-
-title <- ggdraw() + draw_label("UMIs vs genes detected", fontface='bold', size = 24)
-p <- plot_grid(plotlist = plot_list, label_size = 12, ncol = 3)
-p <- plot_grid(title, p, ncol=1, rel_heights=c(0.1, 1))
-
-p
-
-
-```
-
-```{r, include=FALSE}
-#save the plot
-ggsave("QC_Figures.dir/UMI_vs_genes.png", p, device = "png", width = 14, height = 14, bg = "white")
-
-```
-
-
 Plot UMIs vs genes coloured by percent_mt
 
 ```{r, echo=FALSE, message=FALSE, fig.height=10, fig.width=10}
 
 plot_list <- list()
-for (i in 1:length(file_list)) {
+for (i in 1:length(so)) {
   
     metadata <- so[[i]][[]]
 
     plot_list[[i]] <- metadata %>% 
-        ggplot(aes(x=nCount_RNA, y=nFeature_RNA, color=percent_mt)) + 
-        geom_point() + 
-        stat_smooth(method=lm) +
+        ggplot(aes(x=nCount_RNA, y=nFeature_RNA)) + 
+        geom_point(aes(colour = percent_mt)) + 
+        scale_colour_viridis()+
+        #stat_smooth(method=lm) +
         scale_x_log10() + 
         scale_y_log10() + 
         geom_vline(xintercept = 800) +
         ggtitle(so[[i]]@project.name) +
         theme(plot.title = element_text(size = 12))
 }
+
 
 title <- ggdraw() + draw_label("UMIs vs genes detected", fontface='bold', size = 24)
 p <- plot_grid(plotlist = plot_list, label_size = 12, ncol = 3)
@@ -408,6 +491,7 @@ p
 ```{r, include=FALSE}
 #save the plot
 ggsave("QC_Figures.dir/UMI_vs_genes_mt.png", p, device = "png", bg = "white", width = 14, height = 14)
+ggsave("QC_Figures.dir/UMI_vs_genes_mt.pdf", p, device = "pdf", bg = "white", width = 14, height = 14)
 
 
 ```
@@ -422,16 +506,20 @@ We can see the samples where we sequenced each cell less have a higher overall n
 ```{r, echo=FALSE, fig.height=10}
 
 plot_list <- list()
-for (i in 1:length(file_list)) {
+for (i in 1:length(so)) {
   
     metadata <- so[[i]][[]]
 
     plot_list[[i]] <- metadata %>% 
         ggplot(aes(x=log10GenesPerUMI, fill = sample)) +
         geom_density() +
+        scale_fill_viridis_d()+
         ggtitle(so[[i]]@project.name)+
         theme(plot.title = element_text(size = 12))+
+        xlim(0.5, 1)+
+        theme_cowplot()+
         theme(legend.position="none")
+        
 }
 
 title <- ggdraw() + draw_label("Novelty", fontface='bold', size = 24)
@@ -445,6 +533,7 @@ p
 ```{r, include=FALSE}
 #save the plot
 ggsave("QC_Figures.dir/Novelty.png", p, device = "png", bg = "white", width = 12, height = 12)
+ggsave("QC_Figures.dir/Novelty.pdf", p, device = "pdf", bg = "white", width = 12, height = 12)
 
 
 ```
