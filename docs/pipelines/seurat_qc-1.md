@@ -17,13 +17,19 @@ The pipeline pipeline_qc-1.py runs an R markdown file called QC.Rmd to assess th
 **Inputs:**
 
 Count matrix generated from quantnuclei pipeline  
+Patient metadata as tab-delimited file    
 
 **Steps:**
 1. Read in the count matrix
 2. Create Seurat object
 3. Generate additional QC metrics: percent mitochondrial genes, log10GenesPerUMI
 4. Add gene symbols to the meta.features of the RNA assay
-5. Save Seurat Object or Create SingleCellExperiment object and save RDS files
+5. Add patient metadata
+6. Convert to SingleCellExperiment 
+	- Identify and remove empty droplets (NB empty droplets must be removed in order to perform doublet detection).  
+	- Identify ambient RNA
+	- Identify doublets
+5. Save Seurat Objects and SingleCellExperiment objects as RDS files (both complete and with emptry droplets filtered out)
 6. Plot and save QC metrics
 	- Cell counts per sample
 	- UMI counts per cell
@@ -35,5 +41,5 @@ Count matrix generated from quantnuclei pipeline
 **Outputs:**
 
 QC.Rmd knitted to html  
-SingleCellExperiment or Seurat Object RDS objects saved in RDS_objects.dir  (set in .yml file)
+SingleCellExperiment and Seurat Object RDS objects saved in RDS_objects.dir  
 QC plots saved as .png files in QC_Figures.dir  
