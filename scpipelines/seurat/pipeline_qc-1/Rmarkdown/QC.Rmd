@@ -33,8 +33,7 @@ library(viridis)
 # Read in the yml file
 ini <- read_yaml("pipeline.yml")
 
-#Read in the metadata file
-metadata <- read.table("Files/metadata.txt", sep = "\t", header = TRUE)
+
 
 ```
 
@@ -101,6 +100,14 @@ mito <- mapping %>% filter(grepl("^MT-", hgnc_symbol))
 
 ```
 
+Save the mapping object for use in future pipelines
+
+```{r, include = FALSE}
+dir.create("Files")
+write.table(mapping, "Files/mapping.txt", quote = FALSE, sep = "\t", row.names = FALSE)
+```
+
+
 Add details of reads from mitochondrial genes, and number of UMIs per gene for each cell to  the metadata
 
 ```{r, echo=FALSE}
@@ -158,51 +165,10 @@ for(i in 1:length(so)){
 ```
 
 
-### Add patient metadata to each sample
-
-Read in patient metadata for each sample including the following fields 
-- sex
-- diagnosis
-- surgeon
-- affected side
-- surgical procedure
-- age
-- sequencing date
-- disease status
-Modify to add any other required fields. 
-
-
-```{r, echo=FALSE}
-
-
-for (i in 1:length(so)){
-    
-    #cat ("analysing sample ", i)
-    #cat("\n")
-    sample_name <- str_sub(so[[i]]@project.name, 1, 7)
-    info <- metadata %>% filter(Patient == sample_name)
-    
-    so[[i]]@meta.data$sex <- info$Sex
-    so[[i]]@meta.data$diagnosis <- info$Diagnosis
-    so[[i]]@meta.data$surgeon <- info$Surgeon
-    so[[i]]@meta.data$affected_side <- info$Affected.side
-    so[[i]]@meta.data$surgical_procedure <- info$Surgical.procedure
-    so[[i]]@meta.data$age <- info$Age
-    so[[i]]@meta.data$sequencing_date <- info$Sequencing.date
-    so[[i]]@meta.data$disease_status <- info$Disease.status
-    
-}
-    
-    
-```
-
-
 Convert to a SingleCellExperiment.
 Identify and remove empty droplets. 
 Identify ambient RNA.
 Identify doublets. 
-
-
 
 ```{r, include=FALSE}
 
@@ -224,7 +190,7 @@ for(i in 1:length(so)){
     
     # run emptydrops
     set.seed(1)
-    out <- DropletUtils::emptyDrops(assay(sce[[i]], "counts"), lower = 50)
+    out <- DropletUtils::emptyDrops(assay(sce[[i]], "counts"), lower = 100)
     
     # add emptydrops info to colData
     sce[[i]]@colData$empty_drops_FDR <- out$FDR
@@ -255,7 +221,7 @@ Save as a SingleCellExperiment object.
 Convert to a Seurat Object and save.  
 
 ```{r, include=FALSE}
-
+dir.create("RDS_objects.dir", showWarnings = FALSE)
 dir.create("RDS_objects.dir/unfiltered", showWarnings = FALSE)
 
 so_empty <- list()
