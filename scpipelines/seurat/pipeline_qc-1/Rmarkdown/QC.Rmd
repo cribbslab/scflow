@@ -15,7 +15,6 @@ The main steps are as follows:
 * save RDS files
 * generate and plot QC metrics  
 
-TO DO move the addition of patient metadata to the next pipeline that is specific to the samples being analysed. 
 
 ```{r setup, include=FALSE}
 
@@ -103,8 +102,10 @@ mito <- mapping %>% filter(grepl("^MT-", hgnc_symbol))
 Save the mapping object for use in future pipelines
 
 ```{r, include = FALSE}
-dir.create("Files")
-write.table(mapping, "Files/mapping.txt", quote = FALSE, sep = "\t", row.names = FALSE)
+
+dir.create("Files.dir")
+write.table(mapping, "Files.dir/mapping.txt", quote = FALSE, sep = "\t", row.names = FALSE)
+
 ```
 
 
