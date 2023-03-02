@@ -136,7 +136,7 @@ def build_kallisto_index(outfile):
 @follows(build_kallisto_index)
 @follows(mkdir("fastqc_pre.dir"))
 @transform(SEQUENCEFILES,
-           regex("(\S+).fastq.(\d).gz"),
+           regex("{}/(\S+).fastq.(\d).gz".format(DATADIR)),
            r"fastqc_pre.dir/\1.fastq.\2_fastqc.html")
 def run_fastqc(infile, outfile):
     '''
@@ -197,7 +197,7 @@ def run_kallisto_bus(infiles, outfile):
     2> %(outfile)s_kblog.log
     '''
 
-    job_memory = '20G'
+    job_memory = PARAMS['bustools_memory']
 
     P.run(statement)
 

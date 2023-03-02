@@ -15,6 +15,7 @@ The main steps are as follows:
 * save RDS files
 * generate and plot QC metrics  
 
+
 ```{r setup, include=FALSE}
 
 library(yaml)
@@ -101,8 +102,10 @@ mito <- mapping %>% filter(grepl("^MT-", hgnc_symbol))
 Save the mapping object for use in future pipelines
 
 ```{r, include = FALSE}
+
 dir.create("Files.dir")
 write.table(mapping, "Files.dir/mapping.txt", quote = FALSE, sep = "\t", row.names = FALSE)
+
 ```
 
 
