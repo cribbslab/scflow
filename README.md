@@ -14,26 +14,20 @@ This repository contains a collection of pipelines that aid the analysis of sing
 
 ## Installation
 
-### pip install
-
-You can install scflow using pip, this will only install the package without any dependancies, which will have to be installed seperately.::
-
-	pip install scflow
-
 ### Conda installation - **in progress**
 
-The preferred method for installation is through conda. Currently this installation is still in working progress. Preferably the
+The preferred method for installation is through conda/mamba.  Preferably the
 installation should be in a seperate environment::
 
-    conda create -n scflow -c cgat scflow
+    mamba env create -f conda/environments/scflow.yml
     conda activate scflow
-    scflow --help
+    python setup.py develop
 
-### Manual installation
-
-The repository can also be installed manually, but dependencies will need to be installed seperately::
-
-    python setup.py install
+    # Install a specific version of kb-tools from Adam's cloned repo
+    git clone git@github.com:Acribbs/kb_python.git
+    cd kb_python
+    python setup.py develop
+    
     scflow --help
 
 ## Usage
