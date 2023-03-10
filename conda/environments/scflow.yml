@@ -26,13 +26,10 @@ dependencies:
  - setuptools
  - statsmodels
  - r-base
- - bioconductor-biomart
- - bioconductor-singlecellexperiment
  - r-optparse
  - r-seurat
  - r-tidyverse
  - r-ggthemes
- - bioconductor-scdblfinder
  - scanpy
  - scipy
  - papermill
@@ -40,3 +37,8 @@ dependencies:
  - bioconductor-busparse 
  - bustools
  - bioconductor-tximport
+ - bioconductor-dropletutils
+ - bioconductor-celda
+ - bioconductor-scdblfinder
+ - bioconductor-singlecellexperiment
+ - bioconductor-biomart
