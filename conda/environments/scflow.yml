@@ -42,5 +42,8 @@ dependencies:
  - bioconductor-scdblfinder
  - bioconductor-singlecellexperiment
  - bioconductor-biomart
+ - bioconductor-scuttle
+ - bioconductor-glmgampoi
  - r-harmony
  - r-seuratdisk
+ - r-clustree
