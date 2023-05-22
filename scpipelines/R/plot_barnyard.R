@@ -8,7 +8,7 @@ library(optparse)
 
 option_list = list(
   make_option(c("-i", "--input"), type="character", default="", 
-              help="input file GTF file [default= %default]", metavar="character"),
+              help="input file path for mtx gene matrix location [default= %default]", metavar="character"),
   make_option(c("-o", "--out"), type="character", default="", 
               help="output file name [default= %default]", metavar="character")
 	      ); 
