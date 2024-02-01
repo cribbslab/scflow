@@ -199,7 +199,9 @@ def run_kallisto_bus(infiles, outfile):
 
     job_memory = PARAMS['bustools_memory']
 
-    P.run(statement, job_options='-t 167:00:00')
+
+     P.run(statement, job_options='-t 24:00:00')
+
 
 
 @jobs_limit(1)
@@ -268,7 +270,7 @@ def bustools_count(infile, outfile):
 
 
     statement = """bustools count -o %(out_dir)s -g %(tr2g)s -e %(mat)s -t %(trans)s --genecounts 2> %(out_dir)s.count.log %(infile)s"""
-    P.run(statement)
+    P.run(statement, job_options='-t 24:00:00')
 
 
 @active_if(PARAMS['mixed_species'])

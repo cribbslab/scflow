@@ -191,7 +191,7 @@ for(i in 1:length(so)){
     
     # run emptydrops
     set.seed(1)
-    out <- DropletUtils::emptyDrops(assay(sce[[i]], "counts"), lower = 100)
+    out <- DropletUtils::emptyDrops(assay(sce[[i]], "counts"), lower = ini$UMI_filter)
     
     # add emptydrops info to colData
     sce[[i]]@colData$empty_drops_FDR <- out$FDR
