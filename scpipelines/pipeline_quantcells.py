@@ -199,7 +199,7 @@ def run_kallisto_bus(infiles, outfile):
 
     job_memory = PARAMS['bustools_memory']
 
-    P.run(statement)
+    P.run(statement, job_options='-t 167:00:00')
 
 
 @jobs_limit(1)
@@ -287,7 +287,7 @@ def barnyard_plot(infile, outfile):
     P.run(statement)
 
 
-@follows(bustools_count, barnyard_plot)
+@follows(bustools_count, barnyard_plot, run_fastqc)
 def full():
     pass
 
