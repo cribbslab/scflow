@@ -46,6 +46,13 @@ file_list <- list.files("kallisto.dir/", pattern="genes.mtx", recursive = TRUE)
 #Make a new list for the seurat objects
 so <- list()
 
+tr2g <- read_tsv("tr2g.tsv", col_names = c("transcript", "gene", "gene_symbol")) %>% 
+      dplyr::select(-transcript) %>%
+      distinct()
+    
+tr2g$gene_v2 <- sub("\\..*", "", tr2g$gene)
+
+
 # generate a list of seurat objects
 for (i in 1:length(file_list)){
     
@@ -54,7 +61,12 @@ for (i in 1:length(file_list)){
     res_mat <- read_count_output(dir = paste0("kallisto.dir/",name),
                                  name = "genes", 
                                  tcc = FALSE)
+
+    #rownames(res_mat) <- tr2g$gene_symbol[match(rownames(res_mat), tr2g$gene)]
     
+    rownames(res_mat) <- tr2g$gene_v2[match(rownames(res_mat), tr2g$gene)]
+    
+
     project_title <- str_replace(file_list[i], "/bus/genecount/genes.mtx", "") %>% 
         str_remove("-[:alpha:]+-date[:digit:].+")
     
