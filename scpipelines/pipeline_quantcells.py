@@ -192,7 +192,7 @@ def run_kallisto_bus(infiles, outfile):
 
 
     statement = '''
-     -i %(index_files)s -t %(kallisto_threads)s -x %(kallisto_sctechnology)s
+     kallisto bus -i %(index_files)s -t %(kallisto_threads)s -x %(kallisto_sctechnology)s
     -o %(outfile)s   %(fastqfiles)s
     2> %(outfile)s_kblog.log
     '''
