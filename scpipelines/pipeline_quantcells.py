@@ -192,7 +192,7 @@ def run_kallisto_bus(infiles, outfile):
 
 
     statement = '''
-    kallisto bus -i %(index_files)s -t %(kallisto_threads)s -x %(kallisto_sctechnology)s
+     kallisto bus -i %(index_files)s -t %(kallisto_threads)s -x %(kallisto_sctechnology)s
     -o %(outfile)s   %(fastqfiles)s
     2> %(outfile)s_kblog.log
     '''
@@ -271,6 +271,36 @@ def bustools_count(infile, outfile):
     P.run(statement, job_options='-t 24:00:00')
 
 
+@transform(bustools_count,
+           regex(r"(\S+)/genecount/genes.barcodes.txt"),
+           r"\1/adata.h5ad")
+def generate_h5ad(infile, outfile):
+    """Convert mtx files to h5ad format"""
+    
+    PYTHON_PATH =  os.path.abspath(os.path.join(os.path.dirname(__file__),"python"))
+
+    genecount_dir = os.path.dirname(infile)
+    sample_dir = os.path.dirname(genecount_dir)
+    
+    matrix_file = os.path.join(genecount_dir, "genes.mtx")
+    genes_file = os.path.join(genecount_dir, "genes.genes.txt")
+    barcodes_file = os.path.join(genecount_dir, "genes.barcodes.txt")
+    
+    output_file = outfile
+
+    statement = '''
+    python %(PYTHON_PATH)s/parse_mtx_to_h5ad.py --matrix {matrix_file} \
+                                --genes {genes_file} \
+                                --barcodes {barcodes_file} \
+                                --output {output_file}
+    '''.format(matrix_file=matrix_file,
+               genes_file=genes_file,
+               barcodes_file=barcodes_file,
+               output_file=output_file)
+
+    P.run(statement)
+
+
 @active_if(PARAMS['mixed_species'])
 @transform(bustools_count,
            regex("(\S+)/genes.barcodes.txt"),
@@ -287,7 +317,7 @@ def barnyard_plot(infile, outfile):
     P.run(statement)
 
 
-@follows(bustools_count, barnyard_plot)
+@follows(generate_h5ad, barnyard_plot)
 def full():
     pass
 
