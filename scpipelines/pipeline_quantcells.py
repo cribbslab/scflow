@@ -317,7 +317,7 @@ def barnyard_plot(infile, outfile):
     P.run(statement)
 
 
-@follows(bustools_count, barnyard_plot)
+@follows(generate_h5ad, barnyard_plot)
 def full():
     pass
 
