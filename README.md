@@ -16,18 +16,24 @@ This repository contains a collection of pipelines that aid the analysis of sing
 
 ### Conda installation - **in progress**
 
-The preferred method for installation is through conda/mamba.  Preferably the
-installation should be in a seperate environment::
+The preferred method for installation is through conda/mamba as a separate environment:
 
-    mamba env create -f conda/environments/scflow.yml
+    (Optional) # Create a new folder in your desired location and cd into it:
+    mkdir scflow_install && cd scflow_install
+    
+    # Install the scflow package:
+    git clone git@github.com:cribbslab/scflow.git
+    mamba env create -f scflow/conda/environments/scflow.yml
     conda activate scflow
+    cd scflow
     python setup.py develop
 
-    # Install a specific version of kb-tools from Adam's cloned repo
+    # Install a modified version of kb-tools from Adam's cloned repo:
     git clone git@github.com:Acribbs/kb_python.git
     cd kb_python
     python setup.py develop
-    
+
+    # Check that the installation has worked:
     scflow --help
 
 ## Usage

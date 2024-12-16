@@ -16,7 +16,7 @@ dependencies:
  - nose
  - numpy
  - pandas
- - kallisto
+ - kallisto=0.48.0
  - multiqc
  - fastqc
  - fastq-screen
