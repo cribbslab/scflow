@@ -24,6 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Debug File Structure
+        run: ls -R
+
       - name: Cache conda
         uses: actions/cache@v3
         env:
@@ -48,7 +51,7 @@ jobs:
           channels: conda-forge, bioconda, defaults
           channel-priority: true
           activate-environment: scflow
-          environment-file: conda/environment.yml
+          environment-file: conda/environments/scflow.yml
 
       - name: Configure Conda Paths
         run: echo "/usr/share/miniconda3/condabin" >> $GITHUB_PATH
@@ -64,7 +67,7 @@ jobs:
           pip list
           openssl version
 
-      - name: Install Dependencies and scflow
+      - name: Install scflow and Dependencies
         run: |
           pip install pep8 flake8 pytest nose
           pip install .
