@@ -27,20 +27,20 @@ jobs:
           channels: conda-forge, bioconda, defaults
           channel-priority: true
 
-      - name: Create and Activate Environment
+      - name: Create Environment
         run: |
-          conda env create  --file conda/environments/testing.yml
-          conda init
-          conda activate scflow
+          conda env create --file conda/environments/testing.yml
           conda list
 
-      - name: Install Additional Dependencies
+      - name: Activate Environment and Install Additional Dependencies
         run: |
+          source /usr/share/miniconda3/etc/profile.d/conda.sh
           conda activate scflow
           pip install pep8
 
       - name: Lint and Test
         run: |
+          source /usr/share/miniconda3/etc/profile.d/conda.sh
           conda activate scflow
           pip install .
           pycodestyle --ignore=E501 tests
