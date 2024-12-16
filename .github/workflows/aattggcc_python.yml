@@ -30,6 +30,7 @@ jobs:
       - name: Create and Activate Environment
         run: |
           conda env create  --file conda/environments/testing.yml
+          conda init
           conda activate scflow
           conda list
 
