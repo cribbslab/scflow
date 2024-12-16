@@ -1,0 +1,30 @@
+name: scflow
+
+channels:
+ - conda-forge
+ - bioconda
+
+dependencies:
+ - python
+ - cgat-apps
+ - cgatcore
+ - matplotlib
+ - mygene
+ - pytest
+ - nose
+ - numpy
+ - pandas
+ - kallisto=0.48.0
+ - multiqc
+ - fastqc
+ - fastq-screen
+ - pep8
+ - ruffus
+ - scipy
+ - setuptools
+ - statsmodels
+ - scanpy
+ - scipy
+ - papermill
+ - leidenalg
+ - bustools

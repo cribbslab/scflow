@@ -36,8 +36,10 @@ jobs:
         run: ls -R
 
       - name: Create and Activate Environment with mamba
+        env:
+          MAMBA_ROOT_PREFIX: /usr/share/miniconda3
         run: |
-          mamba env create --name scflow --file conda/environments/scflow.yml
+          mamba env create --name scflow --file conda/environments/testing.yml
           source activate scflow
           python --version
 
