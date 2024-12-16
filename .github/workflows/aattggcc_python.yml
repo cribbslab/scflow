@@ -22,30 +22,26 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          miniforge-version: "latest"  # Install Miniforge
+          installer-url: ${{ env.installer-url }}
           python-version: ${{ matrix.python-version }}
           channels: conda-forge, bioconda, defaults
           channel-priority: true
+          activate-environment: cgat-core
+          environment-file: conda/environments/testing.yml
 
-      - name: Install mamba
+      - name: Configure Conda Paths
+        run: echo "/usr/share/miniconda3/condabin" >> $GITHUB_PATH
+
+      - name: Show conda
         run: |
-          conda install -n base -c conda-forge mamba
-          mamba --version
+          conda info
+          conda list
 
       - name: Debug File Structure
         run: ls -R
 
-      - name: Create and Activate Environment with mamba
-        env:
-          MAMBA_ROOT_PREFIX: /usr/share/miniconda3
-        run: |
-          mamba env create --name scflow --file conda/environments/testing.yml
-          source activate scflow
-          python --version
-
       - name: Install Additional Dependencies
         run: |
-          source activate scflow
           pip install pep8
 
       - name: Lint and Test
