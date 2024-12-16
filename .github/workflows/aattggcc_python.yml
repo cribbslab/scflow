@@ -25,7 +25,7 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          installer-url: ${{ env.installer-url }}
+          miniforge-version: "latest" # Ensure Miniforge is installed
           python-version: ${{ matrix.python-version }}
           channels: conda-forge, bioconda, defaults
           channel-priority: true
