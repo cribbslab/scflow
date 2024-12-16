@@ -20,30 +20,37 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Debug File Structure
-        run: ls -R
-
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          miniforge-version: "latest" # Ensure Miniforge is installed
+          miniforge-version: "latest"  # Install Miniforge
           python-version: ${{ matrix.python-version }}
           channels: conda-forge, bioconda, defaults
           channel-priority: true
 
-      - name: Create and Activate Environment
+      - name: Install mamba
         run: |
-          micromamba create --name scflow --file conda/environments/scflow.yml
-          micromamba activate scflow
+          conda install -n base -c conda-forge mamba
+          mamba --version
+
+      - name: Debug File Structure
+        run: ls -R
+
+      - name: Create and Activate Environment with mamba
+        run: |
+          mamba env create --name scflow --file conda/environments/scflow.yml
+          source activate scflow
           python --version
 
       - name: Install Additional Dependencies
         run: |
-          micromamba run -n scflow pip install pep8
+          source activate scflow
+          pip install pep8
 
       - name: Lint and Test
         run: |
-          micromamba run -n scflow python setup.py install
-          micromamba run -n scflow pycodestyle --ignore=E501 tests
-          micromamba run -n scflow nosetests -v tests/test_import.py
-          micromamba run -n scflow nosetests -v tests/test_style.py
-          micromamba run -n scflow nosetests -v tests/test_pipeline_control.py
+          source activate scflow
+          python setup.py install
+          pycodestyle --ignore=E501 tests
+          nosetests -v tests/test_import.py
+          nosetests -v tests/test_style.py
+          nosetests -v tests/test_pipeline_control.py
