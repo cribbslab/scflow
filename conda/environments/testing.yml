@@ -3,6 +3,9 @@ name: scflow
 channels:
  - conda-forge
  - bioconda
+ - defaults  # Keep as a fallback only if needed (optional)
+
+channel_priority: strict  # Force conda-forge and bioconda to be used first
 
 dependencies:
  - python
