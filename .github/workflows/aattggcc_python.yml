@@ -22,7 +22,7 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          miniforge-version: "latest"  # Install the latest version of Miniforge
+          miniforge-version: "latest"
           python-version: ${{ matrix.python-version }}
           channels: conda-forge, bioconda, defaults
           channel-priority: true
@@ -34,13 +34,21 @@ jobs:
 
       - name: Activate Environment and Install Additional Dependencies
         run: |
-          source /usr/share/miniconda3/etc/profile.d/conda.sh
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            source /usr/share/miniconda3/etc/profile.d/conda.sh
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            source /Users/runner/miniconda3/etc/profile.d/conda.sh
+          fi
           conda activate scflow
           pip install pep8 pycodestyle
 
       - name: Lint and Test
         run: |
-          source /usr/share/miniconda3/etc/profile.d/conda.sh
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            source /usr/share/miniconda3/etc/profile.d/conda.sh
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            source /Users/runner/miniconda3/etc/profile.d/conda.sh
+          fi
           conda activate scflow
           pip install .
           pycodestyle --ignore=E501 tests
