@@ -232,7 +232,7 @@ def run_kallisto_bus(infiles, outfile):
 
     job_memory = '100G'
 
-    P.run(statement)
+    P.run(statement, job_options='-t 167:00:00')
 
 
 @transform(run_kallisto_bus,

@@ -199,7 +199,9 @@ def run_kallisto_bus(infiles, outfile):
 
     job_memory = PARAMS['bustools_memory']
 
-    P.run(statement, job_options='-t 24:00:00')
+
+     P.run(statement, job_options='-t 24:00:00')
+
 
 
 @jobs_limit(1)
