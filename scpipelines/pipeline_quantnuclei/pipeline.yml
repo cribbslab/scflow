@@ -65,4 +65,9 @@ kallisto:
   #                      standard)
   workflow: nucleus
 
+  # If you specify a custom barcode in the kallisto_technology then you
+  # need to specify a custom whitelist
+
+  whitelist:
+
 

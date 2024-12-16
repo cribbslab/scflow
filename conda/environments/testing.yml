@@ -1,0 +1,27 @@
+name: scflow  # This should match the name of the environment you want to create
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - pytest
+  - nose
+  - pep8
+  - numpy
+  - pandas
+  - cgatcore
+  - matplotlib
+  - mygene
+  - kallisto=0.48.0
+  - multiqc
+  - fastqc
+  - fastq-screen
+  - ruffus
+  - scipy
+  - setuptools
+  - statsmodels
+  - scanpy
+  - papermill
+  - leidenalg
+  - bustools
