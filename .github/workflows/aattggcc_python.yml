@@ -26,7 +26,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           channels: conda-forge, bioconda, defaults
           channel-priority: true
-          activate-environment: cgat-core
+          activate-environment: scflow
           environment-file: conda/environments/testing.yml
 
       - name: Configure Conda Paths
@@ -46,7 +46,7 @@ jobs:
 
       - name: Lint and Test
         run: |
-          source activate scflow
+          conda activate scflow
           python setup.py install
           pycodestyle --ignore=E501 tests
           nosetests -v tests/test_import.py

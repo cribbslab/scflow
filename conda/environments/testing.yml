@@ -1,33 +1,27 @@
-name: scflow
-
+name: scflow  # This should match the name of the environment you want to create
 channels:
- - conda-forge
- - bioconda
- - defaults  # Keep as a fallback only if needed (optional)
-
-channel_priority: strict  # Force conda-forge and bioconda to be used first
-
+  - conda-forge
+  - bioconda
+  - defaults
 dependencies:
- - python
- - cgat-apps
- - cgatcore
- - matplotlib
- - mygene
- - pytest
- - nose
- - numpy
- - pandas
- - kallisto=0.48.0
- - multiqc
- - fastqc
- - fastq-screen
- - pep8
- - ruffus
- - scipy
- - setuptools
- - statsmodels
- - scanpy
- - scipy
- - papermill
- - leidenalg
- - bustools
+  - python=3.10
+  - pytest
+  - nose
+  - pep8
+  - numpy
+  - pandas
+  - cgatcore
+  - matplotlib
+  - mygene
+  - kallisto=0.48.0
+  - multiqc
+  - fastqc
+  - fastq-screen
+  - ruffus
+  - scipy
+  - setuptools
+  - statsmodels
+  - scanpy
+  - papermill
+  - leidenalg
+  - bustools
