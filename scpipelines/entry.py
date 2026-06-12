@@ -30,8 +30,24 @@ import os
 import sys
 import re
 import glob
-import imp
+import importlib.util
 import scpipelines
+
+
+def _load_pipeline(pipeline, paths):
+    """Locate ``<pipeline>.py`` within ``paths`` and import it as a module.
+
+    Replaces the removed ``imp`` module (gone since Python 3.12).
+    """
+    for directory in paths:
+        candidate = os.path.join(directory, pipeline + ".py")
+        if os.path.exists(candidate):
+            spec = importlib.util.spec_from_file_location(pipeline, candidate)
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[pipeline] = module
+            spec.loader.exec_module(module)
+            return module
+    raise ImportError("No module named '%s' in %s" % (pipeline, paths))
 
 
 def main(argv=None):
@@ -97,9 +113,7 @@ def main(argv=None):
     del sys.argv[0]
     del sys.argv[1]
 
-    (file, pathname, description) = imp.find_module(pipeline, paths)
-
-    module = imp.load_module(pipeline, file, pathname, description)
+    module = _load_pipeline(pipeline, paths)
 
     module.main(sys.argv)
 
