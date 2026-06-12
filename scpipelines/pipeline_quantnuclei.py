@@ -157,7 +157,7 @@ def build_kallisto_index(outfile):
 @follows(build_kallisto_index)
 @follows(mkdir("fastqc_pre.dir"))
 @transform(SEQUENCEFILES,
-           regex("{}/(\S+).fastq.(\d).gz".format(DATADIR)),
+           regex(r"{}/(\S+).fastq.(\d).gz".format(DATADIR)),
            r"fastqc_pre.dir/\1.fastq.\2_fastqc.html")
 def run_fastqc(infile, outfile):
     '''
@@ -189,7 +189,7 @@ if "merge_pattern_input" in PARAMS and PARAMS["merge_pattern_input"]:
 
 else:
     SEQUENCEFILES_REGEX = regex(
-        "\S+/(\S+).(fastq.gz|fastq.1.gz)")
+        r"\S+/(\S+).(fastq.gz|fastq.1.gz)")
 
     SEQUENCEFILES_KALLISTO_OUTPUT = (
         r"kallisto.dir/\1/bus/output.bus")
@@ -222,7 +222,7 @@ def run_kallisto_bus(infiles, outfile):
     fastqfiles = " ".join([fastqfile, read2])
     outfolder = outfile.rsplit('/', 1)[0]
 
-    if PARAMS['kallisto_whitelist'] = '':
+    if PARAMS['kallisto_whitelist'] == '':
 
 
         statement = '''
