@@ -222,7 +222,7 @@ def run_kallisto_bus(infiles, outfile):
     fastqfiles = " ".join([fastqfile, read2])
     outfolder = outfile.rsplit('/', 1)[0]
 
-    if PARAMS['kallisto_whitelist'] == '':
+    if not PARAMS['kallisto_whitelist']:
 
 
         statement = '''
