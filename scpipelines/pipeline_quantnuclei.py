@@ -239,7 +239,7 @@ def run_kallisto_bus(infiles, outfile):
         2> %(outfolder)s_kblog.log
         '''
 
-    job_memory = '100G'
+    job_memory = '50G'
 
     P.run(statement, job_options='-t 167:00:00')
 
