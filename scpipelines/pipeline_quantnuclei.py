@@ -226,14 +226,14 @@ def run_kallisto_bus(infiles, outfile):
 
 
         statement = '''
-        kb count -i %(index_files)s -g geneset.dir/t2g.txt
+        kb count -i %(index_files)s -g geneset.dir/t2g.txt -t %(kallisto_threads)s
         -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt -x %(kallisto_sctechnology)s
         -o %(outfolder)s --workflow %(kallisto_workflow)s --%(kallisto_output_format)s  %(fastqfiles)s
         2> %(outfolder)s_kblog.log
         '''
     else:
         statement = '''
-        kb count -i %(index_files)s -w %(kallisto_whitelist)s -g geneset.dir/t2g.txt
+        kb count -i %(index_files)s -w %(kallisto_whitelist)s -g geneset.dir/t2g.txt -t %(kallisto_threads)s
         -c1 geneset.dir/cdna_t2c.txt -c2 geneset.dir/intron_t2c.txt -x %(kallisto_sctechnology)s
         -o %(outfolder)s --workflow %(kallisto_workflow)s --%(kallisto_output_format)s  %(fastqfiles)s
         2> %(outfolder)s_kblog.log
